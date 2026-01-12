@@ -131,17 +131,34 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
         runId = runInfo.id;
       }
 
-      // Create user message
+      // Create user message.
+      // Note: Message ID uses milliseconds. Collision is mitigated by
+      // _isStarting guard preventing concurrent startRun calls.
       final userMessageObj = TextMessage.create(
         id: 'user_${DateTime.now().millisecondsSinceEpoch}',
         user: ChatUser.user,
         text: userMessage,
       );
 
-      // Create conversation with user message and Running status
+      // Read historical messages from cache.
+      // Cache is populated by allMessagesProvider when thread is selected.
+      // If cache is empty (e.g., direct URL navigation + immediate send),
+      // we proceed without history - backend still processes correctly.
+      //
+      // Deferred: Safety fetch from backend when cache is empty. Not needed
+      // because normal UI flow ensures cache is populated before user can
+      // send. Adding async fetch here would block UI for a rare edge case.
+      // See issue #30 for details.
+      final cachedMessages =
+          ref.read(threadMessageCacheProvider)[threadId] ?? [];
+
+      // Combine historical messages with new user message
+      final allMessages = [...cachedMessages, userMessageObj];
+
+      // Create conversation with full history and Running status
       final conversation = domain.Conversation(
         threadId: threadId,
-        messages: [userMessageObj],
+        messages: allMessages,
         status: domain.Running(runId: runId),
       );
 
@@ -151,11 +168,14 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
       // Step 2: Build the streaming endpoint URL with backend run_id
       final endpoint = 'rooms/$roomId/agui/$threadId/$runId';
 
+      // Convert all messages to AG-UI format for backend
+      final aguiMessages = convertToAgui(allMessages);
+
       // Create the input for the run
       final input = SimpleRunAgentInput(
         threadId: threadId,
         runId: runId,
-        messages: [UserMessage(id: userMessageObj.id, content: userMessage)],
+        messages: aguiMessages,
         state: initialState,
       );
 
