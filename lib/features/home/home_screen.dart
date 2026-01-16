@@ -87,19 +87,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           break;
       }
 
-      // Save the URL
-      await ref.read(configProvider.notifier).setBaseUrl(url);
-      debugPrint(
-        'HomeScreen: URL saved, config.baseUrl is now: '
-        '${ref.read(configProvider).baseUrl}',
-      );
-
-      // Fetch auth providers from the new URL
+      // Fetch auth providers to validate the URL is reachable
       final transport = ref.read(httpTransportProvider);
       final providers = await fetchAuthProviders(
         transport: transport,
         baseUrl: Uri.parse(url),
       );
+
+      // Only persist URL after successful connection
+      try {
+        await ref.read(configProvider.notifier).setBaseUrl(url);
+        debugPrint(
+          'HomeScreen: URL saved, config.baseUrl is now: '
+          '${ref.read(configProvider).baseUrl}',
+        );
+      } on Exception catch (e) {
+        debugPrint('HomeScreen: Failed to persist URL: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Connected, but couldn't save URL for next time."),
+            ),
+          );
+        }
+        // Continue to navigation - don't block user over persistence failure
+      }
 
       if (!mounted) return;
 
@@ -122,23 +134,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ref.invalidate(oidcIssuersProvider);
           context.go('/login');
       }
+    } on AuthException catch (e) {
+      debugPrint('HomeScreen: Auth error: ${e.message}');
+      if (mounted) {
+        setState(
+          () => _error = 'Access denied. The server rejected the connection.',
+        );
+      }
+    } on NotFoundException catch (e) {
+      debugPrint('HomeScreen: Not found: ${e.message}');
+      if (mounted) {
+        setState(
+          () => _error = 'Server reached, but login endpoint not found. '
+              'Please verify the URL.',
+        );
+      }
+    } on CancelledException {
+      debugPrint('HomeScreen: Request cancelled');
+      if (mounted) {
+        setState(() => _error = 'Request cancelled.');
+      }
     } on NetworkException catch (e) {
+      debugPrint('HomeScreen: Network error: ${e.message}');
       if (mounted) {
         setState(() {
           _error = e.isTimeout
               ? 'Request timed out. Please try again.'
-              : 'Cannot reach server. Check the URL and try again.';
+              : 'Cannot reach server. '
+                  'Verify the URL is correct and the server is running.';
         });
       }
     } on ApiException catch (e) {
+      debugPrint('HomeScreen: API error: ${e.statusCode} - ${e.message}');
       if (mounted) {
-        setState(() => _error = 'Server error: ${e.statusCode}');
+        setState(
+          () => _error = 'Server error (${e.statusCode}). '
+              'Please try again later or verify the backend URL is correct.',
+        );
       }
     } on Exception catch (e) {
-      if (mounted) {
-        setState(() => _error = 'Connection failed. Please try again.');
-      }
       debugPrint('HomeScreen: Unexpected exception: ${e.runtimeType} - $e');
+      if (mounted) {
+        setState(() => _error = 'Connection failed: $e');
+      }
     } finally {
       if (mounted) {
         setState(() => _isConnecting = false);
@@ -150,12 +188,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final soliplexTheme = SoliplexTheme.of(context);
-    final config = ref.watch(configProvider);
-
-    // Update text field if config changes externally
-    if (_urlController.text != config.baseUrl && !_isConnecting) {
-      _urlController.text = config.baseUrl;
-    }
 
     return Center(
       child: SingleChildScrollView(
