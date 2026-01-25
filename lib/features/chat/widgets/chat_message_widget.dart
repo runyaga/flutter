@@ -4,24 +4,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soliplex_client/soliplex_client.dart';
 
+import 'package:soliplex_frontend/core/providers/citation_providers.dart';
 import 'package:soliplex_frontend/design/design.dart';
+import 'package:soliplex_frontend/features/chat/widgets/citation_chip.dart';
+import 'package:soliplex_frontend/features/chat/widgets/citation_panel.dart';
 import 'package:soliplex_frontend/features/chat/widgets/code_block_builder.dart';
 
 /// Widget that displays a single chat message.
-class ChatMessageWidget extends StatelessWidget {
+class ChatMessageWidget extends ConsumerWidget {
   const ChatMessageWidget({
     required this.message,
+    required this.roomId,
     this.isStreaming = false,
     super.key,
   });
 
   final ChatMessage message;
+  final String roomId;
   final bool isStreaming;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final soliplexTheme = SoliplexTheme.of(context);
 
@@ -35,6 +41,13 @@ class ChatMessageWidget extends StatelessWidget {
       ErrorMessage(:final errorText) => errorText,
       _ => '',
     };
+
+    // Get citations for assistant messages (not user, not streaming)
+    // Note: citationsForMessageProvider returns a list directly (not a Provider)
+    // Full reactive citation support will be added when ask_history state is wired
+    final citations = (!isUser && !isStreaming)
+        ? citationsForMessageProvider(roomId, message.id)
+        : <Citation>[];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -117,6 +130,9 @@ class ChatMessageWidget extends StatelessWidget {
               ),
             ),
           ),
+          // Citations row (only for assistant messages with citations)
+          if (citations.isNotEmpty)
+            _CitationRow(citations: citations),
           if (isUser)
             _buildUserMessageActionsRow(
               context,
@@ -283,6 +299,41 @@ class _ActionButton extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Horizontal scrollable row of citation chips.
+class _CitationRow extends StatelessWidget {
+  const _CitationRow({required this.citations});
+
+  final List<Citation> citations;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 32,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: citations.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          return CitationChip(
+            citation: citations[index],
+            onTap: () => _showCitationPanel(context, citations[index]),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showCitationPanel(BuildContext context, Citation citation) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => CitationPanel(
+        citation: citation,
+        onClose: () => Navigator.pop(context),
       ),
     );
   }

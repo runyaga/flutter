@@ -34,7 +34,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -60,7 +60,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -86,7 +86,7 @@ void main() {
         await tester.pumpWidget(
           createTestApp(
             home: Scaffold(
-              body: ChatMessageWidget(message: message, isStreaming: true),
+              body: ChatMessageWidget(message: message, roomId: 'test-room', isStreaming: true),
             ),
           ),
         );
@@ -105,7 +105,7 @@ void main() {
           // Act
           await tester.pumpWidget(
             createTestApp(
-              home: Scaffold(body: ChatMessageWidget(message: message)),
+              home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
             ),
           );
 
@@ -129,7 +129,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -160,7 +160,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -189,7 +189,7 @@ void main() {
         await tester.pumpWidget(
           createTestApp(
             home: Scaffold(
-              body: ChatMessageWidget(message: message, isStreaming: true),
+              body: ChatMessageWidget(message: message, roomId: 'test-room', isStreaming: true),
             ),
           ),
         );
@@ -209,7 +209,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -226,7 +226,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -247,7 +247,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -270,7 +270,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -291,7 +291,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -317,7 +317,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -334,7 +334,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -352,7 +352,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -373,7 +373,7 @@ void main() {
         await tester.pumpWidget(
           createTestApp(
             home: Scaffold(
-              body: ChatMessageWidget(message: message, isStreaming: true),
+              body: ChatMessageWidget(message: message, roomId: 'test-room', isStreaming: true),
             ),
           ),
         );
@@ -389,7 +389,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -408,7 +408,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -425,7 +425,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -441,7 +441,7 @@ void main() {
         // Act
         await tester.pumpWidget(
           createTestApp(
-            home: Scaffold(body: ChatMessageWidget(message: message)),
+            home: Scaffold(body: ChatMessageWidget(message: message, roomId: 'test-room')),
           ),
         );
 
@@ -459,7 +459,7 @@ void main() {
             home: Scaffold(
               body: SizedBox(
                 width: 1200,
-                child: ChatMessageWidget(message: message),
+                child: ChatMessageWidget(message: message, roomId: 'test-room'),
               ),
             ),
           ),
