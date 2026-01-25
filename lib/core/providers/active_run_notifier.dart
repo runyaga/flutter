@@ -10,6 +10,7 @@ import 'package:soliplex_frontend/core/models/active_run_state.dart';
 import 'package:soliplex_frontend/core/providers/api_provider.dart';
 import 'package:soliplex_frontend/core/providers/thread_message_cache.dart';
 import 'package:soliplex_frontend/core/providers/threads_provider.dart';
+import 'package:soliplex_frontend/core/providers/tool_execution_providers.dart';
 
 void _log(String message, {Object? error, StackTrace? stackTrace}) {
   developer.log(
@@ -363,6 +364,9 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
       return;
     }
 
+    // Handle tool execution events for ToolExecutionCard display
+    _handleToolExecutionEvent(event);
+
     // Use application layer processor
     final result = processEvent(
       currentState.conversation,
@@ -372,6 +376,39 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
 
     // Map result to frontend state
     state = _mapResultToState(currentState, result);
+  }
+
+  /// Handles tool execution events by updating ToolExecutionNotifier.
+  void _handleToolExecutionEvent(BaseEvent event) {
+    final toolNotifier = ref.read(toolExecutionNotifierProvider.notifier);
+
+    if (event is ToolCallStartEvent) {
+      toolNotifier.startToolExecution(
+        id: event.toolCallId,
+        toolName: event.toolCallName,
+      );
+    } else if (event is ToolCallArgsEvent) {
+      // Accumulate argument deltas
+      toolNotifier.appendArguments(
+        id: event.toolCallId,
+        argsDelta: event.delta,
+      );
+    } else if (event is ToolCallEndEvent) {
+      // Finalize arguments when tool call ends
+      toolNotifier.finalizeArguments(id: event.toolCallId);
+    } else if (event is ToolCallResultEvent) {
+      // Use ToolCallResultEvent for completion with output
+      // Check if result indicates an error (role=tool with error content)
+      final isError = event.role == 'error' ||
+          event.content.toLowerCase().contains('error:') ||
+          event.content.toLowerCase().contains('exception:');
+      toolNotifier.completeToolExecution(
+        id: event.toolCallId,
+        success: !isError,
+        output: isError ? null : event.content,
+        error: isError ? event.content : null,
+      );
+    }
   }
 
   /// Handles STATE_DELTA events by applying them to mission state.
