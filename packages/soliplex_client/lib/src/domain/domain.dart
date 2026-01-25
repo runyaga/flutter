@@ -1,9 +1,14 @@
+export 'approval.dart';
 export 'auth_provider_config.dart';
 export 'backend_version_info.dart';
 export 'chat_message.dart';
 export 'conversation.dart';
+export 'extensions/task_extensions.dart';
+export 'mission.dart';
 export 'quiz.dart';
 export 'rag_document.dart';
 export 'room.dart';
 export 'run_info.dart';
+export 'task_item.dart';
+export 'task_list.dart';
 export 'thread_info.dart';
