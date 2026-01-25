@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_frontend/core/providers/active_run_provider.dart';
 
+// Re-export MissionStatus for consumers who import this file
+export 'package:soliplex_client/soliplex_client.dart' show MissionStatus;
+
 /// Family provider for task list from a room's AG-UI state.
 ///
 /// Returns the current task list for a given room, or null if not available.
@@ -113,4 +116,34 @@ final firstPendingApprovalProvider =
     Provider.family<ApprovalRequest?, String>((ref, roomId) {
   final approvals = ref.watch(pendingApprovalsProvider(roomId));
   return approvals.isEmpty ? null : approvals.first;
+});
+
+/// Family provider for current mission status.
+///
+/// Returns the current mission status for a given room, or null if no active mission.
+/// The status is derived from the mission state snapshot received via STATE_DELTA events.
+///
+/// **Note**: The roomId parameter is currently unused but kept for API
+/// compatibility. The mission state is scoped to the active run.
+///
+/// **Usage**:
+/// ```dart
+/// final status = ref.watch(missionStatusProvider(roomId));
+/// if (status == MissionStatus.executing) {
+///   // Show execution controls
+/// }
+/// ```
+final missionStatusProvider =
+    Provider.family<MissionStatus?, String>((ref, roomId) {
+  final missionState = ref.watch(missionStateProvider);
+  if (missionState == null) return null;
+
+  final statusStr = missionState['status'] as String?;
+  if (statusStr == null) return null;
+
+  try {
+    return MissionStatus.fromString(statusStr);
+  } catch (e) {
+    return null;
+  }
 });

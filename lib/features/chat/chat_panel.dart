@@ -10,7 +10,9 @@ import 'package:soliplex_frontend/core/providers/rooms_provider.dart';
 import 'package:soliplex_frontend/core/providers/threads_provider.dart';
 import 'package:soliplex_frontend/design/design.dart';
 import 'package:soliplex_frontend/features/chat/widgets/chat_input.dart';
+import 'package:soliplex_frontend/features/chat/widgets/execution_controls.dart';
 import 'package:soliplex_frontend/features/chat/widgets/message_list.dart';
+import 'package:soliplex_frontend/features/chat/widgets/steering_input.dart';
 import 'package:soliplex_frontend/features/mission/widgets/approval_banner.dart';
 import 'package:soliplex_frontend/features/mission/widgets/task_progress_compact.dart';
 import 'package:soliplex_frontend/features/mission/widgets/task_progress_expanded.dart';
@@ -128,18 +130,34 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
                     },
                   ),
 
-                  // Input
-                  ChatInput(
-                    onSend: (text) => _handleSend(context, ref, text),
-                    roomId: room?.id,
-                    selectedDocuments: _selectedDocuments,
-                    onDocumentsChanged: (docs) {
-                      setState(() {
-                        _selectedDocuments = docs;
-                      });
-                    },
-                    suggestions: room?.suggestions ?? const [],
-                    showSuggestions: showSuggestions,
+                  // Steering Input (only visible during execution)
+                  if (room != null) SteeringInput(roomId: room.id),
+
+                  // Input with Execution Controls
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: ChatInput(
+                          onSend: (text) => _handleSend(context, ref, text),
+                          roomId: room?.id,
+                          selectedDocuments: _selectedDocuments,
+                          onDocumentsChanged: (docs) {
+                            setState(() {
+                              _selectedDocuments = docs;
+                            });
+                          },
+                          suggestions: room?.suggestions ?? const [],
+                          showSuggestions: showSuggestions,
+                        ),
+                      ),
+                      // Execution Controls (only visible during execution/paused)
+                      if (room != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: ExecutionControls(roomId: room.id),
+                        ),
+                    ],
                   ),
                 ],
               ),

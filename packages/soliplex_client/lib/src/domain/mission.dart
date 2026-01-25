@@ -16,7 +16,8 @@ enum MissionStatus {
   awaitingApproval,
   paused,
   completed,
-  failed;
+  failed,
+  cancelled;
 
   static MissionStatus fromString(String value) {
     // Handle both snake_case (from backend) and camelCase

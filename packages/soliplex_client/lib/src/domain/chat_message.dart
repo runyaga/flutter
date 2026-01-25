@@ -20,6 +20,7 @@ sealed class ChatMessage {
     required this.id,
     required this.user,
     required this.createdAt,
+    this.turnIndex,
   });
 
   /// Unique identifier for this message.
@@ -30,6 +31,13 @@ sealed class ChatMessage {
 
   /// When this message was created.
   final DateTime createdAt;
+
+  /// Turn index for citation mapping.
+  ///
+  /// Used to match messages with their citations from ask_history.
+  /// The backend sets ask_history[i].index which should match this value.
+  /// If null, fallback matching by timestamp is used.
+  final int? turnIndex;
 
   @override
   bool operator ==(Object other) =>
@@ -51,6 +59,7 @@ class TextMessage extends ChatMessage {
     required super.user,
     required super.createdAt,
     required this.text,
+    super.turnIndex,
     this.isStreaming = false,
     this.thinkingText = '',
     this.isThinkingStreaming = false,
@@ -61,12 +70,14 @@ class TextMessage extends ChatMessage {
     required String id,
     required ChatUser user,
     required String text,
+    int? turnIndex,
     bool isStreaming = false,
   }) {
     return TextMessage(
       id: id,
       user: user,
       text: text,
+      turnIndex: turnIndex,
       isStreaming: isStreaming,
       createdAt: DateTime.now(),
     );
@@ -93,6 +104,7 @@ class TextMessage extends ChatMessage {
     ChatUser? user,
     DateTime? createdAt,
     String? text,
+    int? turnIndex,
     bool? isStreaming,
     String? thinkingText,
     bool? isThinkingStreaming,
@@ -102,6 +114,7 @@ class TextMessage extends ChatMessage {
       user: user ?? this.user,
       createdAt: createdAt ?? this.createdAt,
       text: text ?? this.text,
+      turnIndex: turnIndex ?? this.turnIndex,
       isStreaming: isStreaming ?? this.isStreaming,
       thinkingText: thinkingText ?? this.thinkingText,
       isThinkingStreaming: isThinkingStreaming ?? this.isThinkingStreaming,
@@ -120,6 +133,7 @@ class ErrorMessage extends ChatMessage {
     required super.id,
     required super.createdAt,
     required this.errorText,
+    super.turnIndex,
   }) : super(user: ChatUser.system);
 
   /// Creates an error message with the given ID and auto-generated timestamp.
@@ -142,6 +156,7 @@ class ToolCallMessage extends ChatMessage {
     required super.id,
     required super.createdAt,
     required this.toolCalls,
+    super.turnIndex,
   }) : super(user: ChatUser.assistant);
 
   /// Creates a tool call message with the given ID and auto-generated
@@ -173,6 +188,7 @@ class GenUiMessage extends ChatMessage {
     required super.createdAt,
     required this.widgetName,
     required this.data,
+    super.turnIndex,
   }) : super(user: ChatUser.assistant);
 
   /// Creates a genUI message with the given ID and auto-generated timestamp.
@@ -203,8 +219,11 @@ class GenUiMessage extends ChatMessage {
 @immutable
 class LoadingMessage extends ChatMessage {
   /// Creates a loading message with all properties.
-  const LoadingMessage({required super.id, required super.createdAt})
-      : super(user: ChatUser.assistant);
+  const LoadingMessage({
+    required super.id,
+    required super.createdAt,
+    super.turnIndex,
+  }) : super(user: ChatUser.assistant);
 
   /// Creates a loading message with the given ID and auto-generated timestamp.
   factory LoadingMessage.create({required String id}) {

@@ -6,6 +6,7 @@ import 'package:soliplex_client/soliplex_client.dart'
 import 'package:soliplex_frontend/core/models/active_run_state.dart';
 
 import 'package:soliplex_frontend/core/providers/active_run_provider.dart';
+import 'package:soliplex_frontend/core/providers/rooms_provider.dart';
 import 'package:soliplex_frontend/design/theme/theme_extensions.dart';
 import 'package:soliplex_frontend/design/tokens/spacing.dart';
 import 'package:soliplex_frontend/features/chat/widgets/chat_message_widget.dart';
@@ -125,11 +126,12 @@ class _MessageListState extends ConsumerState<MessageList> {
         messagesAsync.hasValue ? messagesAsync.value! : <ChatMessage>[];
     final isStreaming = ref.watch(isStreamingProvider);
     final runState = ref.watch(activeRunNotifierProvider);
+    final roomId = ref.watch(currentRoomIdProvider);
 
     // Show loading overlay, not different widget tree
     return Stack(
       children: [
-        _buildMessageList(context, messagesNow, isStreaming, runState),
+        _buildMessageList(context, messagesNow, isStreaming, runState, roomId),
         if (messagesAsync.isLoading && messagesNow.isEmpty)
           const Center(child: CircularProgressIndicator()),
         if (messagesAsync.hasError && messagesNow.isEmpty)
@@ -143,6 +145,7 @@ class _MessageListState extends ConsumerState<MessageList> {
     List<ChatMessage> messages,
     bool isStreaming,
     ActiveRunState runState,
+    String? roomId,
   ) {
     final soliplexTheme = SoliplexTheme.of(context);
 
@@ -208,6 +211,7 @@ class _MessageListState extends ConsumerState<MessageList> {
             return ChatMessageWidget(
               key: ValueKey(message.id),
               message: message,
+              roomId: roomId ?? '',
               isStreaming: streamingMessageId == message.id,
             );
           },
