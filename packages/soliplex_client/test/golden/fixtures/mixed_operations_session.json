@@ -1,0 +1,66 @@
+{
+  "description": "Golden test: Mixed add, remove, replace, copy operations",
+  "events": [
+    {
+      "delta_path": "/metadata",
+      "delta_type": "add",
+      "delta_value": {
+        "session_id": "session-123",
+        "created_at": "2026-01-25T09:00:00Z"
+      }
+    },
+    {
+      "delta_path": "/items",
+      "delta_type": "add",
+      "delta_value": []
+    },
+    {
+      "delta_path": "/items/-",
+      "delta_type": "add",
+      "delta_value": {"id": "a", "name": "Item A"}
+    },
+    {
+      "delta_path": "/items/-",
+      "delta_type": "add",
+      "delta_value": {"id": "b", "name": "Item B"}
+    },
+    {
+      "delta_path": "/items/-",
+      "delta_type": "add",
+      "delta_value": {"id": "c", "name": "Item C"}
+    },
+    {
+      "delta_path": "/items/1/name",
+      "delta_type": "replace",
+      "delta_value": "Item B (Updated)"
+    },
+    {
+      "delta_path": "/items/0",
+      "delta_type": "remove",
+      "delta_value": null
+    },
+    {
+      "delta_path": "/copied_item",
+      "delta_type": "copy",
+      "delta_from": "/items/0",
+      "delta_value": null
+    },
+    {
+      "delta_path": "/metadata/updated_at",
+      "delta_type": "add",
+      "delta_value": "2026-01-25T09:30:00Z"
+    }
+  ],
+  "expected_state": {
+    "metadata": {
+      "session_id": "session-123",
+      "created_at": "2026-01-25T09:00:00Z",
+      "updated_at": "2026-01-25T09:30:00Z"
+    },
+    "items": [
+      {"id": "b", "name": "Item B (Updated)"},
+      {"id": "c", "name": "Item C"}
+    ],
+    "copied_item": {"id": "b", "name": "Item B (Updated)"}
+  }
+}

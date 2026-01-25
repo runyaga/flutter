@@ -1,0 +1,24 @@
+# Wiggum configuration - Central Logging Architecture
+project_name: soliplex-logging
+language: dart
+
+commands:
+  lint: |
+    dart format --set-exit-if-changed . && \
+    dart analyze --fatal-infos && \
+    dart analyze --fatal-infos packages/soliplex_logging && \
+    dart analyze --fatal-infos packages/soliplex_logging_io
+  unit: |
+    flutter test && \
+    dart test packages/soliplex_logging && \
+    dart test packages/soliplex_logging_io
+
+milestones: milestones/
+
+plan: milestones/PLAN.md
+
+review:
+  model: gemini-3-pro-preview
+  tool: mcp__gemini__read_files
+
+max_iterations: 10

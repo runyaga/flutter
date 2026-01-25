@@ -61,6 +61,26 @@ class RunningInternalState extends NotifierInternalState {
   }
 }
 
+/// Internal notifier for mission state updates.
+///
+/// This is exposed publicly via [missionStateProvider] in active_run_provider.dart.
+final missionStateNotifierProvider =
+    NotifierProvider<MissionStateNotifier, Map<String, dynamic>?>(
+        MissionStateNotifier.new,
+    );
+
+/// Notifier that holds the current mission state from STATE_DELTA events.
+class MissionStateNotifier extends Notifier<Map<String, dynamic>?> {
+  @override
+  Map<String, dynamic>? build() => null;
+
+  /// Update the mission state with new data.
+  void update(Map<String, dynamic> newState) => state = newState;
+
+  /// Clear the mission state.
+  void clear() => state = null;
+}
+
 /// Manages the lifecycle of an active AG-UI run.
 ///
 /// This notifier:
@@ -68,6 +88,7 @@ class RunningInternalState extends NotifierInternalState {
 /// - Processes AG-UI events from the backend
 /// - Updates state as messages stream in
 /// - Handles cancellation and errors
+/// - Processes STATE_DELTA events to update mission state
 ///
 /// Usage:
 /// ```dart
@@ -82,6 +103,7 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
   late AgUiClient _agUiClient;
   NotifierInternalState _internalState = const IdleInternalState();
   bool _isStarting = false;
+  final StateDeltaProcessor _stateDeltaProcessor = StateDeltaProcessor();
 
   @override
   ActiveRunState build() {
@@ -312,6 +334,10 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
     _internalState = const IdleInternalState();
     state = const IdleState();
 
+    // Clear mission state
+    _stateDeltaProcessor.reset();
+    ref.read(missionStateNotifierProvider.notifier).clear();
+
     if (previousState is RunningInternalState) {
       try {
         await previousState.dispose();
@@ -331,6 +357,12 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
       _log('Received RUN_ERROR event: ${event.message}');
     }
 
+    // Handle STATE_DELTA events (custom events with type 'state_delta')
+    if (event is CustomEvent && event.type == 'state_delta') {
+      _handleStateDelta(event);
+      return;
+    }
+
     // Use application layer processor
     final result = processEvent(
       currentState.conversation,
@@ -340,6 +372,23 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
 
     // Map result to frontend state
     state = _mapResultToState(currentState, result);
+  }
+
+  /// Handles STATE_DELTA events by applying them to mission state.
+  void _handleStateDelta(CustomEvent event) {
+    final data = event.value;
+    if (data is! Map<String, dynamic>) {
+      _log('STATE_DELTA event has invalid value type: ${data.runtimeType}');
+      return;
+    }
+
+    final result = _stateDeltaProcessor.processStateDeltaFromMap(data);
+    if (result.isSuccess) {
+      // Update the mission state notifier so providers react
+      ref.read(missionStateNotifierProvider.notifier).update(result.state);
+    } else {
+      _log('Failed to apply STATE_DELTA: ${result.error}');
+    }
   }
 
   /// Maps an EventProcessingResult to the appropriate ActiveRunState.

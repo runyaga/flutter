@@ -1,0 +1,9 @@
+{
+  "task_id": "0ab1a633-39f9-451b-86cc-950f5036e2a4",
+  "title": "Write unit tests",
+  "description": "Create comprehensive test coverage for the new feature",
+  "status": "in_progress",
+  "progress_pct": 50,
+  "created_at": "2026-01-25T10:00:00Z",
+  "updated_at": "2026-01-25T10:30:00Z"
+}

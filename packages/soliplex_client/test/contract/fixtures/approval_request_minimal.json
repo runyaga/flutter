@@ -1,0 +1,25 @@
+{
+  "id": "80e3560f-2f88-4586-a57f-6bcd7f6c095a",
+  "action": "simple_action",
+  "description": "A simple action with no details",
+  "options": [
+    {
+      "id": "yes",
+      "label": "Yes",
+      "description": "Confirm",
+      "is_destructive": false
+    },
+    {
+      "id": "no",
+      "label": "No",
+      "description": "Cancel",
+      "is_destructive": false
+    }
+  ],
+  "details": null,
+  "status": "pending",
+  "selected_option": null,
+  "created_at": "2026-01-25T10:36:57.184792",
+  "resolved_at": null,
+  "timeout_at": null
+}

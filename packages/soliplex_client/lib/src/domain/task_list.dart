@@ -6,12 +6,23 @@ class TaskList {
   final gen.TaskList _dto;
   late final List<TaskItem> tasks;
 
-  TaskList(this._dto) {
+  /// Optional title for display purposes.
+  final String? _title;
+
+  TaskList(this._dto, {String? title}) : _title = title {
     tasks = _dto.tasks.map((t) => TaskItem(t)).toList();
+  }
+
+  /// Factory constructor to create TaskList from JSON.
+  factory TaskList.fromJson(Map<String, dynamic> json) {
+    return TaskList(gen.TaskList.fromJson(json));
   }
 
   /// Mission ID this task list belongs to.
   String get missionId => _dto.missionId;
+
+  /// Display title for the task list.
+  String? get title => _title;
 
   /// Access the underlying DTO.
   gen.TaskList get dto => _dto;

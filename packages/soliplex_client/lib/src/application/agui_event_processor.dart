@@ -1,8 +1,12 @@
 import 'package:ag_ui/ag_ui.dart';
+import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
+import 'package:soliplex_client/src/application/json_patch.dart';
 import 'package:soliplex_client/src/application/streaming_state.dart';
 import 'package:soliplex_client/src/domain/chat_message.dart';
 import 'package:soliplex_client/src/domain/conversation.dart';
+import 'package:soliplex_client/src/generated/state_delta_event.dart'
+    as generated;
 
 /// Result of processing an AG-UI event.
 ///
@@ -149,4 +153,167 @@ ChatUser _mapRoleToChatUser(TextMessageRole role) {
     TextMessageRole.system => ChatUser.system,
     TextMessageRole.developer => ChatUser.system,
   };
+}
+
+/// Logger for state delta processing.
+final _stateDeltaLogger = Logger('StateDeltaProcessor');
+
+/// Result of processing a state delta event.
+@immutable
+class StateDeltaResult {
+  /// Creates a state delta result.
+  const StateDeltaResult({
+    required this.state,
+    this.error,
+  });
+
+  /// Creates a successful result.
+  const StateDeltaResult.success(this.state) : error = null;
+
+  /// Creates a failed result with unchanged state.
+  const StateDeltaResult.failure(this.state, this.error);
+
+  /// The current state (may be unchanged if error occurred).
+  final Map<String, dynamic> state;
+
+  /// Error message if processing failed, null otherwise.
+  final String? error;
+
+  /// Whether the state was updated successfully.
+  bool get isSuccess => error == null;
+}
+
+/// Processes STATE_DELTA events and applies them to mission state.
+///
+/// This processor maintains a mutable state map that represents the current
+/// mission state. State delta events contain JSON Patch operations that
+/// modify this state.
+///
+/// Usage:
+/// ```dart
+/// final processor = StateDeltaProcessor();
+///
+/// // Process incoming state delta events
+/// for (final event in events) {
+///   final result = processor.processStateDelta(event);
+///   if (!result.isSuccess) {
+///     print('Warning: ${result.error}');
+///   }
+/// }
+///
+/// // Access current state
+/// final currentState = processor.state;
+/// ```
+class StateDeltaProcessor {
+  /// Creates a state delta processor with optional initial state.
+  StateDeltaProcessor([Map<String, dynamic>? initialState])
+      : _state = initialState ?? {};
+
+  /// Current mission state.
+  Map<String, dynamic> _state;
+
+  /// Returns an immutable view of the current state.
+  Map<String, dynamic> get state => Map.unmodifiable(_state);
+
+  /// Resets the state to empty or the given initial state.
+  void reset([Map<String, dynamic>? initialState]) {
+    _state = initialState ?? {};
+  }
+
+  /// Processes a STATE_DELTA event.
+  ///
+  /// The event should contain:
+  /// - `delta_path`: Path to the value to modify (e.g., "/tasks/0/status")
+  /// - `delta_type`: Operation type (add, remove, replace)
+  /// - `delta_value`: New value for add/replace operations
+  ///
+  /// Returns a [StateDeltaResult] with the updated state or error info.
+  StateDeltaResult processStateDelta(generated.StateDeltaEvent event) {
+    return processStateDeltaFromMap({
+      'delta_path': event.deltaPath,
+      'delta_type': event.deltaType,
+      'delta_value': event.deltaValue,
+    });
+  }
+
+  /// Processes a state delta from a raw map.
+  ///
+  /// Useful when working with raw SSE data before parsing into StateDeltaEvent.
+  StateDeltaResult processStateDeltaFromMap(Map<String, dynamic> delta) {
+    final path = delta['delta_path'] as String?;
+    final type = delta['delta_type'] as String?;
+    final value = delta['delta_value'];
+
+    if (path == null) {
+      _stateDeltaLogger.warning('STATE_DELTA missing delta_path');
+      return StateDeltaResult.failure(
+        _state,
+        'STATE_DELTA event missing delta_path field',
+      );
+    }
+
+    if (type == null) {
+      _stateDeltaLogger.warning('STATE_DELTA missing delta_type');
+      return StateDeltaResult.failure(
+        _state,
+        'STATE_DELTA event missing delta_type field',
+      );
+    }
+
+    try {
+      final result = JsonPatcher.applyDelta(_state, delta);
+
+      if (result.isSuccess) {
+        _state = result.state;
+        return StateDeltaResult.success(_state);
+      } else {
+        _stateDeltaLogger.warning('Failed to apply state delta: ${result.error}');
+        return StateDeltaResult.failure(_state, result.error);
+      }
+    } on FormatException catch (e) {
+      _stateDeltaLogger.warning('Malformed state delta: $e');
+      return StateDeltaResult.failure(_state, 'Malformed delta format: $e');
+    } catch (e) {
+      _stateDeltaLogger.severe('Unexpected error applying state delta: $e');
+      return StateDeltaResult.failure(
+        _state,
+        'Unexpected error: $e',
+      );
+    }
+  }
+
+  /// Processes a list of state deltas in sequence.
+  ///
+  /// Applies all deltas, collecting any errors encountered.
+  /// Processing continues even if individual deltas fail.
+  List<StateDeltaResult> processStateDeltasFromMaps(
+    List<Map<String, dynamic>> deltas,
+  ) {
+    return deltas.map(processStateDeltaFromMap).toList();
+  }
+
+  /// Gets a value at the specified path in the current state.
+  ///
+  /// Returns null if the path doesn't exist.
+  dynamic getAtPath(String path) {
+    if (path.isEmpty || path == '/') return _state;
+
+    final segments =
+        path.startsWith('/') ? path.substring(1).split('/') : path.split('/');
+
+    dynamic current = _state;
+    for (final segment in segments) {
+      if (current is Map<String, dynamic>) {
+        if (!current.containsKey(segment)) return null;
+        current = current[segment];
+      } else if (current is List) {
+        final index = int.tryParse(segment);
+        if (index == null || index < 0 || index >= current.length) return null;
+        current = current[index];
+      } else {
+        return null;
+      }
+    }
+    return current;
+  }
 }

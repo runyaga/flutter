@@ -1,0 +1,52 @@
+{
+  "description": "Golden test: Approval request created, user approves, state updates",
+  "events": [
+    {
+      "delta_path": "/approval_requests",
+      "delta_type": "add",
+      "delta_value": []
+    },
+    {
+      "delta_path": "/approval_requests/-",
+      "delta_type": "add",
+      "delta_value": {
+        "id": "approval-001",
+        "action": "Delete file: important.txt",
+        "description": "This action will permanently delete the file.",
+        "options": [
+          {"value": "approve", "label": "Yes, delete it"},
+          {"value": "reject", "label": "No, keep it"}
+        ],
+        "status": "pending",
+        "response": null,
+        "created_at": "2026-01-25T10:00:00Z"
+      }
+    },
+    {
+      "delta_path": "/approval_requests/0/status",
+      "delta_type": "replace",
+      "delta_value": "approved"
+    },
+    {
+      "delta_path": "/approval_requests/0/response",
+      "delta_type": "replace",
+      "delta_value": "approve"
+    }
+  ],
+  "expected_state": {
+    "approval_requests": [
+      {
+        "id": "approval-001",
+        "action": "Delete file: important.txt",
+        "description": "This action will permanently delete the file.",
+        "options": [
+          {"value": "approve", "label": "Yes, delete it"},
+          {"value": "reject", "label": "No, keep it"}
+        ],
+        "status": "approved",
+        "response": "approve",
+        "created_at": "2026-01-25T10:00:00Z"
+      }
+    ]
+  }
+}

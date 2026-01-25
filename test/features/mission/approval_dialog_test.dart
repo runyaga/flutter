@@ -66,10 +66,10 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            firstPendingApprovalProvider('room-1').overrideWith((_) => approval),
+            firstPendingApprovalProvider('thread-1').overrideWith((_) => approval),
           ],
           child: const MaterialApp(
-            home: Scaffold(body: ApprovalBanner(roomId: 'room-1')),
+            home: Scaffold(body: ApprovalBanner(threadId: 'thread-1')),
           ),
         ),
       );
@@ -84,10 +84,10 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            firstPendingApprovalProvider('room-1').overrideWith((_) => null),
+            firstPendingApprovalProvider('thread-1').overrideWith((_) => null),
           ],
           child: const MaterialApp(
-            home: Scaffold(body: ApprovalBanner(roomId: 'room-1')),
+            home: Scaffold(body: ApprovalBanner(threadId: 'thread-1')),
           ),
         ),
       );
@@ -102,11 +102,11 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            firstPendingApprovalProvider('room-1').overrideWith((_) => approval),
+            firstPendingApprovalProvider('thread-1').overrideWith((_) => approval),
             approvalServiceProvider.overrideWithValue(mockApprovalService),
           ],
           child: const MaterialApp(
-            home: Scaffold(body: ApprovalBanner(roomId: 'room-1')),
+            home: Scaffold(body: ApprovalBanner(threadId: 'thread-1')),
           ),
         ),
       );
@@ -130,7 +130,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -151,7 +151,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -179,7 +179,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -205,7 +205,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -227,7 +227,7 @@ void main() {
 
       when(
         () => mockApprovalService.submitApproval(
-          roomId: any(named: 'roomId'),
+          threadId: any(named: 'threadId'),
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
@@ -240,7 +240,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -251,7 +251,7 @@ void main() {
 
       verify(
         () => mockApprovalService.submitApproval(
-          roomId: 'room-1',
+          threadId: 'thread-1',
           approvalId: 'approval-123',
           selectedOption: 'approve',
         ),
@@ -266,7 +266,7 @@ void main() {
 
       when(
         () => mockApprovalService.submitApproval(
-          roomId: any(named: 'roomId'),
+          threadId: any(named: 'threadId'),
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
@@ -279,7 +279,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -306,7 +306,7 @@ void main() {
 
       when(
         () => mockApprovalService.submitApproval(
-          roomId: any(named: 'roomId'),
+          threadId: any(named: 'threadId'),
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
@@ -319,7 +319,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -346,7 +346,7 @@ void main() {
 
       when(
         () => mockApprovalService.submitApproval(
-          roomId: any(named: 'roomId'),
+          threadId: any(named: 'threadId'),
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
@@ -359,7 +359,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -378,7 +378,7 @@ void main() {
       // API should only be called once
       verify(
         () => mockApprovalService.submitApproval(
-          roomId: any(named: 'roomId'),
+          threadId: any(named: 'threadId'),
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
@@ -398,7 +398,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -428,7 +428,7 @@ void main() {
 
       when(
         () => mockApprovalService.submitApproval(
-          roomId: any(named: 'roomId'),
+          threadId: any(named: 'threadId'),
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
@@ -448,7 +448,7 @@ void main() {
                       context: context,
                       builder: (_) => ApprovalDialog(
                         approval: approval,
-                        roomId: 'room-1',
+                        threadId: 'thread-1',
                       ),
                     );
                   },
@@ -484,7 +484,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -511,7 +511,7 @@ void main() {
                       context: context,
                       builder: (_) => ApprovalDialog(
                         approval: approval,
-                        roomId: 'room-1',
+                        threadId: 'thread-1',
                       ),
                     );
                   },
@@ -539,7 +539,7 @@ void main() {
       // API should not be called
       verifyNever(
         () => mockApprovalService.submitApproval(
-          roomId: any(named: 'roomId'),
+          threadId: any(named: 'threadId'),
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
@@ -568,7 +568,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -586,7 +586,7 @@ void main() {
 
       when(
         () => mockApprovalService.submitApproval(
-          roomId: any(named: 'roomId'),
+          threadId: any(named: 'threadId'),
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
@@ -599,7 +599,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -630,7 +630,7 @@ void main() {
 
       when(
         () => mockApprovalService.submitApproval(
-          roomId: any(named: 'roomId'),
+          threadId: any(named: 'threadId'),
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
@@ -643,7 +643,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),
@@ -684,7 +684,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: ApprovalDialog(approval: approval, roomId: 'room-1'),
+              body: ApprovalDialog(approval: approval, threadId: 'thread-1'),
             ),
           ),
         ),

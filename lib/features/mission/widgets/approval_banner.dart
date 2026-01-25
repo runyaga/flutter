@@ -14,20 +14,20 @@ import 'approval_dialog.dart';
 ///
 /// **Usage**:
 /// ```dart
-/// ApprovalBanner(roomId: roomId)
+/// ApprovalBanner(threadId: threadId)
 /// ```
 class ApprovalBanner extends ConsumerWidget {
-  /// The room ID to watch for pending approvals.
-  final String roomId;
+  /// The thread ID to watch for pending approvals.
+  final String threadId;
 
   const ApprovalBanner({
-    required this.roomId,
+    required this.threadId,
     super.key,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final approval = ref.watch(firstPendingApprovalProvider(roomId));
+    final approval = ref.watch(firstPendingApprovalProvider(threadId));
 
     if (approval == null) {
       return const SizedBox.shrink();
@@ -66,7 +66,7 @@ class ApprovalBanner extends ConsumerWidget {
       barrierDismissible: false,
       builder: (_) => ApprovalDialog(
         approval: approval,
-        roomId: roomId,
+        threadId: threadId,
       ),
     );
   }

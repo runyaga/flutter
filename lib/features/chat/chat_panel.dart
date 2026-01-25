@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:soliplex_client/soliplex_client.dart';
-
 import 'package:soliplex_frontend/core/models/active_run_state.dart';
 import 'package:soliplex_frontend/core/providers/active_run_provider.dart';
 import 'package:soliplex_frontend/core/providers/api_provider.dart';
+import 'package:soliplex_frontend/core/providers/mission_providers.dart';
 import 'package:soliplex_frontend/core/providers/rooms_provider.dart';
 import 'package:soliplex_frontend/core/providers/threads_provider.dart';
 import 'package:soliplex_frontend/design/design.dart';
 import 'package:soliplex_frontend/features/chat/widgets/chat_input.dart';
 import 'package:soliplex_frontend/features/chat/widgets/message_list.dart';
+import 'package:soliplex_frontend/features/mission/widgets/approval_banner.dart';
+import 'package:soliplex_frontend/features/mission/widgets/task_progress_compact.dart';
+import 'package:soliplex_frontend/features/mission/widgets/task_progress_expanded.dart';
 import 'package:soliplex_frontend/shared/widgets/error_display.dart';
 
 /// Main chat panel that combines message list and input.
@@ -42,6 +44,7 @@ class ChatPanel extends ConsumerStatefulWidget {
 
 class _ChatPanelState extends ConsumerState<ChatPanel> {
   Set<RagDocument> _selectedDocuments = {};
+  bool _taskProgressExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +52,15 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
     final room = ref.watch(currentRoomProvider);
     final messagesAsync = ref.watch(allMessagesProvider);
     final isStreaming = ref.watch(isStreamingProvider);
+    final thread = ref.watch(currentThreadProvider);
+    final threadId = thread?.id;
+
+    // Watch task list if we have a thread
+    final taskList =
+        threadId != null ? ref.watch(taskListProvider(threadId)) : null;
+    final hasTasks = taskList != null && taskList.tasks.isNotEmpty;
+    final summary =
+        threadId != null ? ref.watch(taskListSummaryProvider(threadId)) : null;
 
     // Show suggestions only when thread is empty and not streaming
     final messages =
@@ -73,6 +85,36 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
               padding: EdgeInsets.only(bottom: bottomInset),
               child: Column(
                 children: [
+                  // Task Progress Widget (with animated visibility)
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    child: hasTasks && threadId != null
+                        ? Semantics(
+                            label: _buildProgressLabel(summary),
+                            child: _taskProgressExpanded
+                                ? SizedBox(
+                                    height: 300,
+                                    child: TaskProgressExpanded(
+                                      threadId: threadId,
+                                      onCollapse: () => setState(
+                                        () => _taskProgressExpanded = false,
+                                      ),
+                                    ),
+                                  )
+                                : TaskProgressCompact(
+                                    threadId: threadId,
+                                    onTap: () => setState(
+                                      () => _taskProgressExpanded = true,
+                                    ),
+                                  ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+
+                  // Approval Banner (handles its own visibility)
+                  if (threadId != null) ApprovalBanner(threadId: threadId),
+
+                  // Message List
                   Expanded(
                     child: switch (runState) {
                       CompletedState(
@@ -232,6 +274,13 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
   /// Handles retrying after an error.
   Future<void> _handleRetry(WidgetRef ref) async {
     await ref.read(activeRunNotifierProvider.notifier).reset();
+  }
+
+  /// Builds the accessibility label for task progress.
+  String _buildProgressLabel(TaskListSummary? summary) {
+    if (summary == null) return 'Task progress';
+    final percent = summary.progressPercent.toStringAsFixed(0);
+    return 'Task progress: $percent percent complete';
   }
 }
 

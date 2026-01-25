@@ -20,9 +20,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressCompact(roomId: 'room'),
+          home: TaskProgressCompact(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -41,9 +41,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressCompact(roomId: 'room'),
+          home: TaskProgressCompact(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -55,9 +55,9 @@ void main() {
     testWidgets('hides when no tasks', (tester) async {
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressCompact(roomId: 'room'),
+          home: TaskProgressCompact(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => null),
+            taskListProvider('thread').overrideWith((_) => null),
           ],
         ),
       );
@@ -71,9 +71,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressCompact(roomId: 'room'),
+          home: TaskProgressCompact(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => emptyTasks),
+            taskListProvider('thread').overrideWith((_) => emptyTasks),
           ],
         ),
       );
@@ -91,11 +91,11 @@ void main() {
       await tester.pumpWidget(
         createTestApp(
           home: TaskProgressCompact(
-            roomId: 'room',
+            threadId: 'thread',
             onTap: () => tapped = true,
           ),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -113,9 +113,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressCompact(roomId: 'room'),
+          home: TaskProgressCompact(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -132,9 +132,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressCompact(roomId: 'room'),
+          home: TaskProgressCompact(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -151,9 +151,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressCompact(roomId: 'room'),
+          home: TaskProgressCompact(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -180,10 +180,10 @@ void main() {
         createTestApp(
           home: SizedBox(
             width: 200, // Constrain width to force truncation
-            child: TaskProgressCompact(roomId: 'room'),
+            child: TaskProgressCompact(threadId: 'thread'),
           ),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -202,9 +202,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressCompact(roomId: 'room'),
+          home: TaskProgressCompact(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );

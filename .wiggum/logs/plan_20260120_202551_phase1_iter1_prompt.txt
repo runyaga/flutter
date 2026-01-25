@@ -1,0 +1,1435 @@
+You are a project planner for Ralph Wiggum automation.
+
+## Your Mission
+1. Detect the project's language/toolchain from the implementation document
+2. Generate a wiggum.yaml with appropriate commands for that toolchain
+3. Break down the implementation document into milestones suitable for automated execution
+
+## CRITICAL: Language Detection & wiggum.yaml
+
+You MUST first identify the project's language/toolchain and create an appropriate wiggum.yaml.
+
+**Detection hints:**
+- Look for file extensions mentioned (.py, .dart, .ts, .go, .rs, etc.)
+- Look for toolchain references (flutter, npm, cargo, etc.)
+- Look for framework mentions (Django, React, Flutter, etc.)
+
+**Common toolchains:**
+
+| Language | lint command | unit command | integration command |
+|----------|-------------|--------------|-------------------|
+| Python | `ruff check . --fix && ruff format .` | `pytest tests/unit -v` | `pytest tests/integration -v` |
+| Dart/Flutter | `dart format . && flutter analyze --no-pub` | `flutter test` | `flutter test -d macos integration_test/` |
+| TypeScript | `npm run lint` | `npm test` | `npm run test:integration` |
+| Go | `go vet ./... && golangci-lint run` | `go test ./...` | `go test -tags=integration ./...` |
+| Rust | `cargo clippy -- -D warnings && cargo fmt --check` | `cargo test` | `cargo test --test '*'` |
+
+## Output Format
+Create these files:
+
+### 1. wiggum.yaml (REQUIRED - generate first!)
+```yaml
+# Wiggum configuration - GENERATED based on detected toolchain
+project_name: <detected-project-name>
+language: <detected-language>
+
+commands:
+  lint: "<appropriate-lint-command>"
+  unit: "<appropriate-unit-test-command>"
+  integration: "<appropriate-integration-test-command>"
+
+milestones: milestones/
+
+review:
+  model: gemini-3-pro-preview
+  tool: mcp__gemini__read_files
+
+max_iterations: 10
+```
+
+### 2. OVERVIEW.md
+```markdown
+# Milestone Overview
+
+## Progress
+
+- [ ] 01-milestone-name
+- [ ] 02-milestone-name
+...
+
+## Milestones
+
+### 01-milestone-name
+- **Status:** pending
+- **File:** [01-milestone-name.md](./01-milestone-name.md)
+- **Gates:**
+  - [ ] Gate 1
+  - [ ] Gate 2
+
+### 02-milestone-name
+- **Status:** pending
+- **Depends on:** 01-milestone-name
+...
+
+## Notes
+
+- Started: <today's date>
+```
+
+### 3. Individual milestone files (NN-milestone-name.md)
+```markdown
+# Milestone: Name
+
+**Status:** pending
+**Depends on:** (if any)
+
+## Objective
+
+Brief description.
+
+## Pre-flight Checklist
+- [ ] Dependency 1
+- [ ] Dependency 2
+
+## Files to Modify
+
+- `path/to/file.ext`
+
+## Changes
+
+### Change 1: Description
+
+**File:** `path/to/file.ext`
+
+- [ ] Task 1
+- [ ] Task 2
+
+## Success Criteria (GATES)
+
+**CRITICAL RULES FOR THIS SECTION:**
+1. Section name MUST be exactly "## Success Criteria" (NOT "## Validation Gate", NOT anything else)
+2. Must have FLAT checkboxes only - NO ### subsections inside!
+3. The wiggum gate checker regex stops at ### headers - nested checkboxes will NOT be detected
+
+- [ ] `<lint command from wiggum.yaml>` passes
+- [ ] `<unit command from wiggum.yaml>` passes
+- [ ] Gemini review: PASS
+- [ ] Codex review: PASS
+```
+
+## Guidelines
+- Each milestone should be completable in 1-3 iterations
+- Order by dependencies (independent work first)
+- Include concrete file paths and specific changes
+- Gates should be verifiable (commands that pass/fail)
+- Keep milestones focused - one logical unit of work each
+- Use the SAME lint/test commands in Success Criteria as in wiggum.yaml
+- **CRITICAL: Section name MUST be "## Success Criteria" with FLAT checkboxes (no ### subsections)**
+- **NEVER use "## Validation Gate" - that name is NOT recognized by the gate checker**
+
+## Output
+Output each file using this EXACT format (unique delimiters to avoid conflicts with markdown):
+
+---BEGIN FILE: wiggum.yaml---
+<wiggum.yaml contents>
+---END FILE---
+
+---BEGIN FILE: OVERVIEW.md---
+<file contents here - can include code blocks, anything>
+---END FILE---
+
+---BEGIN FILE: 01-milestone-name.md---
+<file contents here>
+---END FILE---
+
+Then output:
+<promise>DRAFT_COMPLETE</promise>
+
+If blocked:
+<promise>BLOCKED: [reason]</promise>
+
+NOTE: Do NOT call reviewers yet. Files will be written to disk first, then reviewed.
+
+## Implementation Document to Break Down
+
+# Central Logging Architecture Plan
+
+## Overview
+
+A comprehensive central logging facility for the Soliplex Flutter application that provides:
+
+- Filesystem logging with rotation
+- In-app log viewer
+- Feedback form with log attachment
+- Runtime-configurable log levels
+- Full documentation
+
+**Key Constraint:** Uses existing network transport layer (`SoliplexApi`, `HttpTransport`) - no new sockets or HTTP clients.
+
+---
+
+## Requirements Summary
+
+| Requirement | Approach |
+|-------------|----------|
+| Log to filesystem | `FileSink` using `path_provider` directories |
+| Rotate logs | Size-based (5MB) + count-based (5 files) |
+| View logs in-app | `LogViewerScreen` with filter/search |
+| Send logs with feedback | Gzip compress + POST via existing `SoliplexApi` transport |
+| Configure log levels | Riverpod provider + SharedPreferences |
+| Runtime verbosity | `LogManager.minimumLevel` setter |
+
+---
+
+## Package Structure
+
+```text
+packages/
+  soliplex_logging/                    # NEW: Pure Dart logging core
+    lib/
+      soliplex_logging.dart            # Public API exports
+      src/
+        log_level.dart                 # LogLevel enum
+        log_record.dart                # Immutable LogRecord class
+        log_formatter.dart             # LogFormatter interface + default
+        log_sink.dart                  # LogSink interface
+        sinks/
+          console_sink.dart            # debugPrint/developer.log sink
+          memory_sink.dart             # In-memory circular buffer
+        logger.dart                    # Logger facade class
+        log_manager.dart               # Singleton manager
+    test/
+      ...
+    pubspec.yaml                       # No dependencies beyond meta
+
+  soliplex_logging_io/                 # NEW: File system logging (dart:io)
+    lib/
+      soliplex_logging_io.dart
+      src/
+        file_sink.dart                 # File-based sink with rotation
+        log_compressor.dart            # Gzip compression utility
+    test/
+      ...
+    pubspec.yaml                       # Depends on soliplex_logging, synchronized
+
+  soliplex_client/                     # EXISTING: Add log submission
+    lib/
+      src/
+        api/
+          log_submission_service.dart  # NEW: Upload compressed logs via API
+
+lib/
+  core/
+    logging/
+      logging_provider.dart            # Riverpod providers
+      log_config.dart                  # LogConfig model (persisted)
+  features/
+    logging/
+      log_viewer_screen.dart           # In-app log viewer
+      log_export.dart                  # Conditional export (web/native)
+      log_export_stub.dart             # Stub for conditional import
+      log_export_web.dart              # Web: Blob download
+      log_export_io.dart               # Native: File save
+      widgets/
+        log_entry_tile.dart            # Individual log entry
+        log_filter_bar.dart            # Level/module filters
+        log_export_button.dart         # Download/export button
+    feedback/
+      feedback_screen.dart             # Feedback form with compressed log upload
+  shared/
+    utils/
+      log_helper.dart                  # getLogger() convenience
+```
+
+---
+
+## Core Interfaces
+
+### LogLevel Enum
+
+```dart
+enum LogLevel {
+  trace(0, 'TRACE'),
+  debug(100, 'DEBUG'),
+  info(200, 'INFO'),
+  warning(300, 'WARN'),
+  error(400, 'ERROR'),
+  fatal(500, 'FATAL');
+
+  const LogLevel(this.value, this.name);
+  final int value;
+  final String name;
+
+  bool operator >=(LogLevel other) => value >= other.value;
+  bool operator <(LogLevel other) => value < other.value;
+}
+```
+
+### LogRecord Class
+
+```dart
+@immutable
+class LogRecord {
+  const LogRecord({
+    required this.level,
+    required this.message,
+    required this.timestamp,
+    required this.loggerName,
+    this.error,
+    this.stackTrace,
+  });
+
+  final LogLevel level;
+  final String message;
+  final DateTime timestamp;
+  final String loggerName;
+  final Object? error;
+  final StackTrace? stackTrace;
+
+  Map<String, dynamic> toJson() => { /* serialization */ };
+  static LogRecord fromJson(Map<String, dynamic> json) => /* deserialization */;
+}
+```
+
+### LogSink Interface
+
+```dart
+abstract class LogSink {
+  void write(LogRecord record);
+  Future<void> flush();
+  Future<void> close();
+}
+```
+
+### Logger Facade
+
+```dart
+class Logger {
+  Logger._(this.name, this._manager);
+
+  final String name;
+  final LogManager _manager;
+
+  void trace(String message) => _log(LogLevel.trace, message);
+  void debug(String message) => _log(LogLevel.debug, message);
+  void info(String message) => _log(LogLevel.info, message);
+  void warning(String message, {Object? error, StackTrace? stackTrace});
+  void error(String message, {Object? error, StackTrace? stackTrace});
+  void fatal(String message, {Object? error, StackTrace? stackTrace});
+
+  void _log(LogLevel level, String message, {Object? error, StackTrace? stackTrace}) {
+    if (level < _manager.minimumLevel) return;
+    _manager.emit(LogRecord(...));
+  }
+}
+```
+
+### LogManager Singleton
+
+```dart
+class LogManager {
+  LogManager._();
+  static final LogManager instance = LogManager._();
+
+  final _sinks = <LogSink>[];
+  LogLevel _minimumLevel = LogLevel.debug;
+
+  LogLevel get minimumLevel => _minimumLevel;
+  set minimumLevel(LogLevel level) => _minimumLevel = level;
+
+  void addSink(LogSink sink);
+  void removeSink(LogSink sink);
+  Logger getLogger(String name);
+  void emit(LogRecord record);
+  Future<void> flush();
+  Future<void> close();
+}
+```
+
+---
+
+## Sink Implementations
+
+### ConsoleSink
+
+Outputs to `debugPrint()` for development visibility.
+
+```dart
+class ConsoleSink implements LogSink {
+  @override
+  void write(LogRecord record) {
+    debugPrint(_format(record));
+  }
+}
+```
+
+### MemorySink
+
+In-memory circular buffer for UI display.
+
+```dart
+class MemorySink implements LogSink {
+  MemorySink({this.maxRecords = 2000});
+
+  final int maxRecords;
+  final _records = <LogRecord>[];
+
+  List<LogRecord> get records => List.unmodifiable(_records);
+
+  @override
+  void write(LogRecord record) {
+    _records.add(record);
+    if (_records.length > maxRecords) {
+      _records.removeAt(0);
+    }
+  }
+
+  void clear() => _records.clear();
+}
+```
+
+### FileSink (IO package)
+
+File-based sink with rotation. Uses async I/O to avoid blocking.
+
+```dart
+class FileSink implements LogSink {
+  FileSink({
+    required this.directory,
+    this.maxFileSize = 5 * 1024 * 1024,  // 5 MB
+    this.maxFileCount = 5,
+    this.filePrefix = 'soliplex',
+  });
+
+  Future<void> initialize() async;
+  Future<List<File>> getLogFiles() async;
+  Future<String> getAllLogsContent() async;
+
+  /// Returns gzip-compressed bytes of all logs for upload.
+  Future<Uint8List> getCompressedLogs() async;
+
+  // Internal rotation logic
+  Future<void> _rotate() async;
+  Future<void> _pruneOldFiles() async;
+}
+```
+
+---
+
+## Log Submission (Backend Upload)
+
+Logs are compressed and sent to a predefined backend endpoint using the existing
+`SoliplexApi` transport layer. No new HTTP clients are created.
+
+### LogSubmissionService
+
+Located in `packages/soliplex_client/lib/src/api/log_submission_service.dart`:
+
+```dart
+/// Service for uploading compressed logs to the backend.
+///
+/// Uses the existing [HttpTransport] - no new sockets or HTTP clients.
+class LogSubmissionService {
+  LogSubmissionService({
+    required this.transport,
+    required this.urlBuilder,
+  });
+
+  final HttpTransport transport;
+  final UrlBuilder urlBuilder;
+
+  /// Submits compressed logs with optional feedback message.
+  ///
+  /// Logs are gzip-compressed before upload to reduce bandwidth.
+  /// Returns the submission ID on success.
+  Future<String> submitLogs({
+    required Uint8List compressedLogs,
+    String? feedbackMessage,
+    Map<String, String>? metadata,
+  }) async {
+    final url = urlBuilder.build('/feedback/logs');
+
+    final response = await transport.request(
+      HttpRequest(
+        method: 'POST',
+        uri: url,
+        headers: {
+          'Content-Type': 'application/gzip',
+          'Content-Encoding': 'gzip',
+          if (feedbackMessage != null)
+            'X-Feedback-Message': Uri.encodeComponent(feedbackMessage),
+        },
+        body: compressedLogs,
+      ),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: 'Failed to submit logs',
+        responseBody: response.body,
+      );
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return json['submission_id'] as String;
+  }
+}
+```
+
+### Compression Utility
+
+Located in `packages/soliplex_logging_io/lib/src/log_compressor.dart`:
+
+```dart
+import 'dart:io';
+import 'dart:typed_data';
+
+/// Compresses log content using gzip.
+class LogCompressor {
+  /// Compresses string content to gzip bytes.
+  static Uint8List compress(String content) {
+    final bytes = utf8.encode(content);
+    return Uint8List.fromList(gzip.encode(bytes));
+  }
+
+  /// Compresses multiple files into a single gzip archive.
+  static Future<Uint8List> compressFiles(List<File> files) async {
+    final buffer = StringBuffer();
+
+    for (final file in files) {
+      buffer.writeln('=== ${file.path.split('/').last} ===');
+      buffer.writeln(await file.readAsString());
+      buffer.writeln();
+    }
+
+    return compress(buffer.toString());
+  }
+}
+```
+
+### Riverpod Provider
+
+```dart
+/// Provider for log submission service.
+final logSubmissionProvider = Provider<LogSubmissionService>((ref) {
+  final transport = ref.watch(httpTransportProvider);
+  final urlBuilder = ref.watch(urlBuilderProvider);
+  return LogSubmissionService(
+    transport: transport,
+    urlBuilder: urlBuilder,
+  );
+});
+```
+
+### Backend Endpoint Specification
+
+The backend should expose:
+
+```
+POST /api/v1/feedback/logs
+Content-Type: application/gzip
+Content-Encoding: gzip
+X-Feedback-Message: <optional URL-encoded message>
+
+Body: gzip-compressed log content
+
+Response 201:
+{
+  "submission_id": "uuid",
+  "received_at": "ISO8601 timestamp",
+  "size_bytes": 12345
+}
+```
+
+---
+
+## Riverpod Provider Architecture
+
+### LogConfig Model
+
+```dart
+@immutable
+class LogConfig {
+  const LogConfig({
+    this.minimumLevel = LogLevel.info,
+    this.fileLoggingEnabled = true,
+    this.consoleLoggingEnabled = true,
+  });
+
+  final LogLevel minimumLevel;
+  final bool fileLoggingEnabled;
+  final bool consoleLoggingEnabled;
+}
+```
+
+### Providers
+
+```dart
+// Persisted config
+final logConfigProvider = NotifierProvider<LogConfigNotifier, LogConfig>(...);
+
+// Memory sink for UI
+final memorySinkProvider = Provider<MemorySink>((ref) {
+  final sink = MemorySink(maxRecords: 2000);
+  LogManager.instance.addSink(sink);
+  ref.onDispose(() => LogManager.instance.removeSink(sink));
+  return sink;
+});
+
+// File sink (null on web)
+final fileSinkProvider = FutureProvider<FileSink?>((ref) async {
+  if (kIsWeb) return null;
+  final config = ref.watch(logConfigProvider);
+  if (!config.fileLoggingEnabled) return null;
+
+  final appDir = await getApplicationDocumentsDirectory();
+  final logDir = Directory('${appDir.path}/logs');
+  final sink = FileSink(directory: logDir);
+  await sink.initialize();
+  LogManager.instance.addSink(sink);
+  ref.onDispose(() async {
+    LogManager.instance.removeSink(sink);
+    await sink.close();
+  });
+  return sink;
+});
+
+// Console sink
+final consoleSinkProvider = Provider<ConsoleSink>((ref) {
+  final config = ref.watch(logConfigProvider);
+  if (!config.consoleLoggingEnabled) return ConsoleSink(enabled: false);
+  final sink = ConsoleSink();
+  LogManager.instance.addSink(sink);
+  ref.onDispose(() => LogManager.instance.removeSink(sink));
+  return sink;
+});
+```
+
+---
+
+## Platform-Specific Considerations
+
+### Feature Matrix by Platform
+
+| Feature | iOS/macOS | Android | Windows/Linux | Web |
+|---------|-----------|---------|---------------|-----|
+| Console logging | ✅ | ✅ | ✅ | ✅ |
+| Memory buffer (UI) | ✅ | ✅ | ✅ | ✅ |
+| File persistence | ✅ | ✅ | ✅ | ❌ |
+| Log rotation | ✅ | ✅ | ✅ | N/A |
+| View logs in-app | ✅ | ✅ | ✅ | ✅ |
+| Submit logs to backend | ✅ | ✅ | ✅ | ✅ |
+| Local download | ✅ | ✅ | ✅ | ✅ (Blob) |
+| Runtime level change | ✅ | ✅ | ✅ | ✅ |
+
+### Log Directory Paths (Native Platforms)
+
+| Platform | Directory | Notes |
+|----------|-----------|-------|
+| iOS | `Documents/logs/` | Backed up to iCloud |
+| macOS | `Application Support/logs/` | App-specific |
+| Android | `Documents/logs/` | Internal storage |
+| Linux | `Application Support/logs/` | XDG compliant |
+| Windows | `Application Support/logs/` | AppData\Roaming |
+
+### Web Platform
+
+Web has no file system access but all other features work:
+
+**What works on Web:**
+- ✅ `ConsoleSink` - logs to browser console via `debugPrint`
+- ✅ `MemorySink` - in-memory buffer for log viewer UI
+- ✅ Log viewer screen - displays memory buffer
+- ✅ Submit logs to backend - compresses memory logs and POSTs via API
+- ✅ Runtime log level changes - stored in localStorage
+- ✅ Local download - via Blob API
+
+**Web-specific implementation:**
+
+```dart
+// In logging_provider.dart - Web log submission uses memory buffer
+final fileSinkProvider = FutureProvider<FileSink?>((ref) async {
+  if (kIsWeb) return null;  // FileSink not available on web
+  // ... native implementation
+});
+
+// Web compression uses memory sink directly
+Future<Uint8List> getCompressedLogsForWeb(MemorySink sink) {
+  final content = sink.records
+      .map((r) => '${r.timestamp.toIso8601String()} '
+          '[${r.level.name}] ${r.loggerName}: ${r.message}')
+      .join('\n');
+  return LogCompressor.compress(content);
+}
+```
+
+**Web log download (optional local save):**
+
+```dart
+// lib/features/logging/web_log_export.dart
+import 'dart:html' as html;
+
+Future<void> downloadLogsWeb(List<LogRecord> records) async {
+  final content = records
+      .map((r) => '${r.timestamp.toIso8601String()} '
+          '[${r.level.name}] ${r.loggerName}: ${r.message}')
+      .join('\n');
+
+  final blob = html.Blob([content], 'text/plain');
+  final url = html.Url.createObjectUrlFromBlob(blob);
+  html.AnchorElement(href: url)
+    ..download = 'soliplex_logs_${DateTime.now().millisecondsSinceEpoch}.txt'
+    ..click();
+  html.Url.revokeObjectUrl(url);
+}
+```
+
+**Conditional import pattern for web download:**
+
+```dart
+// lib/features/logging/log_export.dart
+export 'log_export_stub.dart'
+    if (dart.library.html) 'log_export_web.dart'
+    if (dart.library.io) 'log_export_io.dart';
+```
+
+### Desktop Platforms (Windows, macOS, Linux)
+
+All desktop platforms share the same `dart:io` implementation via conditional imports.
+
+**Directory Selection:**
+
+```dart
+// In file_sink initialization
+Future<Directory> getLogDirectory() async {
+  // Use Application Support on all desktop platforms
+  // - macOS: ~/Library/Application Support/<app>/logs
+  // - Windows: C:\Users\<user>\AppData\Roaming\<app>\logs
+  // - Linux: ~/.local/share/<app>/logs
+  final appSupport = await getApplicationSupportDirectory();
+  return Directory('${appSupport.path}/logs');
+}
+```
+
+**Platform-specific considerations:**
+
+| Platform | Directory Provider | Notes |
+|----------|-------------------|-------|
+| macOS | `getApplicationSupportDirectory()` | Sandboxed if App Store build |
+| Windows | `getApplicationSupportDirectory()` | AppData\Roaming |
+| Linux | `getApplicationSupportDirectory()` | XDG_DATA_HOME or ~/.local/share |
+
+**File permissions:**
+- All desktop platforms allow write to Application Support directory
+- No special permissions needed (unlike mobile Documents directory)
+
+**Path handling:**
+```dart
+// Use path package for cross-platform paths
+import 'package:path/path.dart' as p;
+
+final logPath = p.join(directory.path, '${filePrefix}_$timestamp.log');
+// Works correctly with / on macOS/Linux and \ on Windows
+```
+
+**Gzip compression:**
+- `dart:io` `gzip` codec works identically on all platforms
+- No platform-specific compression code needed
+
+**Desktop-specific test matrix:**
+
+| Test Case | Windows | macOS | Linux |
+|-----------|---------|-------|-------|
+| Create log directory | ✅ | ✅ | ✅ |
+| Write log files | ✅ | ✅ | ✅ |
+| File rotation | ✅ | ✅ | ✅ |
+| Gzip compression | ✅ | ✅ | ✅ |
+| HTTP upload via API | ✅ | ✅ | ✅ |
+| Read logs back | ✅ | ✅ | ✅ |
+
+**Dependencies verified for desktop:**
+
+The existing `path_provider` plugin already supports all desktop platforms:
+- `path_provider_windows` - Windows support
+- `path_provider_macos` - macOS support
+- `path_provider_linux` - Linux support
+
+These are already transitive dependencies since the app supports macOS.
+
+**Desktop file sink implementation:**
+
+```dart
+// Works identically on Windows, macOS, Linux
+class FileSink implements LogSink {
+  Future<void> initialize() async {
+    // path_provider handles platform differences
+    await directory.create(recursive: true);
+    await _openNewFile();
+  }
+
+  Future<void> _openNewFile() async {
+    // ISO timestamp is safe for all platforms (no : in filename)
+    final timestamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .replaceAll('.', '-');
+
+    _currentFile = File(p.join(
+      directory.path,
+      '${filePrefix}_$timestamp.log',
+    ));
+    _currentSink = _currentFile.openWrite(mode: FileMode.append);
+    _currentSize = await _currentFile.exists()
+        ? await _currentFile.length()
+        : 0;
+  }
+}
+```
+
+### Feedback Screen - Cross-Platform
+
+The feedback screen handles web, mobile, and desktop:
+
+```dart
+Future<void> _submitFeedback() async {
+  Uint8List compressedLogs;
+
+  if (kIsWeb) {
+    // Web: compress from memory buffer
+    final memorySink = ref.read(memorySinkProvider);
+    compressedLogs = await getCompressedLogsForWeb(memorySink);
+  } else {
+    // Native: compress from file system
+    final fileSink = await ref.read(fileSinkProvider.future);
+    compressedLogs = fileSink != null
+        ? await fileSink.getCompressedLogs()
+        : await getCompressedLogsForWeb(ref.read(memorySinkProvider));
+  }
+
+  // Same API call works on all platforms
+  final submissionService = ref.read(logSubmissionProvider);
+  await submissionService.submitLogs(
+    compressedLogs: compressedLogs,
+    feedbackMessage: _feedbackController.text,
+  );
+}
+```
+
+---
+
+## Client API Usage
+
+This section describes how developers will use the logging system in their code.
+
+### Basic Logging
+
+```dart
+import 'package:soliplex_logging/soliplex_logging.dart';
+
+// Get a named logger (typically at file/class level)
+final _log = LogManager.instance.getLogger('MyFeature');
+
+class MyFeature {
+  void doSomething() {
+    _log.info('Starting operation');
+
+    try {
+      // ... business logic
+      _log.debug('Intermediate state: $value');
+    } catch (e, st) {
+      _log.error('Operation failed', error: e, stackTrace: st);
+      rethrow;
+    }
+
+    _log.info('Operation completed');
+  }
+}
+```
+
+### Log Levels and When to Use Them
+
+| Level | Purpose | Example |
+|-------|---------|---------|
+| `trace` | Finest-grained debugging, loop iterations | `_log.trace('Processing item $i of $total')` |
+| `debug` | Developer debugging, state changes | `_log.debug('User state: $state')` |
+| `info` | Normal operations, milestones | `_log.info('User signed in')` |
+| `warning` | Potential issues, recoverable errors | `_log.warning('Retry attempt $n')` |
+| `error` | Failures that are handled | `_log.error('API call failed', error: e)` |
+| `fatal` | Unrecoverable errors, crash imminent | `_log.fatal('Database corrupted')` |
+
+### Convenience Helper (Recommended)
+
+For cleaner imports, use the helper in `lib/shared/utils/log_helper.dart`:
+
+```dart
+import 'package:soliplex_flutter/shared/utils/log_helper.dart';
+
+final _log = getLogger('AuthNotifier');
+
+// Then use normally
+_log.info('Session restored');
+```
+
+### Logging with Context
+
+Include relevant context in log messages:
+
+```dart
+// Good: Includes actionable context
+_log.error('Failed to load thread', error: e, stackTrace: st);
+_log.warning('Rate limited, backing off for ${delay.inSeconds}s');
+_log.info('Message sent to thread $threadId');
+
+// Bad: Vague or redundant
+_log.error('Error');  // No context
+_log.info('Info: something happened');  // Redundant prefix
+```
+
+### Provider-Based Logger Access (Widget Layer)
+
+For widgets that need logging with Riverpod integration:
+
+```dart
+class MyWidget extends ConsumerWidget {
+  static final _log = LogManager.instance.getLogger('MyWidget');
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Use logger as normal
+    _log.debug('Building widget');
+    return Container();
+  }
+}
+```
+
+### Controlling Log Level at Runtime
+
+From anywhere with a WidgetRef:
+
+```dart
+// Increase verbosity for debugging
+ref.read(logConfigProvider.notifier).setMinimumLevel(LogLevel.trace);
+
+// Reduce noise
+ref.read(logConfigProvider.notifier).setMinimumLevel(LogLevel.warning);
+```
+
+### Accessing Logs Programmatically
+
+```dart
+// Get in-memory logs for display
+final memorySink = ref.read(memorySinkProvider);
+final recentLogs = memorySink.records;
+
+// Filter logs
+final errors = recentLogs.where((r) => r.level >= LogLevel.error).toList();
+
+// Get logs for a specific module
+final authLogs = recentLogs.where((r) => r.loggerName == 'AuthNotifier').toList();
+```
+
+### Submitting Logs with Feedback
+
+```dart
+Future<void> submitFeedback(WidgetRef ref, String message) async {
+  final fileSink = await ref.read(fileSinkProvider.future);
+  final compressedLogs = fileSink != null
+      ? await fileSink.getCompressedLogs()
+      : Uint8List(0);
+
+  final submissionService = ref.read(logSubmissionProvider);
+  await submissionService.submitLogs(
+    compressedLogs: compressedLogs,
+    feedbackMessage: message,
+    metadata: {'screen': 'settings'},
+  );
+}
+```
+
+### Migration from debugPrint
+
+Replace existing patterns:
+
+```dart
+// Before
+void _log(String message) => debugPrint('AuthNotifier: $message');
+_log('Session restored');
+debugPrint('Error: $e\n$stackTrace');
+
+// After
+final _log = LogManager.instance.getLogger('AuthNotifier');
+_log.info('Session restored');
+_log.error('Failed', error: e, stackTrace: stackTrace);
+```
+
+### Logger Naming Conventions
+
+Use consistent naming for easy filtering:
+
+| Category | Pattern | Example |
+|----------|---------|---------|
+| Feature screens | `FeatureScreen` | `HomeScreen`, `ChatScreen` |
+| Providers/Notifiers | `NotifierName` | `AuthNotifier`, `ConfigNotifier` |
+| Services | `ServiceName` | `HTTP`, `LogSubmission` |
+| Widgets | `WidgetName` | `MessageTile`, `ErrorDisplay` |
+
+---
+
+## Integration Points
+
+### 1. Initialization (main.dart)
+
+```dart
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize logging BEFORE other setup
+  await initializeLogging();
+
+  // Existing initialization...
+  final callbackParams = CallbackParamsCapture.captureNow();
+  await clearAuthStorageOnReinstall();
+  await initializeConfig();
+  final packageInfo = await PackageInfo.fromPlatform();
+
+  runApp(ProviderScope(...));
+}
+```
+
+### 2. Replace debugPrint Calls
+
+**Before:**
+
+```dart
+void _log(String message) => debugPrint('AuthNotifier: $message');
+```
+
+**After:**
+
+```dart
+final _log = LogManager.instance.getLogger('AuthNotifier');
+// Usage:
+_log.info('Session restored');
+_log.error('Refresh failed', error: e, stackTrace: st);
+```
+
+### 3. HTTP Observer Integration
+
+Update `HttpLogNotifier` to emit to central logger:
+
+```dart
+class HttpLogNotifier extends Notifier<List<HttpEvent>> implements HttpObserver {
+  static final _log = LogManager.instance.getLogger('HTTP');
+
+  @override
+  void onRequest(HttpRequestEvent event) {
+    _log.debug('${event.method} ${event.uri}');
+    // ... existing code
+  }
+
+  @override
+  void onError(HttpErrorEvent event) {
+    _log.error('${event.method} ${event.uri} failed', error: event.exception);
+    // ... existing code
+  }
+}
+```
+
+### 4. Settings Screen
+
+Add logging section to `settings_screen.dart`:
+
+```dart
+// New section in ListView
+const Divider(),
+ListTile(
+  leading: const Icon(Icons.article_outlined),
+  title: const Text('Log Level'),
+  subtitle: Text(config.minimumLevel.name),
+  onTap: () => _showLevelPicker(context, ref),
+),
+SwitchListTile(
+  secondary: const Icon(Icons.save_outlined),
+  title: const Text('Save logs to file'),
+  value: config.fileLoggingEnabled,
+  onChanged: (v) => ref.read(logConfigProvider.notifier).setFileLoggingEnabled(v),
+),
+ListTile(
+  leading: const Icon(Icons.visibility),
+  title: const Text('View Logs'),
+  onTap: () => context.push('/settings/logs'),
+),
+```
+
+### 5. Feedback Integration
+
+Create feedback screen that compresses and uploads logs via the existing API:
+
+```dart
+class FeedbackScreen extends ConsumerStatefulWidget {
+  const FeedbackScreen({super.key});
+
+  @override
+  ConsumerState<FeedbackScreen> createState() => _FeedbackScreenState();
+}
+
+class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
+  final _feedbackController = TextEditingController();
+  bool _attachLogs = true;
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Send Feedback')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: _feedbackController,
+              decoration: const InputDecoration(
+                labelText: 'Describe the issue',
+                hintText: 'What went wrong? What were you trying to do?',
+              ),
+              maxLines: 5,
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('Attach logs'),
+              subtitle: const Text('Helps us diagnose issues faster'),
+              value: _attachLogs,
+              onChanged: (v) => setState(() => _attachLogs = v),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : _submitFeedback,
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Send Feedback'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitFeedback() async {
+    setState(() => _isSubmitting = true);
+
+    try {
+      Uint8List? compressedLogs;
+
+      if (_attachLogs) {
+        final fileSink = await ref.read(fileSinkProvider.future);
+        if (fileSink != null) {
+          // Compress all log files
+          compressedLogs = await fileSink.getCompressedLogs();
+        } else {
+          // Web fallback: compress memory logs
+          final memorySink = ref.read(memorySinkProvider);
+          final content = memorySink.records
+              .map((r) => '${r.timestamp} [${r.level.name}] ${r.loggerName}: ${r.message}')
+              .join('\n');
+          compressedLogs = LogCompressor.compress(content);
+        }
+      }
+
+      // Use existing API transport to upload
+      final submissionService = ref.read(logSubmissionProvider);
+      final submissionId = await submissionService.submitLogs(
+        compressedLogs: compressedLogs ?? Uint8List(0),
+        feedbackMessage: _feedbackController.text,
+        metadata: {
+          'app_version': ref.read(packageInfoProvider).version,
+          'platform': Platform.operatingSystem,
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Feedback sent! Reference: $submissionId')),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send feedback: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _feedbackController.dispose();
+    super.dispose();
+  }
+}
+```
+
+---
+
+## Migration Strategy
+
+### Phase 1: Core Infrastructure
+
+**Files to create:**
+
+- `packages/soliplex_logging/pubspec.yaml`
+- `packages/soliplex_logging/lib/soliplex_logging.dart`
+- `packages/soliplex_logging/lib/src/log_level.dart`
+- `packages/soliplex_logging/lib/src/log_record.dart`
+- `packages/soliplex_logging/lib/src/log_sink.dart`
+- `packages/soliplex_logging/lib/src/sinks/console_sink.dart`
+- `packages/soliplex_logging/lib/src/sinks/memory_sink.dart`
+- `packages/soliplex_logging/lib/src/logger.dart`
+- `packages/soliplex_logging/lib/src/log_manager.dart`
+- `packages/soliplex_logging_io/pubspec.yaml`
+- `packages/soliplex_logging_io/lib/soliplex_logging_io.dart`
+- `packages/soliplex_logging_io/lib/src/file_sink.dart`
+- Unit tests for all classes
+
+### Phase 2: Provider Integration
+
+**Files to create:**
+
+- `lib/core/logging/log_config.dart`
+- `lib/core/logging/logging_provider.dart`
+- `lib/shared/utils/log_helper.dart`
+
+**Files to modify:**
+
+- `lib/main.dart` - Add logging initialization
+- `pubspec.yaml` - Add dependencies
+
+### Phase 3: Migration
+
+**Files to migrate (in order):**
+
+1. `lib/core/providers/active_run_notifier.dart` - Has existing `_log()` pattern
+2. `lib/core/auth/auth_notifier.dart` - Has existing `_log()` pattern
+3. `lib/core/providers/http_log_provider.dart` - HTTP observer integration
+4. `lib/core/router/app_router.dart` - Router logging
+5. `lib/features/home/home_screen.dart` - Connectivity logging
+6. `lib/features/chat/...` - Chat feature logging
+7. `lib/features/room/...` - Room feature logging
+8. `lib/features/quiz/...` - Quiz feature logging
+9. `packages/soliplex_client/lib/src/api/mappers.dart` - Quiz warnings
+
+### Phase 4: UI & Feedback
+
+**Files to create:**
+
+- `lib/features/logging/log_viewer_screen.dart`
+- `lib/features/logging/widgets/log_entry_tile.dart`
+- `lib/features/logging/widgets/log_filter_bar.dart`
+- `lib/features/logging/widgets/log_export_button.dart`
+- `lib/features/feedback/feedback_screen.dart`
+- `packages/soliplex_client/lib/src/api/log_submission_service.dart`
+- `packages/soliplex_logging_io/lib/src/log_compressor.dart`
+
+**Files to modify:**
+
+- `lib/features/settings/settings_screen.dart` - Add logging section
+- `lib/core/router/app_router.dart` - Add routes
+- `lib/core/providers/api_provider.dart` - Add `logSubmissionProvider`
+
+---
+
+## Testing Approach
+
+### Unit Tests (packages/soliplex_logging/test/)
+
+```dart
+test('levels compare correctly', () {
+  expect(LogLevel.error >= LogLevel.warning, isTrue);
+  expect(LogLevel.debug < LogLevel.info, isTrue);
+});
+
+test('memory sink respects max records', () {
+  final sink = MemorySink(maxRecords: 3);
+  for (var i = 0; i < 5; i++) {
+    sink.write(createRecord(message: 'msg$i'));
+  }
+  expect(sink.records.length, 3);
+  expect(sink.records.first.message, 'msg2');
+});
+
+test('logger respects minimum level', () {
+  final sink = MemorySink();
+  LogManager.instance
+    ..minimumLevel = LogLevel.warning
+    ..addSink(sink);
+
+  final log = LogManager.instance.getLogger('Test');
+  log.debug('should not appear');
+  log.warning('should appear');
+
+  expect(sink.records.length, 1);
+});
+```
+
+### Widget Tests (test/features/logging/)
+
+```dart
+testWidgets('log viewer filters by level', (tester) async {
+  final mockSink = MemorySink();
+  mockSink.write(createRecord(level: LogLevel.info, message: 'info'));
+  mockSink.write(createRecord(level: LogLevel.error, message: 'error'));
+
+  await tester.pumpWidget(createTestApp(
+    home: const LogViewerScreen(),
+    overrides: [memorySinkProvider.overrideWithValue(mockSink)],
+  ));
+
+  await tester.tap(find.text('Error'));
+  await tester.pump();
+
+  expect(find.text('error'), findsOneWidget);
+  expect(find.text('info'), findsNothing);
+});
+```
+
+### Integration Tests
+
+```dart
+test('file rotation works', () async {
+  final tempDir = await Directory.systemTemp.createTemp('log_test');
+  final sink = FileSink(
+    directory: tempDir,
+    maxFileSize: 100,
+    maxFileCount: 2,
+  );
+  await sink.initialize();
+
+  for (var i = 0; i < 20; i++) {
+    sink.write(createRecord(message: 'A' * 50));
+    await sink.flush();
+  }
+
+  final files = await sink.getLogFiles();
+  expect(files.length, lessThanOrEqualTo(2));
+});
+```
+
+---
+
+## Verification Steps
+
+1. **Unit tests pass:** `mcp__dart__run_tests` on logging packages
+2. **Analyze clean:** `mcp__dart__analyze_files` reports 0 issues
+3. **Manual testing:**
+   - Change log level in Settings, verify console output changes
+   - Toggle file logging, verify files created/not created
+   - View logs screen shows entries with correct filtering
+   - Submit feedback with logs attached, verify compressed upload
+   - Check backend receives gzip-compressed payload
+4. **Coverage:** Target 85%+ on logging packages
+5. **Backend integration:** Verify `/api/v1/feedback/logs` endpoint accepts submissions
+6. **Cross-platform verification:**
+
+### Platform Test Matrix
+
+| Test | macOS | Windows | Linux | iOS | Android | Web |
+|------|-------|---------|-------|-----|---------|-----|
+| App launches | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Logs appear in console | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Log viewer shows entries | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Log files created | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| Log rotation works | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| Feedback submission | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Log level persists | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Local download | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### Desktop-Specific Checks
+
+- [ ] **macOS:** Logs appear in `~/Library/Application Support/com.soliplex.app/logs/`
+- [ ] **Windows:** Logs appear in `%APPDATA%\com.soliplex.app\logs\`
+- [ ] **Linux:** Logs appear in `~/.local/share/com.soliplex.app/logs/`
+- [ ] File rotation creates new file when size exceeded
+- [ ] Old files pruned when count exceeded
+- [ ] Paths handle spaces and unicode characters
+
+---
+
+## Dependencies to Add
+
+### Main pubspec.yaml
+
+```yaml
+dependencies:
+  # path_provider already present
+  # No new dependencies needed - uses existing API transport
+
+dev_dependencies:
+  # existing...
+```
+
+### soliplex_logging/pubspec.yaml
+
+```yaml
+name: soliplex_logging
+description: Pure Dart logging core for Soliplex
+version: 1.0.0
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  meta: ^1.9.0
+
+dev_dependencies:
+  test: ^1.24.0
+  very_good_analysis: ^7.0.0
+```
+
+### soliplex_logging_io/pubspec.yaml
+
+```yaml
+name: soliplex_logging_io
+description: File system logging for Soliplex
+version: 1.0.0
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  soliplex_logging:
+    path: ../soliplex_logging
+  synchronized: ^3.1.0
+  path: ^1.9.0              # Cross-platform path handling
+
+dev_dependencies:
+  test: ^1.24.0
+  very_good_analysis: ^7.0.0
+```
+
+---
+
+## Critical Files Reference
+
+| Purpose | Path |
+|---------|------|
+| HTTP logging pattern | `lib/core/providers/http_log_provider.dart` |
+| Config provider pattern | `lib/core/providers/config_provider.dart` |
+| Primary migration target | `lib/core/providers/active_run_notifier.dart` |
+| Settings UI integration | `lib/features/settings/settings_screen.dart` |
+| Platform conditional imports | `packages/soliplex_client_native/lib/src/platform/` |
+| App initialization | `lib/main.dart` |
+| API provider (log submission) | `lib/core/providers/api_provider.dart` |
+| HTTP transport layer | `packages/soliplex_client/lib/src/http/http_transport.dart` |
+| SoliplexApi (pattern reference) | `packages/soliplex_client/lib/src/api/soliplex_api.dart` |

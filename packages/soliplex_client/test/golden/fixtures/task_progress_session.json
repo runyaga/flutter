@@ -1,0 +1,125 @@
+{
+  "description": "Golden test: Task list created, tasks progress through states",
+  "events": [
+    {
+      "delta_path": "/task_list",
+      "delta_type": "add",
+      "delta_value": {
+        "title": "Implementation Tasks",
+        "tasks": []
+      }
+    },
+    {
+      "delta_path": "/task_list/tasks/-",
+      "delta_type": "add",
+      "delta_value": {
+        "id": "task-001",
+        "content": "Read configuration",
+        "active_form": "Reading configuration",
+        "status": "pending",
+        "blocked_by": [],
+        "result": null
+      }
+    },
+    {
+      "delta_path": "/task_list/tasks/-",
+      "delta_type": "add",
+      "delta_value": {
+        "id": "task-002",
+        "content": "Process data",
+        "active_form": "Processing data",
+        "status": "pending",
+        "blocked_by": ["task-001"],
+        "result": null
+      }
+    },
+    {
+      "delta_path": "/task_list/tasks/-",
+      "delta_type": "add",
+      "delta_value": {
+        "id": "task-003",
+        "content": "Generate report",
+        "active_form": "Generating report",
+        "status": "pending",
+        "blocked_by": ["task-002"],
+        "result": null
+      }
+    },
+    {
+      "delta_path": "/task_list/tasks/0/status",
+      "delta_type": "replace",
+      "delta_value": "in_progress"
+    },
+    {
+      "delta_path": "/task_list/tasks/0/status",
+      "delta_type": "replace",
+      "delta_value": "completed"
+    },
+    {
+      "delta_path": "/task_list/tasks/0/result",
+      "delta_type": "replace",
+      "delta_value": "Configuration loaded successfully"
+    },
+    {
+      "delta_path": "/task_list/tasks/1/status",
+      "delta_type": "replace",
+      "delta_value": "in_progress"
+    },
+    {
+      "delta_path": "/task_list/tasks/1/status",
+      "delta_type": "replace",
+      "delta_value": "completed"
+    },
+    {
+      "delta_path": "/task_list/tasks/1/result",
+      "delta_type": "replace",
+      "delta_value": "Processed 150 records"
+    },
+    {
+      "delta_path": "/task_list/tasks/2/status",
+      "delta_type": "replace",
+      "delta_value": "in_progress"
+    },
+    {
+      "delta_path": "/task_list/tasks/2/status",
+      "delta_type": "replace",
+      "delta_value": "completed"
+    },
+    {
+      "delta_path": "/task_list/tasks/2/result",
+      "delta_type": "replace",
+      "delta_value": "Report generated: report.pdf"
+    }
+  ],
+  "expected_state": {
+    "task_list": {
+      "title": "Implementation Tasks",
+      "tasks": [
+        {
+          "id": "task-001",
+          "content": "Read configuration",
+          "active_form": "Reading configuration",
+          "status": "completed",
+          "blocked_by": [],
+          "result": "Configuration loaded successfully"
+        },
+        {
+          "id": "task-002",
+          "content": "Process data",
+          "active_form": "Processing data",
+          "status": "completed",
+          "blocked_by": ["task-001"],
+          "result": "Processed 150 records"
+        },
+        {
+          "id": "task-003",
+          "content": "Generate report",
+          "active_form": "Generating report",
+          "status": "completed",
+          "blocked_by": ["task-002"],
+          "result": "Report generated: report.pdf"
+        }
+      ]
+    }
+  }
+}

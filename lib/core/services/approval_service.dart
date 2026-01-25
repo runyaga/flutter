@@ -36,18 +36,18 @@ class ApprovalService {
   /// Submits an approval decision to the backend.
   ///
   /// Parameters:
-  /// - [roomId]: The room ID containing the mission
+  /// - [threadId]: The thread ID containing the mission
   /// - [approvalId]: The unique identifier of the approval request
   /// - [selectedOption]: The ID of the option selected by the user
   ///
   /// Throws [ApprovalException] if the request fails or times out.
   Future<void> submitApproval({
-    required String roomId,
+    required String threadId,
     required String approvalId,
     required String selectedOption,
   }) async {
     final url = Uri.parse(
-      '$_baseUrl/rooms/$roomId/missions/current/approve',
+      '$_baseUrl/threads/$threadId/missions/current/approve',
     );
 
     http.Response response;

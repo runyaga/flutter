@@ -31,6 +31,24 @@ import 'package:soliplex_frontend/core/providers/threads_provider.dart';
 final activeRunNotifierProvider =
     NotifierProvider<ActiveRunNotifier, ActiveRunState>(ActiveRunNotifier.new);
 
+/// Provider for the current mission state from STATE_DELTA events.
+///
+/// This exposes the mission state accumulated by [ActiveRunNotifier].
+/// The state is cleared when the run ends or the thread changes.
+///
+/// Usage:
+/// ```dart
+/// final missionState = ref.watch(missionStateProvider);
+/// final pendingApprovals = missionState?['pending_approvals'] as List?;
+/// ```
+final missionStateProvider = Provider<Map<String, dynamic>?>((ref) {
+  final runState = ref.watch(activeRunNotifierProvider);
+  if (runState is! RunningState && runState is! CompletedState) {
+    return null;
+  }
+  return ref.watch(missionStateNotifierProvider);
+});
+
 /// Provider indicating whether a message can be sent.
 ///
 /// Returns true if:

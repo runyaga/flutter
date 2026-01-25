@@ -13,27 +13,27 @@ import 'task_progress_header.dart';
 /// **Usage**:
 /// ```dart
 /// TaskProgressExpanded(
-///   roomId: roomId,
+///   threadId: threadId,
 ///   onCollapse: () => collapseToCompact(),
 /// )
 /// ```
 class TaskProgressExpanded extends ConsumerWidget {
-  /// The room ID to watch task progress for.
-  final String roomId;
+  /// The thread ID to watch task progress for.
+  final String threadId;
 
   /// Callback when collapse button is pressed.
   final VoidCallback? onCollapse;
 
   const TaskProgressExpanded({
-    required this.roomId,
+    required this.threadId,
     this.onCollapse,
     super.key,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final taskList = ref.watch(taskListProvider(roomId));
-    final summary = ref.watch(taskListSummaryProvider(roomId));
+    final taskList = ref.watch(taskListProvider(threadId));
+    final summary = ref.watch(taskListSummaryProvider(threadId));
 
     // Empty state handling
     if (taskList == null || taskList.tasks.isEmpty || summary == null) {

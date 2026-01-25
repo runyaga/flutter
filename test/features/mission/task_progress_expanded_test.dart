@@ -13,9 +13,9 @@ void main() {
     testWidgets('shows empty state when no tasks', (tester) async {
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => null),
+            taskListProvider('thread').overrideWith((_) => null),
           ],
         ),
       );
@@ -29,9 +29,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => emptyTasks),
+            taskListProvider('thread').overrideWith((_) => emptyTasks),
           ],
         ),
       );
@@ -48,9 +48,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -68,9 +68,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -83,9 +83,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -104,10 +104,10 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
-            taskListSummaryProvider('room').overrideWith((_) => tasks.summary),
+            taskListProvider('thread').overrideWith((_) => tasks),
+            taskListSummaryProvider('thread').overrideWith((_) => tasks.summary),
           ],
         ),
       );
@@ -130,9 +130,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -147,11 +147,11 @@ void main() {
       await tester.pumpWidget(
         createTestApp(
           home: TaskProgressExpanded(
-            roomId: 'room',
+            threadId: 'thread',
             onCollapse: () => collapsed = true,
           ),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -165,9 +165,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -182,9 +182,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -202,11 +202,11 @@ void main() {
         createTestApp(
           home: SizedBox(
             height: 300, // Constrain height
-            child: TaskProgressExpanded(roomId: 'room'),
+            child: TaskProgressExpanded(threadId: 'thread'),
           ),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
-            taskListSummaryProvider('room').overrideWith((_) => tasks.summary),
+            taskListProvider('thread').overrideWith((_) => tasks),
+            taskListSummaryProvider('thread').overrideWith((_) => tasks.summary),
           ],
         ),
       );
@@ -251,10 +251,10 @@ void main() {
         createTestApp(
           home: SizedBox(
             height: 600,
-            child: TaskProgressExpanded(roomId: 'room'),
+            child: TaskProgressExpanded(threadId: 'thread'),
           ),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -279,9 +279,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -296,9 +296,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -317,9 +317,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );
@@ -338,9 +338,9 @@ void main() {
 
       await tester.pumpWidget(
         createTestApp(
-          home: TaskProgressExpanded(roomId: 'room'),
+          home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
-            taskListProvider('room').overrideWith((_) => tasks),
+            taskListProvider('thread').overrideWith((_) => tasks),
           ],
         ),
       );

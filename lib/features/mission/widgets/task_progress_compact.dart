@@ -12,27 +12,27 @@ import '../../../core/providers/mission_providers.dart';
 /// **Usage**:
 /// ```dart
 /// TaskProgressCompact(
-///   roomId: roomId,
+///   threadId: threadId,
 ///   onTap: () => showExpandedView(),
 /// )
 /// ```
 class TaskProgressCompact extends ConsumerWidget {
-  /// The room ID to watch task progress for.
-  final String roomId;
+  /// The thread ID to watch task progress for.
+  final String threadId;
 
   /// Callback when the widget is tapped (usually to expand).
   final VoidCallback? onTap;
 
   const TaskProgressCompact({
-    required this.roomId,
+    required this.threadId,
     this.onTap,
     super.key,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summary = ref.watch(taskListSummaryProvider(roomId));
-    final currentTask = ref.watch(currentTaskProvider(roomId));
+    final summary = ref.watch(taskListSummaryProvider(threadId));
+    final currentTask = ref.watch(currentTaskProvider(threadId));
 
     // Hide widget when no tasks are available.
     if (summary == null || summary.total == 0) {

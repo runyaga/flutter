@@ -1,0 +1,32 @@
+{
+  "mission_id": "3f0babc0-f254-45a7-9ad1-9c900df324dc",
+  "tasks": [
+    {
+      "task_id": "8887ad54-6cc4-4bf0-afb1-2da4beb93779",
+      "title": "Task 1 - Completed",
+      "description": "First task is done",
+      "status": "completed",
+      "progress_pct": 100,
+      "created_at": "2026-01-25T09:00:00Z",
+      "updated_at": "2026-01-25T09:30:00Z"
+    },
+    {
+      "task_id": "62f61841-e5a0-473e-8af7-4e45bad1ebad",
+      "title": "Task 2 - In Progress",
+      "description": "Currently working on this",
+      "status": "in_progress",
+      "progress_pct": 60,
+      "created_at": "2026-01-25T09:30:00Z",
+      "updated_at": "2026-01-25T10:00:00Z"
+    },
+    {
+      "task_id": "ce100b40-eb61-4749-8ef8-65808d9432a9",
+      "title": "Task 3 - Pending",
+      "description": "Not yet started",
+      "status": "pending",
+      "progress_pct": 0,
+      "created_at": "2026-01-25T10:00:00Z",
+      "updated_at": null
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+You are reviewing milestone files that were written to disk.
+
+## Your Mission
+Review the milestone breakdown using the Council of AIs (Gemini + Codex).
+
+## Files to Review (absolute paths)
+/Users/runyaga/dev/soliplex-flutter/wiggum.yaml
+/Users/runyaga/dev/soliplex-flutter/milestones/01-logging-core-package.md
+/Users/runyaga/dev/soliplex-flutter/milestones/OVERVIEW.md
+/Users/runyaga/dev/soliplex-flutter/milestones/05-feedback-submission.md
+/Users/runyaga/dev/soliplex-flutter/milestones/04-log-viewer-ui.md
+/Users/runyaga/dev/soliplex-flutter/milestones/02-logging-io-package.md
+/Users/runyaga/dev/soliplex-flutter/milestones/03-flutter-providers.md
+/Users/runyaga/dev/soliplex-flutter/milestones/06-migration-existing-logs.md
+
+## Original Spec (absolute path)
+/Users/runyaga/dev/soliplex-flutter/docs/planning/logging-architecture.md
+
+
+## MANDATORY: Gemini Review
+
+Call mcp__gemini__read_files with EXACTLY:
+- file_paths: ["/Users/runyaga/dev/soliplex-flutter/wiggum.yaml","/Users/runyaga/dev/soliplex-flutter/milestones/01-logging-core-package.md","/Users/runyaga/dev/soliplex-flutter/milestones/OVERVIEW.md","/Users/runyaga/dev/soliplex-flutter/milestones/05-feedback-submission.md","/Users/runyaga/dev/soliplex-flutter/milestones/04-log-viewer-ui.md","/Users/runyaga/dev/soliplex-flutter/milestones/02-logging-io-package.md","/Users/runyaga/dev/soliplex-flutter/milestones/03-flutter-providers.md","/Users/runyaga/dev/soliplex-flutter/milestones/06-migration-existing-logs.md", "/Users/runyaga/dev/soliplex-flutter/docs/planning/logging-architecture.md"]
+- prompt: "Review this milestone breakdown. Your goals:
+  1. Completeness - does it cover EVERYTHING in the spec? Nothing missing?
+  2. Simplicity - is the approach simple and direct? Flag over-engineering.
+  3. Architecture - are there better ways to structure this?
+  4. Spec adherence - does the plan match the spec exactly? No scope creep?
+  5. Structure - does each milestone have '## Success Criteria' (EXACT name, NOT '## Validation Gate') with FLAT checkboxes? (No ### subsections inside - the gate checker regex stops at ### headers!)
+  
+
+  You are catching lazy or off-spec planning. Implementation details are less important
+  than ensuring the plan is complete, simple, and architecturally sound.
+
+  REJECT any milestone that uses '## Validation Gate' instead of '## Success Criteria'.
+  REJECT any milestone with ### subsections inside Success Criteria.
+
+  Output <review>PASS</review> or <review>ISSUES: [specific list]</review>"
+- model: "gemini-3-pro-preview"
+
+## MANDATORY: Codex Review
+
+Call mcp__codex__codex with:
+- prompt: "Review the milestone breakdown: /Users/runyaga/dev/soliplex-flutter/wiggum.yaml
+/Users/runyaga/dev/soliplex-flutter/milestones/01-logging-core-package.md
+/Users/runyaga/dev/soliplex-flutter/milestones/OVERVIEW.md
+/Users/runyaga/dev/soliplex-flutter/milestones/05-feedback-submission.md
+/Users/runyaga/dev/soliplex-flutter/milestones/04-log-viewer-ui.md
+/Users/runyaga/dev/soliplex-flutter/milestones/02-logging-io-package.md
+/Users/runyaga/dev/soliplex-flutter/milestones/03-flutter-providers.md
+/Users/runyaga/dev/soliplex-flutter/milestones/06-migration-existing-logs.md
+  Original spec: /Users/runyaga/dev/soliplex-flutter/docs/planning/logging-architecture.md
+  Your goals:
+  1. Completeness - does it cover EVERYTHING in the spec? Nothing missing?
+  2. Simplicity - is the approach simple and direct? Flag over-engineering.
+  3. Architecture - are there better ways to structure this?
+  4. Spec adherence - does the plan match the spec exactly? No scope creep?
+  5. Structure - does each milestone have '## Success Criteria' (EXACT name, NOT '## Validation Gate') with FLAT checkboxes? (No ### subsections inside - the gate checker regex stops at ### headers!)
+  
+
+  You are catching lazy or off-spec planning. Implementation details are less important
+  than ensuring the plan is complete, simple, and architecturally sound.
+
+  REJECT any milestone that uses '## Validation Gate' instead of '## Success Criteria'.
+  REJECT any milestone with ### subsections inside Success Criteria.
+
+  Output <review>PASS</review> or <review>ISSUES: [specific list]</review>"
+- model: "gpt-5.2"
+
+## Report Results
+
+After BOTH reviews complete:
+- If BOTH say PASS: <promise>APPROVED</promise>
+- If EITHER has issues: <promise>ISSUES: [combined list from both]</promise>
+
+DO NOT skip the reviews. DO NOT make up results. Actually call the tools.

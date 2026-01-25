@@ -13,11 +13,11 @@ import 'package:soliplex_frontend/core/services/approval_service.dart';
 /// Destructive options are highlighted in red.
 class ApprovalDialog extends ConsumerStatefulWidget {
   final ApprovalRequest approval;
-  final String roomId;
+  final String threadId;
 
   const ApprovalDialog({
     required this.approval,
-    required this.roomId,
+    required this.threadId,
     super.key,
   });
 
@@ -100,7 +100,7 @@ class _ApprovalDialogState extends ConsumerState<ApprovalDialog> {
 
     try {
       await ref.read(approvalServiceProvider).submitApproval(
-            roomId: widget.roomId,
+            threadId: widget.threadId,
             approvalId: widget.approval.id,
             selectedOption: optionId,
           );
