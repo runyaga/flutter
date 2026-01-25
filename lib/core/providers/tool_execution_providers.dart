@@ -7,7 +7,7 @@ import 'package:soliplex_frontend/core/providers/active_run_provider.dart';
 
 // Re-export ToolExecution for consumers who import this file
 export 'package:soliplex_client/soliplex_client.dart'
-    show ToolExecution, ToolExecutionStatus;
+    show ToolExecution, ToolExecutionStatus, ToolProgress;
 
 /// Notifier for managing tool execution state.
 ///
@@ -176,4 +176,62 @@ final completedToolExecutionsProvider =
     Provider.family<List<ToolExecution>, String>((ref, roomId) {
   final executions = ref.watch(toolExecutionsProvider(roomId));
   return executions.where((e) => e.isComplete).toList().reversed.toList();
+});
+
+/// Family provider for tool progress by tool ID.
+///
+/// Extracts tool progress from the mission state snapshot.
+/// Updates when STATE_DELTA events modify tool_progress.
+///
+/// **Usage**:
+/// ```dart
+/// final progress = ref.watch(toolProgressProvider((roomId, toolId)));
+/// if (progress != null) {
+///   Text('${progress.phase}: ${progress.message}');
+/// }
+/// ```
+final toolProgressProvider =
+    Provider.family<ToolProgress?, (String roomId, String toolId)>(
+        (ref, params) {
+  final (_, toolId) = params;
+  final missionState = ref.watch(missionStateProvider);
+  if (missionState == null) return null;
+
+  final progressMap = missionState['tool_progress'] as Map<String, dynamic>?;
+  if (progressMap == null) return null;
+
+  final progressJson = progressMap[toolId] as Map<String, dynamic>?;
+  if (progressJson == null) return null;
+
+  return ToolProgress.fromJson(progressJson);
+});
+
+/// Provider for all tool progress updates.
+///
+/// Returns a map of tool IDs to their current progress.
+/// Useful for showing an overview of all running tool progress.
+///
+/// **Usage**:
+/// ```dart
+/// final allProgress = ref.watch(allToolProgressProvider(roomId));
+/// for (final entry in allProgress.entries) {
+///   print('${entry.key}: ${entry.value.phase}');
+/// }
+/// ```
+final allToolProgressProvider =
+    Provider.family<Map<String, ToolProgress>, String>((ref, roomId) {
+  final missionState = ref.watch(missionStateProvider);
+  if (missionState == null) return {};
+
+  final progressMap = missionState['tool_progress'] as Map<String, dynamic>?;
+  if (progressMap == null) return {};
+
+  final result = <String, ToolProgress>{};
+  for (final entry in progressMap.entries) {
+    final json = entry.value as Map<String, dynamic>?;
+    if (json != null) {
+      result[entry.key] = ToolProgress.fromJson(json);
+    }
+  }
+  return result;
 });

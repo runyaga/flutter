@@ -8,6 +8,7 @@ import 'package:soliplex_client/soliplex_client.dart' hide State;
 /// Shows:
 /// - Tool name with icon
 /// - Status indicator (spinner for running, checkmark/X for complete)
+/// - Progress section with bar and items counter (when available)
 /// - Collapsible arguments section
 /// - Collapsible output section
 /// - Duration display
@@ -16,8 +17,13 @@ import 'package:soliplex_client/soliplex_client.dart' hide State;
 /// and output.
 class ToolExecutionCard extends StatefulWidget {
   final ToolExecution execution;
+  final ToolProgress? progress;
 
-  const ToolExecutionCard({required this.execution, super.key});
+  const ToolExecutionCard({
+    required this.execution,
+    this.progress,
+    super.key,
+  });
 
   @override
   State<ToolExecutionCard> createState() => _ToolExecutionCardState();
@@ -29,6 +35,7 @@ class _ToolExecutionCardState extends State<ToolExecutionCard> {
   @override
   Widget build(BuildContext context) {
     final exec = widget.execution;
+    final progress = widget.progress;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -46,6 +53,10 @@ class _ToolExecutionCardState extends State<ToolExecutionCard> {
             trailing: _StatusBadge(status: exec.status),
             onTap: () => setState(() => _expanded = !_expanded),
           ),
+
+          // Progress section (shown when running and progress available)
+          if (exec.isRunning && progress != null)
+            _ProgressSection(progress: progress),
 
           // Expanded content
           if (_expanded) ...[
@@ -228,5 +239,85 @@ class _OutputSection extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Displays progress information for a running tool.
+///
+/// Shows:
+/// - Phase icon and message
+/// - Progress bar (when progressPct available)
+/// - Items counter (when itemsTotal available)
+class _ProgressSection extends StatelessWidget {
+  final ToolProgress progress;
+
+  const _ProgressSection({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Phase and message
+          Row(
+            children: [
+              _PhaseIcon(phase: progress.phase),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  progress.message,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+
+          // Progress bar
+          if (progress.progressPct != null) ...[
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: progress.progressPct! / 100,
+              backgroundColor: Colors.grey[300],
+            ),
+          ],
+
+          // Items counter
+          if (progress.itemsTotal != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              '${progress.itemsDone ?? 0} / ${progress.itemsTotal}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Icon representing the current phase of tool execution.
+class _PhaseIcon extends StatelessWidget {
+  final String phase;
+
+  const _PhaseIcon({required this.phase});
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color) = switch (phase) {
+      'starting' => (Icons.play_circle_outline, Colors.blue),
+      'searching' => (Icons.search, Colors.orange),
+      'fetching' => (Icons.download, Colors.purple),
+      'processing' => (Icons.settings, Colors.indigo),
+      'analyzing' => (Icons.analytics, Colors.teal),
+      'writing' => (Icons.edit, Colors.green),
+      'running' => (Icons.play_arrow, Colors.blue),
+      'complete' => (Icons.check_circle, Colors.green),
+      'error' => (Icons.error, Colors.red),
+      _ => (Icons.hourglass_empty, Colors.grey),
+    };
+
+    return Icon(icon, size: 20, color: color);
   }
 }

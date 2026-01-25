@@ -12,3 +12,5 @@ export 'run_info.dart';
 export 'task_item.dart';
 export 'task_list.dart';
 export 'thread_info.dart';
+export 'tool_execution.dart';
+export 'tool_progress.dart';
