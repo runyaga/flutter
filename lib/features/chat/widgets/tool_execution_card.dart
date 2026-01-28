@@ -103,8 +103,7 @@ class _StatusIcon extends StatelessWidget {
         ),
       ToolExecutionStatus.completed =>
         const Icon(Icons.check_circle, color: Colors.green),
-      ToolExecutionStatus.failed =>
-        const Icon(Icons.error, color: Colors.red),
+      ToolExecutionStatus.failed => const Icon(Icons.error, color: Colors.red),
     };
   }
 }
@@ -135,16 +134,6 @@ class _StatusBadge extends StatelessWidget {
 
 /// Maximum characters for argument values before truncation.
 const _maxArgLength = 100;
-
-/// Truncates a JSON-encodable value for display.
-///
-/// If the JSON representation exceeds [maxLength], truncates to
-/// [maxLength] characters and appends '...'.
-String _truncateValue(dynamic value, {int maxLength = _maxArgLength}) {
-  final str = value is String ? value : const JsonEncoder().convert(value);
-  if (str.length <= maxLength) return str;
-  return '${str.substring(0, maxLength)}...';
-}
 
 /// Truncates argument values for collapsed preview.
 Map<String, dynamic> _truncateArguments(Map<String, dynamic> arguments) {

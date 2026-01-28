@@ -131,8 +131,7 @@ class ChatMessageWidget extends ConsumerWidget {
             ),
           ),
           // Citations row (only for assistant messages with citations)
-          if (citations.isNotEmpty)
-            _CitationRow(citations: citations),
+          if (citations.isNotEmpty) _CitationRow(citations: citations),
           if (isUser)
             _buildUserMessageActionsRow(
               context,
@@ -329,7 +328,7 @@ class _CitationRow extends StatelessWidget {
   }
 
   void _showCitationPanel(BuildContext context, Citation citation) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       builder: (_) => CitationPanel(
         citation: citation,

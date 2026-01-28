@@ -72,7 +72,8 @@ class CitationChip extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                color:
+                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: colorScheme.outlineVariant.withValues(alpha: 0.5),
@@ -442,7 +443,8 @@ void main() {
       expect(semantics.label, contains('Research Paper'));
     });
 
-    testWidgets('has minimum tap target size for accessibility', (tester) async {
+    testWidgets('has minimum tap target size for accessibility',
+        (tester) async {
       final citation = Citation(
         documentId: 'doc-1',
         chunkId: 'chunk-1',
@@ -773,7 +775,7 @@ void main() {
               builder: (context) => CitationChip(
                 citation: citation,
                 onTap: () {
-                  showModalBottomSheet(
+                  showModalBottomSheet<void>(
                     context: context,
                     builder: (_) => CitationPanel(
                       citation: citation,

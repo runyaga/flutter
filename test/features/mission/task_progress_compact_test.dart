@@ -162,10 +162,12 @@ void main() {
       final cardFinder = find.byType(Card);
       expect(cardFinder, findsOneWidget);
 
-      final semantics = tester.getSemantics(find.ancestor(
-        of: cardFinder,
-        matching: find.byType(Semantics),
-      ).first);
+      final semantics = tester.getSemantics(find
+          .ancestor(
+            of: cardFinder,
+            matching: find.byType(Semantics),
+          )
+          .first);
       expect(semantics.label, contains('Task progress'));
       expect(semantics.label, contains('50 percent'));
       expect(semantics.label, contains('1 of 2 complete'));
@@ -173,7 +175,11 @@ void main() {
 
     testWidgets('truncates long task title', (tester) async {
       final tasks = _createTasks([
-        ('task-1', 'A very long task title that should be truncated when displayed in the compact widget', 'in_progress'),
+        (
+          'task-1',
+          'A very long task title that should be truncated when displayed in the compact widget',
+          'in_progress'
+        ),
       ]);
 
       await tester.pumpWidget(
@@ -192,7 +198,8 @@ void main() {
       expect(find.byType(Text), findsWidgets);
     });
 
-    testWidgets('includes skipped tasks in progress calculation', (tester) async {
+    testWidgets('includes skipped tasks in progress calculation',
+        (tester) async {
       final tasks = _createTasks([
         ('task-1', 'Task 1', 'completed'),
         ('task-2', 'Task 2', 'skipped'),

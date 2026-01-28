@@ -1,6 +1,5 @@
 import 'package:soliplex_client/src/application/agui_event_processor.dart';
 import 'package:soliplex_client/src/application/json_patch.dart';
-import 'package:soliplex_client/src/generated/state_delta_event.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -273,7 +272,10 @@ void main() {
       });
 
       test('original state is never mutated on failure', () {
-        final original = {'key': 'value', 'nested': {'data': 123}};
+        final original = {
+          'key': 'value',
+          'nested': {'data': 123}
+        };
         final originalCopy = Map<String, dynamic>.from(original);
 
         JsonPatcher.apply(original, {'op': 'replace', 'path': '/invalid/path'});

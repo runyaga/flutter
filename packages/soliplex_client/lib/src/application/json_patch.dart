@@ -7,8 +7,6 @@
 /// error handling for invalid paths.
 library;
 
-import 'dart:collection';
-
 /// Exception thrown when a JSON Patch operation fails.
 class JsonPatchException implements Exception {
   /// Creates a JSON Patch exception.

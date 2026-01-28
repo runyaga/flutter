@@ -242,7 +242,6 @@ class StateDeltaProcessor {
   StateDeltaResult processStateDeltaFromMap(Map<String, dynamic> delta) {
     final path = delta['delta_path'] as String?;
     final type = delta['delta_type'] as String?;
-    final value = delta['delta_value'];
 
     if (path == null) {
       _stateDeltaLogger.warning('STATE_DELTA missing delta_path');
@@ -267,7 +266,8 @@ class StateDeltaProcessor {
         _state = result.state;
         return StateDeltaResult.success(_state);
       } else {
-        _stateDeltaLogger.warning('Failed to apply state delta: ${result.error}');
+        _stateDeltaLogger
+            .warning('Failed to apply state delta: ${result.error}');
         return StateDeltaResult.failure(_state, result.error);
       }
     } on FormatException catch (e) {

@@ -2,16 +2,44 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soliplex_client/soliplex_client.dart'
-    show ChatMessage, Streaming;
+    show ChatMessage, Streaming, ToolExecution;
 import 'package:soliplex_frontend/core/models/active_run_state.dart';
 
 import 'package:soliplex_frontend/core/providers/active_run_provider.dart';
 import 'package:soliplex_frontend/core/providers/rooms_provider.dart';
+import 'package:soliplex_frontend/core/providers/tool_execution_providers.dart';
 import 'package:soliplex_frontend/design/theme/theme_extensions.dart';
 import 'package:soliplex_frontend/design/tokens/spacing.dart';
 import 'package:soliplex_frontend/features/chat/widgets/chat_message_widget.dart';
+import 'package:soliplex_frontend/features/chat/widgets/tool_execution_card.dart';
 import 'package:soliplex_frontend/shared/widgets/empty_state.dart';
 import 'package:soliplex_frontend/shared/widgets/error_display.dart';
+
+/// Union type for items in the chat list.
+///
+/// Can be either a [ChatMessage] or a [ToolExecution], both rendered inline
+/// in the message list sorted by timestamp.
+sealed class ChatListItem {
+  DateTime get timestamp;
+}
+
+/// A chat message item in the list.
+class MessageItem extends ChatListItem {
+  final ChatMessage message;
+  MessageItem(this.message);
+
+  @override
+  DateTime get timestamp => message.createdAt;
+}
+
+/// A tool execution item in the list.
+class ToolExecutionItem extends ChatListItem {
+  final ToolExecution execution;
+  ToolExecutionItem(this.execution);
+
+  @override
+  DateTime get timestamp => execution.startedAt;
+}
 
 /// Widget that displays the list of messages in the current thread.
 ///
@@ -128,10 +156,18 @@ class _MessageListState extends ConsumerState<MessageList> {
     final runState = ref.watch(activeRunNotifierProvider);
     final roomId = ref.watch(currentRoomIdProvider);
 
+    // Watch tool executions for the current room
+    final toolExecutions = roomId != null
+        ? ref.watch(toolExecutionsProvider(roomId))
+        : <ToolExecution>[];
+
+    // Build combined list of messages and tool executions, sorted by timestamp
+    final chatItems = _buildChatItems(messagesNow, toolExecutions);
+
     // Show loading overlay, not different widget tree
     return Stack(
       children: [
-        _buildMessageList(context, messagesNow, isStreaming, runState, roomId),
+        _buildMessageList(context, chatItems, isStreaming, runState, roomId),
         if (messagesAsync.isLoading && messagesNow.isEmpty)
           const Center(child: CircularProgressIndicator()),
         if (messagesAsync.hasError && messagesNow.isEmpty)
@@ -140,9 +176,23 @@ class _MessageListState extends ConsumerState<MessageList> {
     );
   }
 
+  /// Builds a combined list of messages and tool executions sorted by timestamp.
+  List<ChatListItem> _buildChatItems(
+    List<ChatMessage> messages,
+    List<ToolExecution> toolExecutions,
+  ) {
+    final items = <ChatListItem>[
+      ...messages.map(MessageItem.new),
+      ...toolExecutions.map(ToolExecutionItem.new),
+    ];
+    // Sort by timestamp ascending (oldest first)
+    items.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    return items;
+  }
+
   Widget _buildMessageList(
     BuildContext context,
-    List<ChatMessage> messages,
+    List<ChatListItem> items,
     bool isStreaming,
     ActiveRunState runState,
     String? roomId,
@@ -150,7 +200,7 @@ class _MessageListState extends ConsumerState<MessageList> {
     final soliplexTheme = SoliplexTheme.of(context);
 
     // Empty state
-    if (messages.isEmpty && !isStreaming) {
+    if (items.isEmpty && !isStreaming) {
       return const EmptyState(
         message: 'No messages yet. Send one below!',
         icon: Icons.chat_bubble_outline,
@@ -167,10 +217,10 @@ class _MessageListState extends ConsumerState<MessageList> {
         ListView.builder(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(vertical: SoliplexSpacing.s4),
-          itemCount: messages.length + (isStreaming ? 1 : 0),
+          itemCount: items.length + (isStreaming ? 1 : 0),
           itemBuilder: (context, index) {
             // Show streaming indicator at the bottom
-            if (index == messages.length) {
+            if (index == items.length) {
               return Semantics(
                 label: 'Assistant is thinking',
                 child: Padding(
@@ -206,14 +256,21 @@ class _MessageListState extends ConsumerState<MessageList> {
               );
             }
 
-            final message = messages[index];
+            final item = items[index];
 
-            return ChatMessageWidget(
-              key: ValueKey(message.id),
-              message: message,
-              roomId: roomId ?? '',
-              isStreaming: streamingMessageId == message.id,
-            );
+            // Render appropriate widget based on item type
+            return switch (item) {
+              MessageItem(:final message) => ChatMessageWidget(
+                  key: ValueKey('msg-${message.id}'),
+                  message: message,
+                  roomId: roomId ?? '',
+                  isStreaming: streamingMessageId == message.id,
+                ),
+              ToolExecutionItem(:final execution) => ToolExecutionCard(
+                  key: ValueKey('tool-${execution.id}'),
+                  execution: execution,
+                ),
+            };
           },
         ),
 

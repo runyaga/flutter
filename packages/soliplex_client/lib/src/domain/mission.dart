@@ -6,7 +6,11 @@ String _snakeToCamel(String value) {
   final parts = value.split('_');
   if (parts.isEmpty) return value;
   return parts.first +
-      parts.skip(1).map((p) => p.isNotEmpty ? '${p[0].toUpperCase()}${p.substring(1)}' : '').join();
+      parts
+          .skip(1)
+          .map((p) =>
+              p.isNotEmpty ? '${p[0].toUpperCase()}${p.substring(1)}' : '')
+          .join();
 }
 
 /// Mission status enum matching backend.

@@ -107,7 +107,8 @@ class _StatusIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (status) {
-      TaskStatus.pending => const Icon(Icons.circle_outlined, color: Colors.grey),
+      TaskStatus.pending =>
+        const Icon(Icons.circle_outlined, color: Colors.grey),
       TaskStatus.inProgress => const _SpinningIcon(),
       TaskStatus.completed => _CompletionAnimation(
           child: const Icon(Icons.check_circle, color: Colors.green),

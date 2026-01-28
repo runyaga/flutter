@@ -67,8 +67,8 @@ class RunningInternalState extends NotifierInternalState {
 /// This is exposed publicly via [missionStateProvider] in active_run_provider.dart.
 final missionStateNotifierProvider =
     NotifierProvider<MissionStateNotifier, Map<String, dynamic>?>(
-        MissionStateNotifier.new,
-    );
+  MissionStateNotifier.new,
+);
 
 /// Notifier that holds the current mission state from STATE_DELTA events.
 class MissionStateNotifier extends Notifier<Map<String, dynamic>?> {
@@ -358,8 +358,8 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
       _log('Received RUN_ERROR event: ${event.message}');
     }
 
-    // Handle STATE_DELTA events (custom events with type 'state_delta')
-    if (event is CustomEvent && event.type == 'state_delta') {
+    // Handle STATE_DELTA events from AG-UI protocol
+    if (event is StateDeltaEvent) {
       _handleStateDelta(event);
       return;
     }
@@ -412,15 +412,27 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
   }
 
   /// Handles STATE_DELTA events by applying them to mission state.
-  void _handleStateDelta(CustomEvent event) {
-    final data = event.value;
-    if (data is! Map<String, dynamic>) {
-      _log('STATE_DELTA event has invalid value type: ${data.runtimeType}');
+  ///
+  /// AG-UI StateDeltaEvent contains a list of JSON Patch operations (RFC 6902)
+  /// which are applied sequentially to update the mission state.
+  void _handleStateDelta(StateDeltaEvent event) {
+    // AG-UI delta is List<dynamic> of JSON Patch operations
+    final patches = event.delta.whereType<Map<String, dynamic>>().toList();
+
+    if (patches.isEmpty) {
+      _log('STATE_DELTA event has no valid patches');
       return;
     }
 
-    final result = _stateDeltaProcessor.processStateDeltaFromMap(data);
+    // Apply all patches using the JSON Patcher
+    final result = JsonPatcher.applyAll(
+      _stateDeltaProcessor.state,
+      patches,
+    );
+
     if (result.isSuccess) {
+      // Update the processor's internal state
+      _stateDeltaProcessor.reset(result.state);
       // Update the mission state notifier so providers react
       ref.read(missionStateNotifierProvider.notifier).update(result.state);
     } else {

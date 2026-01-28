@@ -61,7 +61,7 @@ class ApprovalBanner extends ConsumerWidget {
   }
 
   void _showApprovalDialog(BuildContext context, ApprovalRequest approval) {
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => ApprovalDialog(

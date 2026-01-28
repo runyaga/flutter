@@ -116,8 +116,10 @@ void main() {
 
       // Verify payload map
       final expectedPayload = json['payload'] as Map<String, dynamic>;
-      expect(approval.payload['file_path'], equals(expectedPayload['file_path']));
-      expect(approval.payload['file_size'], equals(expectedPayload['file_size']));
+      expect(
+          approval.payload['file_path'], equals(expectedPayload['file_path']));
+      expect(
+          approval.payload['file_size'], equals(expectedPayload['file_size']));
     });
 
     test('ApprovalRequest serializes to match Python fixture', () async {
@@ -187,7 +189,13 @@ void main() {
 
   group('Schema version compatibility', () {
     test('TaskItem handles all known status values', () {
-      final statuses = ['pending', 'in_progress', 'completed', 'failed', 'blocked'];
+      final statuses = [
+        'pending',
+        'in_progress',
+        'completed',
+        'failed',
+        'blocked'
+      ];
 
       for (final status in statuses) {
         final json = {

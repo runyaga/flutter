@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_frontend/features/chat/widgets/steering_input.dart';
@@ -625,4 +624,3 @@ void main() {
     });
   });
 }
-

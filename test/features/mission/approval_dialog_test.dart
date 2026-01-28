@@ -66,7 +66,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            firstPendingApprovalProvider('thread-1').overrideWith((_) => approval),
+            firstPendingApprovalProvider('thread-1')
+                .overrideWith((_) => approval),
           ],
           child: const MaterialApp(
             home: Scaffold(body: ApprovalBanner(threadId: 'thread-1')),
@@ -75,7 +76,8 @@ void main() {
       );
 
       expect(find.text('Action Required: Delete files'), findsOneWidget);
-      expect(find.text('The agent needs your approval to continue.'), findsOneWidget);
+      expect(find.text('The agent needs your approval to continue.'),
+          findsOneWidget);
       expect(find.text('Review & Approve'), findsOneWidget);
       expect(find.byIcon(Icons.warning_amber), findsOneWidget);
     });
@@ -102,7 +104,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            firstPendingApprovalProvider('thread-1').overrideWith((_) => approval),
+            firstPendingApprovalProvider('thread-1')
+                .overrideWith((_) => approval),
             approvalServiceProvider.overrideWithValue(mockApprovalService),
           ],
           child: const MaterialApp(
@@ -141,7 +144,8 @@ void main() {
 
     testWidgets('displays description as body', (tester) async {
       final approval = createApprovalRequest(
-        description: 'This will execute a shell script with elevated privileges.',
+        description:
+            'This will execute a shell script with elevated privileges.',
       );
 
       await tester.pumpWidget(
@@ -168,7 +172,8 @@ void main() {
         options: [
           const ApprovalOption(id: 'approve', label: 'Approve'),
           const ApprovalOption(id: 'modify', label: 'Modify'),
-          const ApprovalOption(id: 'reject', label: 'Reject', isDestructive: true),
+          const ApprovalOption(
+              id: 'reject', label: 'Reject', isDestructive: true),
         ],
       );
 
@@ -194,7 +199,8 @@ void main() {
       final approval = createApprovalRequest(
         options: [
           const ApprovalOption(id: 'approve', label: 'Approve'),
-          const ApprovalOption(id: 'delete', label: 'Delete All', isDestructive: true),
+          const ApprovalOption(
+              id: 'delete', label: 'Delete All', isDestructive: true),
         ],
       );
 
@@ -387,7 +393,10 @@ void main() {
 
     testWidgets('expandable details section shows JSON', (tester) async {
       final approval = createApprovalRequest(
-        details: {'files': ['file1.txt', 'file2.txt'], 'total_size': '45 MB'},
+        details: {
+          'files': ['file1.txt', 'file2.txt'],
+          'total_size': '45 MB'
+        },
         options: [const ApprovalOption(id: 'approve', label: 'Approve')],
       );
 
@@ -494,7 +503,8 @@ void main() {
       expect(find.text('Dismiss'), findsOneWidget);
     });
 
-    testWidgets('dismiss button closes dialog without API call', (tester) async {
+    testWidgets('dismiss button closes dialog without API call',
+        (tester) async {
       final approval = createApprovalRequest();
 
       await tester.pumpWidget(
@@ -546,7 +556,8 @@ void main() {
       );
     });
 
-    testWidgets('empty options array falls back to default Approve/Reject', (tester) async {
+    testWidgets('empty options array falls back to default Approve/Reject',
+        (tester) async {
       // Create approval with explicit empty options array in payload
       final genRequest = gen.ApprovalRequest(
         approvalId: 'approval-123',
@@ -634,7 +645,8 @@ void main() {
           approvalId: any(named: 'approvalId'),
           selectedOption: any(named: 'selectedOption'),
         ),
-      ).thenThrow(ApprovalException('Request timed out. Please try again.', isTimeout: true));
+      ).thenThrow(ApprovalException('Request timed out. Please try again.',
+          isTimeout: true));
 
       await tester.pumpWidget(
         ProviderScope(
@@ -662,7 +674,8 @@ void main() {
       expect(find.text('Approve'), findsOneWidget);
     });
 
-    testWidgets('does not show details section when payload has no details key', (tester) async {
+    testWidgets('does not show details section when payload has no details key',
+        (tester) async {
       // Create approval with payload but no 'details' key
       final genRequest = gen.ApprovalRequest(
         approvalId: 'approval-123',

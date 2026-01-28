@@ -157,9 +157,8 @@ void main() {
         final entryTimestamp = entry['timestamp'] as String?;
 
         // Primary match: by turn index
-        bool matches = turnIndex != null &&
-            entryIndex != null &&
-            entryIndex == turnIndex;
+        bool matches =
+            turnIndex != null && entryIndex != null && entryIndex == turnIndex;
 
         // Fallback match: by timestamp (within 5 seconds)
         if (!matches && entryTimestamp != null && timestamp != null) {
@@ -345,7 +344,8 @@ void main() {
       final citations = extractCitationsForMessage(
         stateSnapshot: stateSnapshot,
         turnIndex: 1, // Won't match because no index in entry
-        timestamp: now.add(const Duration(seconds: 1)), // Should match timestamp
+        timestamp:
+            now.add(const Duration(seconds: 1)), // Should match timestamp
       );
 
       expect(citations.length, equals(1));
@@ -359,7 +359,8 @@ void main() {
           {
             'index': 1,
             // Timestamp is far in the past, would NOT match by timestamp alone
-            'timestamp': now.subtract(const Duration(minutes: 10)).toIso8601String(),
+            'timestamp':
+                now.subtract(const Duration(minutes: 10)).toIso8601String(),
             'query': 'First query',
             'citations': [
               {'document_id': 'doc-by-index', 'chunk_id': 'c1'}
@@ -368,7 +369,8 @@ void main() {
           {
             'index': 99,
             // This timestamp would match but index doesn't, so no match
-            'timestamp': now.subtract(const Duration(minutes: 20)).toIso8601String(),
+            'timestamp':
+                now.subtract(const Duration(minutes: 20)).toIso8601String(),
             'query': 'Second query',
             'citations': [
               {'document_id': 'doc-no-match', 'chunk_id': 'c2'}

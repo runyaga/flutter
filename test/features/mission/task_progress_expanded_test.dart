@@ -107,7 +107,8 @@ void main() {
           home: TaskProgressExpanded(threadId: 'thread'),
           overrides: [
             taskListProvider('thread').overrideWith((_) => tasks),
-            taskListSummaryProvider('thread').overrideWith((_) => tasks.summary),
+            taskListSummaryProvider('thread')
+                .overrideWith((_) => tasks.summary),
           ],
         ),
       );
@@ -160,7 +161,8 @@ void main() {
       expect(collapsed, isTrue);
     });
 
-    testWidgets('does not show collapse button when onCollapse is null', (tester) async {
+    testWidgets('does not show collapse button when onCollapse is null',
+        (tester) async {
       final tasks = _createTasks([('task-1', 'Task 1', 'pending')]);
 
       await tester.pumpWidget(
@@ -206,7 +208,8 @@ void main() {
           ),
           overrides: [
             taskListProvider('thread').overrideWith((_) => tasks),
-            taskListSummaryProvider('thread').overrideWith((_) => tasks.summary),
+            taskListSummaryProvider('thread')
+                .overrideWith((_) => tasks.summary),
           ],
         ),
       );
@@ -312,7 +315,12 @@ void main() {
 
     testWidgets('completed task shows description as result', (tester) async {
       final tasks = _createTasksWithDescription([
-        ('task-1', 'Completed Task', 'Analysis complete: 42 items processed', 'completed'),
+        (
+          'task-1',
+          'Completed Task',
+          'Analysis complete: 42 items processed',
+          'completed'
+        ),
       ]);
 
       await tester.pumpWidget(

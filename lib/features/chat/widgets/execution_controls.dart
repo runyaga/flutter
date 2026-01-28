@@ -56,7 +56,7 @@ class ExecutionControls extends ConsumerWidget {
   }
 
   void _confirmCancel(BuildContext context, WidgetRef ref) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Cancel Mission?'),

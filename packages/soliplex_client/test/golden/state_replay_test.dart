@@ -73,7 +73,7 @@ void main() {
       processor.processStateDeltaFromMap({
         'delta_path': '/task_list',
         'delta_type': 'add',
-        'delta_value': {'title': 'Test Tasks', 'tasks': []},
+        'delta_value': {'title': 'Test Tasks', 'tasks': <dynamic>[]},
       });
 
       // Add a task
@@ -119,14 +119,18 @@ void main() {
       processor.processStateDeltaFromMap({
         'delta_path': '/task_list',
         'delta_type': 'add',
-        'delta_value': {'title': 'Multi-task Test', 'tasks': []},
+        'delta_value': {'title': 'Multi-task Test', 'tasks': <dynamic>[]},
       });
 
       // Add multiple tasks
       processor.processStateDeltaFromMap({
         'delta_path': '/task_list/tasks/-',
         'delta_type': 'add',
-        'delta_value': {'id': 'task-1', 'content': 'First', 'status': 'pending'},
+        'delta_value': {
+          'id': 'task-1',
+          'content': 'First',
+          'status': 'pending'
+        },
       });
 
       processor.processStateDeltaFromMap({
@@ -142,7 +146,11 @@ void main() {
       processor.processStateDeltaFromMap({
         'delta_path': '/task_list/tasks/-',
         'delta_type': 'add',
-        'delta_value': {'id': 'task-3', 'content': 'Third', 'status': 'pending'},
+        'delta_value': {
+          'id': 'task-3',
+          'content': 'Third',
+          'status': 'pending'
+        },
       });
 
       // Verify all added

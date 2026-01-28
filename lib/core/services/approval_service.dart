@@ -87,7 +87,8 @@ class ApprovalService {
         // Handle both string and structured error responses
         if (detail is String) return detail;
         if (message is String) return message;
-        if (detail is Map) return detail['message']?.toString() ?? response.body;
+        if (detail is Map)
+          return detail['message']?.toString() ?? response.body;
         if (message is Map) return message['text']?.toString() ?? response.body;
       }
       return response.body;
