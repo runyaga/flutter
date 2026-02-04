@@ -280,15 +280,59 @@ Before marking this milestone complete:
 
 ### Review Gates
 
-- [ ] **Gemini Review:** Run `mcp__gemini__read_files` with model
-  `gemini-3-pro-preview` passing:
-  - `docs/planning/logging/01-essential-logging-api.md`
-  - All `.dart` files in `packages/soliplex_logging/lib/`
-  - All `.dart` files in `packages/soliplex_logging/test/`
-  - `lib/core/logging/*.dart`
-  - `test/core/logging/*.dart`
-- [ ] **Codex Review:** Run `mcp__codex__codex` to analyze implementation
-  against spec, passing same file paths
+#### Gemini Review
+
+**Tool:** `mcp__gemini__read_files`
+**Model:** `gemini-3-pro-preview`
+**File limit:** 15 files per call (batch if needed)
+
+**Dynamic file gathering:** At review time, collect all relevant files:
+
+```bash
+# Gather files for review (run these to get actual paths)
+find docs/planning/logging/01-essential-logging-api.md
+find packages/soliplex_logging -name "*.dart" -type f
+find lib/core/logging -name "*.dart" -type f
+find test/core/logging -name "*.dart" -type f
+```
+
+**Prompt:**
+
+```text
+Review this logging implementation against the spec in 01-essential-logging-api.md.
+
+Check:
+1. Type-safe Loggers class with static fields (not string-based getLogger)
+2. Span-ready LogRecord with spanId and traceId fields
+3. Pure Dart package (no Flutter imports, no dart:io in soliplex_logging)
+4. Proper sink lifecycle in providers (keepAlive, onDispose)
+5. No duplicate sink initialization
+
+Report PASS or list specific issues to fix.
+```
+
+- [ ] Gemini review: PASS
+
+#### Codex Review
+
+**Tool:** `mcp__codex__codex`
+**Model:** `gpt-5.2`
+**Timeout:** 10 minutes
+**Sandbox:** `read-only`
+**Approval policy:** `on-failure`
+
+**Prompt:**
+
+```json
+{
+  "prompt": "Review the soliplex_logging implementation against docs/planning/logging/01-essential-logging-api.md.\n\nCheck:\n1. Type-safe Loggers.x API exists (not string-based)\n2. LogRecord has spanId and traceId fields\n3. Package is pure Dart (no Flutter, no dart:io)\n4. consoleSinkProvider uses ref.keepAlive() and ref.onDispose()\n5. No duplicate sink initialization in main.dart\n6. All tests pass with dart test packages/soliplex_logging\n\nReport PASS or list specific issues to fix.",
+  "model": "gpt-5.2",
+  "sandbox": "read-only",
+  "approval-policy": "on-failure"
+}
+```
+
+- [ ] Codex review: PASS
 
 ## Success Criteria
 

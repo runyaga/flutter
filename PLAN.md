@@ -1,6 +1,6 @@
 # Logging Implementation Plan
 
-This plan covers Milestones 01 and 02 of the central logging architecture.
+This plan covers Milestones 01, 02, and 03 of the central logging architecture.
 Claude acts as orchestrator, delegating implementation to Codex and review to Gemini.
 
 ## Branch Strategy
@@ -9,6 +9,7 @@ Claude acts as orchestrator, delegating implementation to Codex and review to Ge
 |-----------|--------|------|
 | 01-essential-logging-api | `logging-slice-1` | `main` |
 | 02-api-documentation | `logging-slice-2` | `logging-slice-1` |
+| 03-migration-strategy | `logging-slice-3` | `logging-slice-2` |
 
 ## Tool Configuration
 
@@ -35,7 +36,7 @@ Claude acts as orchestrator, delegating implementation to Codex and review to Ge
 
 ### Task 1.1: Create branch
 
-```
+```bash
 git checkout -b logging-slice-1 main
 ```
 
@@ -107,21 +108,14 @@ flutter test test/core/logging/
 
 **Action:** Use `mcp__gemini__read_files` with model `gemini-3-pro-preview`
 
-**Files to pass (absolute paths):**
+**Dynamic file gathering:** At review time, collect all relevant files:
 
-```
-/Users/runyaga/dev/soliplex-flutter-logging/docs/planning/logging/01-essential-logging-api.md
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/pubspec.yaml
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/soliplex_logging.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/log_level.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/log_record.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/log_sink.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/sinks/console_sink.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/logger.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/log_manager.dart
-/Users/runyaga/dev/soliplex-flutter-logging/lib/core/logging/loggers.dart
-/Users/runyaga/dev/soliplex-flutter-logging/lib/core/logging/log_config.dart
-/Users/runyaga/dev/soliplex-flutter-logging/lib/core/logging/logging_provider.dart
+```bash
+# Gather files for review (run these to get actual paths)
+find docs/planning/logging/01-essential-logging-api.md
+find packages/soliplex_logging -name "*.dart" -type f
+find lib/core/logging -name "*.dart" -type f
+find test/core/logging -name "*.dart" -type f
 ```
 
 **Prompt:** "Review this logging implementation against the spec. Check: 1) Type-safe Loggers class, 2) Span-ready LogRecord with spanId/traceId, 3) Pure Dart (no Flutter imports in package), 4) Proper sink lifecycle in providers. Report any issues."
@@ -222,19 +216,15 @@ dart analyze --fatal-infos packages/soliplex_logging
 
 **Action:** Use `mcp__gemini__read_files` with model `gemini-3-pro-preview`
 
-**Files to pass (absolute paths):**
+**Dynamic file gathering:** At review time, collect all relevant files:
 
-```
-/Users/runyaga/dev/soliplex-flutter-logging/docs/planning/logging/02-api-documentation.md
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/README.md
-/Users/runyaga/dev/soliplex-flutter-logging/docs/logging-quickstart.md
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/log_level.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/log_record.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/log_sink.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/sinks/console_sink.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/logger.dart
-/Users/runyaga/dev/soliplex-flutter-logging/packages/soliplex_logging/lib/src/log_manager.dart
-/Users/runyaga/dev/soliplex-flutter-logging/lib/core/logging/loggers.dart
+```bash
+# Gather files for review (run these to get actual paths)
+find docs/planning/logging/02-api-documentation.md
+find packages/soliplex_logging/README.md
+find docs/logging-quickstart.md
+find packages/soliplex_logging/lib -name "*.dart" -type f
+find lib/core/logging -name "*.dart" -type f
 ```
 
 **Prompt:** "Review this documentation against the spec. Check: 1) README has both raw API and type-safe Loggers.x examples, 2) Quickstart covers all loggers, 3) All public APIs have dartdoc, 4) Log level guidelines are clear. Report any issues."
@@ -268,6 +258,167 @@ git push -u origin logging-slice-2
 
 ---
 
+## Milestone 03: Migration Strategy
+
+**Spec:** `docs/planning/logging/03-migration-strategy.md`
+**Branch:** `logging-slice-3`
+
+### Task 3.1: Create branch
+
+```bash
+git checkout -b logging-slice-3 logging-slice-2
+```
+
+### Task 3.2: Migrate active_run_notifier.dart (Codex)
+
+**Action:** Use `mcp__codex__codex` with timeout 10 minutes
+
+```json
+{
+  "prompt": "Migrate lib/core/providers/active_run_notifier.dart to use Loggers. Read docs/planning/logging/03-migration-strategy.md.\n\n1. Import lib/core/logging/loggers.dart\n2. Remove any _log() helper method\n3. Replace _log('message') with Loggers.activeRun.info('message')\n4. Use Loggers.activeRun.error('message', error: e, stackTrace: s) for errors\n\nRun flutter analyze to verify no issues.",
+  "model": "gpt-5.2",
+  "sandbox": "workspace-write",
+  "approval-policy": "on-failure"
+}
+```
+
+### Task 3.3: Migrate auth_notifier.dart (Codex)
+
+**Action:** Use `mcp__codex__codex` with timeout 10 minutes
+
+```json
+{
+  "prompt": "Migrate lib/core/auth/auth_notifier.dart to use Loggers. Read docs/planning/logging/03-migration-strategy.md.\n\n1. Import lib/core/logging/loggers.dart\n2. Remove any _log() helper method\n3. Replace _log('message') with Loggers.auth.info('message')\n4. Use Loggers.auth.error('message', error: e, stackTrace: s) for errors\n\nRun flutter analyze to verify no issues.",
+  "model": "gpt-5.2",
+  "sandbox": "workspace-write",
+  "approval-policy": "on-failure"
+}
+```
+
+### Task 3.4: Integrate HTTP observer (Codex)
+
+**Action:** Use `mcp__codex__codex` with timeout 10 minutes
+
+```json
+{
+  "prompt": "Integrate HTTP observer with Loggers. Read docs/planning/logging/03-migration-strategy.md.\n\nUpdate lib/core/providers/http_log_provider.dart:\n1. Import lib/core/logging/loggers.dart\n2. In onRequest: Loggers.http.debug('${event.method} ${event.uri}')\n3. In onResponse: Loggers.http.debug('${event.statusCode} ${event.method} ${event.uri}')\n4. In onError: Loggers.http.error('${event.method} ${event.uri}', error: event.exception)\n5. Keep existing HttpLogNotifier behavior alongside\n\nRun flutter analyze to verify no issues.",
+  "model": "gpt-5.2",
+  "sandbox": "workspace-write",
+  "approval-policy": "on-failure"
+}
+```
+
+### Task 3.5: Migrate router logging (Codex)
+
+**Action:** Use `mcp__codex__codex` with timeout 10 minutes
+
+```json
+{
+  "prompt": "Migrate lib/core/router/app_router.dart to use Loggers. Read docs/planning/logging/03-migration-strategy.md.\n\n1. Import lib/core/logging/loggers.dart\n2. Replace any debugPrint with Loggers.router.debug()\n\nRun flutter analyze to verify no issues.",
+  "model": "gpt-5.2",
+  "sandbox": "workspace-write",
+  "approval-policy": "on-failure"
+}
+```
+
+### Task 3.6: Migrate feature files (Codex)
+
+**Action:** Use `mcp__codex__codex` with timeout 10 minutes
+
+```json
+{
+  "prompt": "Migrate remaining feature files to use Loggers. Read docs/planning/logging/03-migration-strategy.md.\n\nSearch for and migrate:\n1. lib/features/home/home_screen.dart - use Loggers.ui\n2. lib/features/chat/*.dart - use Loggers.chat\n3. lib/features/room/*.dart - use Loggers.room\n4. lib/features/quiz/*.dart - use Loggers.quiz\n\nReplace debugPrint and _log patterns with appropriate Loggers.x calls.\n\nRun flutter analyze to verify no issues.",
+  "model": "gpt-5.2",
+  "sandbox": "workspace-write",
+  "approval-policy": "on-failure"
+}
+```
+
+### Task 3.7: Verify migration complete (Codex)
+
+**Action:** Use `mcp__codex__codex` with timeout 10 minutes
+
+```json
+{
+  "prompt": "Verify logging migration is complete.\n\n1. Run: grep -r 'debugPrint' lib/ - should return no results (or only allowed cases)\n2. Run: grep -r 'void _log(' lib/ - should return no results\n3. Run: flutter analyze --fatal-infos\n4. Run: flutter test\n\nReport any remaining issues to fix.",
+  "model": "gpt-5.2",
+  "sandbox": "workspace-write",
+  "approval-policy": "on-failure"
+}
+```
+
+### Task 3.8: Validation checks
+
+**Action:** Run these commands and verify all pass
+
+```bash
+dart format --set-exit-if-changed .
+flutter analyze --fatal-infos
+flutter test
+grep -r "debugPrint" lib/  # Should return nothing or only allowed cases
+grep -r "void _log(" lib/  # Should return nothing
+```
+
+### Task 3.9: Gemini Review
+
+**Action:** Use `mcp__gemini__read_files` with model `gemini-3-pro-preview`
+
+**Dynamic file gathering:** At review time, collect all modified files:
+
+```bash
+# Gather files for review (run these to get actual paths)
+find docs/planning/logging/03-migration-strategy.md
+find lib/core/providers -name "*.dart" -type f
+find lib/core/auth -name "*.dart" -type f
+find lib/core/router -name "*.dart" -type f
+find lib/features -name "*.dart" -type f | head -15
+find lib/core/logging -name "*.dart" -type f
+```
+
+**Prompt:**
+
+```text
+Review the logging migration against the spec in 03-migration-strategy.md.
+
+Check:
+1. All _log() helper patterns replaced with Loggers.x calls
+2. All debugPrint calls replaced with appropriate Loggers.x calls
+3. HTTP observer uses Loggers.http for request/response/error logging
+4. Correct log levels used (debug for requests, error for failures)
+5. Error logging includes error and stackTrace parameters
+
+Report PASS or list specific files/lines that still need migration.
+```
+
+### Task 3.10: Codex Review
+
+**Action:** Use `mcp__codex__codex` with timeout 10 minutes
+
+```json
+{
+  "prompt": "Final review of logging migration against docs/planning/logging/03-migration-strategy.md.\n\nVerify:\n1. grep -r 'debugPrint' lib/ returns no results\n2. grep -r 'void _log(' lib/ returns no results\n3. HTTP observer integrated with Loggers.http\n4. flutter analyze --fatal-infos passes\n5. flutter test passes\n\nReport PASS or list specific issues to fix.",
+  "model": "gpt-5.2",
+  "sandbox": "read-only",
+  "approval-policy": "on-failure"
+}
+```
+
+### Task 3.11: Commit and push
+
+```bash
+git add lib/core/ lib/features/
+git commit -m "refactor(logging): migrate to type-safe Loggers API (M03)
+
+- Replace all _log() patterns with Loggers.x calls
+- Replace all debugPrint calls with appropriate loggers
+- Integrate HTTP observer with Loggers.http
+- Use proper log levels (debug, info, error)"
+
+git push -u origin logging-slice-3
+```
+
+---
+
 ## Completion Checklist
 
 ### Milestone 01
@@ -292,3 +443,17 @@ git push -u origin logging-slice-2
 - [ ] Gemini review: PASS (Task 2.6)
 - [ ] Codex review: PASS (Task 2.7)
 - [ ] Committed and pushed (Task 2.8)
+
+### Milestone 03
+
+- [ ] Branch `logging-slice-3` created from `logging-slice-2`
+- [ ] active_run_notifier.dart migrated (Task 3.2)
+- [ ] auth_notifier.dart migrated (Task 3.3)
+- [ ] HTTP observer integrated (Task 3.4)
+- [ ] Router logging migrated (Task 3.5)
+- [ ] Feature files migrated (Task 3.6)
+- [ ] Migration verified complete (Task 3.7)
+- [ ] Validation checks pass (Task 3.8)
+- [ ] Gemini review: PASS (Task 3.9)
+- [ ] Codex review: PASS (Task 3.10)
+- [ ] Committed and pushed (Task 3.11)

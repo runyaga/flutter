@@ -170,12 +170,61 @@ Before marking this milestone complete:
 
 ### Review Gates
 
-- [ ] **Gemini Review:** Run `mcp__gemini__read_files` with model
-  `gemini-3-pro-preview` passing:
-  - `docs/planning/logging/03-migration-strategy.md`
-  - All modified `.dart` files listed in "Files to Modify"
-- [ ] **Codex Review:** Run `mcp__codex__codex` to verify migration is complete
-  and consistent
+#### Gemini Review
+
+**Tool:** `mcp__gemini__read_files`
+**Model:** `gemini-3-pro-preview`
+**File limit:** 15 files per call (batch if needed)
+
+**Dynamic file gathering:** At review time, collect all modified files:
+
+```bash
+# Gather files for review (run these to get actual paths)
+find docs/planning/logging/03-migration-strategy.md
+find lib/core/providers -name "*.dart" -type f
+find lib/core/auth -name "*.dart" -type f
+find lib/core/router -name "*.dart" -type f
+find lib/features -name "*.dart" -type f | head -15
+find lib/core/logging -name "*.dart" -type f
+```
+
+**Prompt:**
+
+```text
+Review the logging migration against the spec in 03-migration-strategy.md.
+
+Check:
+1. All _log() helper patterns replaced with Loggers.x calls
+2. All debugPrint calls replaced with appropriate Loggers.x calls
+3. HTTP observer uses Loggers.http for request/response/error logging
+4. Correct log levels used (debug for requests, error for failures)
+5. Error logging includes error and stackTrace parameters
+
+Report PASS or list specific files/lines that still need migration.
+```
+
+- [ ] Gemini review: PASS
+
+#### Codex Review
+
+**Tool:** `mcp__codex__codex`
+**Model:** `gpt-5.2`
+**Timeout:** 10 minutes
+**Sandbox:** `read-only`
+**Approval policy:** `on-failure`
+
+**Prompt:**
+
+```json
+{
+  "prompt": "Verify the logging migration is complete. Run these checks:\n\n1. grep -r 'debugPrint' lib/ - should return no results\n2. grep -r 'void _log(' lib/ - should return no results\n3. All files in lib/core/providers/, lib/core/auth/, lib/features/ use Loggers.x\n4. HTTP observer logs requests, responses, and errors via Loggers.http\n5. flutter analyze --fatal-infos passes\n6. flutter test passes\n\nReport PASS or list specific issues to fix.",
+  "model": "gpt-5.2",
+  "sandbox": "read-only",
+  "approval-policy": "on-failure"
+}
+```
+
+- [ ] Codex review: PASS
 
 ## Success Criteria
 

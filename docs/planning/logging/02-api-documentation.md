@@ -161,15 +161,60 @@ Before marking this milestone complete:
 
 ### Review Gates
 
-- [ ] **Gemini Review:** Run `mcp__gemini__read_files` with model
-  `gemini-3-pro-preview` passing:
-  - `docs/planning/logging/02-api-documentation.md`
-  - `packages/soliplex_logging/README.md`
-  - `docs/logging-quickstart.md`
-  - All `.dart` files in `packages/soliplex_logging/lib/src/`
-  - `lib/core/logging/loggers.dart`
-- [ ] **Codex Review:** Run `mcp__codex__codex` to verify documentation
-  completeness and accuracy
+#### Gemini Review
+
+**Tool:** `mcp__gemini__read_files`
+**Model:** `gemini-3-pro-preview`
+**File limit:** 15 files per call (batch if needed)
+
+**Dynamic file gathering:** At review time, collect all relevant files:
+
+```bash
+# Gather files for review (run these to get actual paths)
+find docs/planning/logging/02-api-documentation.md
+find packages/soliplex_logging/README.md
+find docs/logging-quickstart.md
+find packages/soliplex_logging/lib -name "*.dart" -type f
+find lib/core/logging -name "*.dart" -type f
+```
+
+**Prompt:**
+
+```text
+Review the logging documentation against the spec in 02-api-documentation.md.
+
+Check:
+1. README has both raw LogManager API and type-safe Loggers.x examples
+2. Quickstart guide covers all loggers (auth, http, activeRun, chat, room, router, quiz, config, ui)
+3. All public APIs have dartdoc comments
+4. Log level guidelines are clear with examples
+5. Span fields (spanId, traceId) are documented
+
+Report PASS or list specific issues to fix.
+```
+
+- [ ] Gemini review: PASS
+
+#### Codex Review
+
+**Tool:** `mcp__codex__codex`
+**Model:** `gpt-5.2`
+**Timeout:** 10 minutes
+**Sandbox:** `read-only`
+**Approval policy:** `on-failure`
+
+**Prompt:**
+
+```json
+{
+  "prompt": "Review the logging documentation against docs/planning/logging/02-api-documentation.md.\n\nCheck:\n1. packages/soliplex_logging/README.md exists and is complete\n2. docs/logging-quickstart.md exists with Loggers.x usage guide\n3. All public APIs have dartdoc comments\n4. dart doc packages/soliplex_logging runs without errors\n5. npx markdownlint-cli passes on all markdown files\n\nReport PASS or list specific issues to fix.",
+  "model": "gpt-5.2",
+  "sandbox": "read-only",
+  "approval-policy": "on-failure"
+}
+```
+
+- [ ] Codex review: PASS
 
 ## Success Criteria
 
