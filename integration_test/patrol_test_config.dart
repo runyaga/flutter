@@ -10,6 +10,13 @@ const backendUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+/// OIDC credentials from --dart-define (Phase C).
+const oidcUsername = String.fromEnvironment('SOLIPLEX_OIDC_USERNAME');
+const oidcPassword = String.fromEnvironment('SOLIPLEX_OIDC_PASSWORD');
+
+/// OIDC issuer ID from --dart-define (must match a key in /api/login response).
+const oidcIssuerId = String.fromEnvironment('SOLIPLEX_OIDC_ISSUER_ID');
+
 /// Fail fast if backend is unreachable.
 ///
 /// Uses /api/login which works in both no-auth and OIDC modes.
@@ -44,6 +51,17 @@ Future<void> waitForCondition(
     if (condition()) return;
   }
   fail(failureMessage ?? 'Timed out after $timeout');
+}
+
+/// Find a widget of [type] containing text that includes [substring].
+///
+/// Useful when room/tile names may change (e.g. "Gemini 2.5 Flash")
+/// and an exact-match finder would be brittle.
+Finder findByTextContaining(Type type, String substring) {
+  return find.ancestor(
+    of: find.textContaining(substring),
+    matching: find.byType(type),
+  );
 }
 
 /// Workaround for Flutter macOS keyboard assertion bug.
