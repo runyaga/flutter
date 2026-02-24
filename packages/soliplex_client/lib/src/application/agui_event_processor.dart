@@ -75,7 +75,8 @@ EventProcessingResult processEvent(
         messageId,
       ),
 
-    // Tool call events - accumulate tool names on start, preserve on end
+    // Tool call events — accumulate tool names on start, args via deltas,
+    // transition to pending on end (tool stays in conversation.toolCalls).
     ToolCallStartEvent(:final toolCallId, :final toolCallName) => () {
         // Accumulate tool names if already in tool call activity
         final newActivity = switch (streaming) {
@@ -94,19 +95,21 @@ EventProcessingResult processEvent(
         };
         return EventProcessingResult(
           conversation: conversation.withToolCall(
-            ToolCallInfo(id: toolCallId, name: toolCallName),
+            ToolCallInfo(
+              id: toolCallId,
+              name: toolCallName,
+              status: ToolCallStatus.streaming,
+            ),
           ),
           streaming: newStreaming,
         );
       }(),
-    ToolCallEndEvent(:final toolCallId) => EventProcessingResult(
-        // Don't change activity - it persists until next activity starts
-        conversation: conversation.copyWith(
-          toolCalls: conversation.toolCalls
-              .where((tc) => tc.id != toolCallId)
-              .toList(),
-        ),
-        streaming: streaming,
+    ToolCallArgsEvent(:final toolCallId, :final delta) =>
+      _processToolCallArgs(conversation, streaming, toolCallId, delta),
+    ToolCallEndEvent(:final toolCallId) => _processToolCallEnd(
+        conversation,
+        streaming,
+        toolCallId,
       ),
 
     // State events - apply to conversation.aguiState
@@ -285,6 +288,52 @@ ChatUser _mapRoleToChatUser(TextMessageRole role) {
     TextMessageRole.system => ChatUser.system,
     TextMessageRole.developer => ChatUser.system,
   };
+}
+
+// Tool call events — args accumulation and end transition
+
+EventProcessingResult _processToolCallArgs(
+  Conversation conversation,
+  StreamingState streaming,
+  String toolCallId,
+  String delta,
+) {
+  // Only accumulate args while the tool call is still streaming.
+  // Late deltas after ToolCallEnd are ignored to prevent mutation of
+  // finalized arguments.
+  final updatedToolCalls = conversation.toolCalls.map((tc) {
+    if (tc.id == toolCallId && tc.status == ToolCallStatus.streaming) {
+      return tc.copyWith(arguments: tc.arguments + delta);
+    }
+    return tc;
+  }).toList();
+
+  return EventProcessingResult(
+    conversation: conversation.copyWith(toolCalls: updatedToolCalls),
+    streaming: streaming,
+  );
+}
+
+EventProcessingResult _processToolCallEnd(
+  Conversation conversation,
+  StreamingState streaming,
+  String toolCallId,
+) {
+  // Only transition streaming → pending. Guard prevents downgrading tools
+  // that are already executing/completed/failed (e.g. duplicate ToolCallEnd).
+  // Keep the tool in conversation.toolCalls (execution happens in Slice 3).
+  // Activity persists until the next activity starts — don't change it here.
+  final updatedToolCalls = conversation.toolCalls.map((tc) {
+    if (tc.id == toolCallId && tc.status == ToolCallStatus.streaming) {
+      return tc.copyWith(status: ToolCallStatus.pending);
+    }
+    return tc;
+  }).toList();
+
+  return EventProcessingResult(
+    conversation: conversation.copyWith(toolCalls: updatedToolCalls),
+    streaming: streaming,
+  );
 }
 
 // State events - apply JSON Patch
