@@ -53,7 +53,11 @@ Future<void> runCli(List<String> args) async {
     logger: logger,
   );
 
-  final tracked = <AgentSession>[];
+  final ctx = _CliContext(
+    runtime: runtime,
+    api: bundle.api,
+    defaultRoom: room,
+  );
 
   stdout
     ..writeln('soliplex-cli connected to $host (room: $room)')
@@ -70,23 +74,39 @@ Future<void> runCli(List<String> args) async {
     await runtime.cancelAll();
   });
 
-  await _readLoop(
-    runtime: runtime,
-    api: bundle.api,
-    room: room,
-    tracked: tracked,
-  );
+  await _readLoop(ctx);
 
   await runtime.dispose();
   bundle.close();
 }
 
-Future<void> _readLoop({
-  required AgentRuntime runtime,
-  required SoliplexApi api,
-  required String room,
-  required List<AgentSession> tracked,
-}) async {
+class _CliContext {
+  _CliContext({
+    required this.runtime,
+    required this.api,
+    required this.defaultRoom,
+  });
+
+  final AgentRuntime runtime;
+  final SoliplexApi api;
+  final String defaultRoom;
+  final List<AgentSession> tracked = [];
+
+  /// Active thread per room: roomId → threadId.
+  final Map<String, String> threads = {};
+
+  String? threadFor(String roomId) => threads[roomId];
+
+  void setThread(String roomId, String threadId) {
+    threads[roomId] = threadId;
+  }
+
+  void clearThread(String roomId) {
+    threads.remove(roomId);
+  }
+}
+
+Future<void> _readLoop(_CliContext ctx) async {
   stdout.write('> ');
   await for (final line in stdin.transform(const SystemEncoding().decoder)) {
     final input = line.trim();
@@ -97,24 +117,15 @@ Future<void> _readLoop({
 
     if (input == '/quit' || input == '/q') break;
 
-    await _dispatch(
-      input: input,
-      runtime: runtime,
-      api: api,
-      room: room,
-      tracked: tracked,
-    );
+    await _dispatch(ctx: ctx, input: input);
 
     stdout.write('> ');
   }
 }
 
 Future<void> _dispatch({
+  required _CliContext ctx,
   required String input,
-  required AgentRuntime runtime,
-  required SoliplexApi api,
-  required String room,
-  required List<AgentSession> tracked,
 }) async {
   if (input == '/help' || input == '/?') {
     _printHelp();
@@ -132,28 +143,66 @@ Future<void> _dispatch({
   }
 
   if (input == '/rooms') {
-    await _listRooms(api);
+    await _listRooms(ctx.api);
     return;
   }
 
   if (input == '/sessions') {
-    _printSessions(runtime);
+    _printSessions(ctx.runtime);
+    return;
+  }
+
+  if (input == '/thread') {
+    _printThread(ctx);
+    return;
+  }
+
+  if (input == '/new') {
+    ctx.clearThread(ctx.defaultRoom);
+    stdout.writeln('Cleared thread for room "${ctx.defaultRoom}".');
+    return;
+  }
+
+  if (input.startsWith('/new ')) {
+    final rest = input.substring('/new '.length).trim();
+    if (rest.isEmpty) {
+      stdout.writeln('Usage: /new [roomId] [prompt]');
+      return;
+    }
+    final spaceIdx = rest.indexOf(' ');
+    if (spaceIdx == -1) {
+      // /new <roomId> — just clear the thread.
+      ctx.clearThread(rest);
+      stdout.writeln('Cleared thread for room "$rest".');
+      return;
+    }
+    // /new <roomId> <prompt> — clear thread and send prompt.
+    final roomId = rest.substring(0, spaceIdx);
+    final prompt = rest.substring(spaceIdx + 1).trim();
+    if (prompt.isEmpty) {
+      ctx.clearThread(roomId);
+      stdout.writeln('Cleared thread for room "$roomId".');
+      return;
+    }
+    ctx.clearThread(roomId);
+    stdout.writeln('New thread in room "$roomId".');
+    await _sendAndWait(ctx, roomId, prompt);
     return;
   }
 
   if (input == '/waitall') {
-    await _waitAll(runtime, tracked);
+    await _waitAll(ctx.runtime, ctx.tracked);
     return;
   }
 
   if (input == '/waitany') {
-    await _waitAny(runtime, tracked);
+    await _waitAny(ctx.runtime, ctx.tracked);
     return;
   }
 
   if (input == '/cancel') {
-    await runtime.cancelAll();
-    tracked.clear();
+    await ctx.runtime.cancelAll();
+    ctx.tracked.clear();
     stdout.writeln('All sessions cancelled.');
     return;
   }
@@ -164,31 +213,39 @@ Future<void> _dispatch({
       stdout.writeln('Usage: /spawn <prompt>');
       return;
     }
-    await _spawnBackground(runtime, room, prompt, tracked);
+    await _spawnBackground(ctx, prompt);
     return;
   }
 
   if (input.startsWith('/room ')) {
-    final prompt = input.substring('/room '.length).trim();
-    await _sendToRoom(runtime, prompt);
+    final rest = input.substring('/room '.length).trim();
+    await _sendToRoom(ctx, rest);
     return;
   }
 
-  // Bare text → send prompt, wait for result.
-  await _sendAndWait(runtime, room, input);
+  // Bare text → send to default room, reuse thread.
+  await _sendAndWait(ctx, ctx.defaultRoom, input);
 }
 
 Future<void> _sendAndWait(
-  AgentRuntime runtime,
+  _CliContext ctx,
   String room,
   String prompt,
 ) async {
-  stdout.writeln('Spawning session...');
+  final existingThread = ctx.threadFor(room);
+  final label = existingThread != null
+      ? 'Continuing thread ${_short(existingThread)}...'
+      : 'Starting new thread...';
+  stdout.writeln(label);
+
   try {
-    final session = await runtime.spawn(
+    final session = await ctx.runtime.spawn(
       roomId: room,
       prompt: prompt,
+      threadId: existingThread,
+      ephemeral: false,
     );
+    ctx.setThread(room, session.threadKey.threadId);
     final result = await session.awaitResult(
       timeout: const Duration(seconds: 120),
     );
@@ -198,29 +255,23 @@ Future<void> _sendAndWait(
   }
 }
 
-Future<void> _spawnBackground(
-  AgentRuntime runtime,
-  String room,
-  String prompt,
-  List<AgentSession> tracked,
-) async {
+Future<void> _spawnBackground(_CliContext ctx, String prompt) async {
   try {
-    final session = await runtime.spawn(
-      roomId: room,
+    final session = await ctx.runtime.spawn(
+      roomId: ctx.defaultRoom,
       prompt: prompt,
     );
-    tracked.add(session);
+    ctx.tracked.add(session);
     stdout.writeln(
-      'Spawned session ${session.id} '
-      '(${tracked.length} tracked)',
+      'Spawned session ${_short(session.threadKey.threadId)} '
+      '(${ctx.tracked.length} tracked)',
     );
   } on Object catch (e) {
     stdout.writeln('Error spawning: $e');
   }
 }
 
-Future<void> _sendToRoom(AgentRuntime runtime, String input) async {
-  // Parse: <room> <prompt>
+Future<void> _sendToRoom(_CliContext ctx, String input) async {
   final spaceIdx = input.indexOf(' ');
   if (spaceIdx == -1) {
     stdout.writeln('Usage: /room <roomId> <prompt>');
@@ -232,19 +283,7 @@ Future<void> _sendToRoom(AgentRuntime runtime, String input) async {
     stdout.writeln('Usage: /room <roomId> <prompt>');
     return;
   }
-  stdout.writeln('Sending to room "$targetRoom"...');
-  try {
-    final session = await runtime.spawn(
-      roomId: targetRoom,
-      prompt: prompt,
-    );
-    final result = await session.awaitResult(
-      timeout: const Duration(seconds: 120),
-    );
-    stdout.writeln(formatResult(result));
-  } on Object catch (e) {
-    stdout.writeln('Error: $e');
-  }
+  await _sendAndWait(ctx, targetRoom, prompt);
 }
 
 Future<void> _waitAll(
@@ -317,19 +356,33 @@ void _printSessions(AgentRuntime runtime) {
   }
   for (final s in sessions) {
     stdout.writeln(
-      '  ${s.id}  state=${s.state}  '
-      'room=${s.threadKey.roomId}',
+      '  ${_short(s.threadKey.threadId)}  '
+      'state=${s.state}  room=${s.threadKey.roomId}',
     );
   }
 }
 
+void _printThread(_CliContext ctx) {
+  if (ctx.threads.isEmpty) {
+    stdout.writeln('No active threads.');
+    return;
+  }
+  for (final entry in ctx.threads.entries) {
+    stdout.writeln('  ${entry.key} → ${_short(entry.value)}');
+  }
+}
+
+String _short(String id) => id.length > 12 ? '${id.substring(0, 12)}...' : id;
+
 void _printHelp() {
   stdout.writeln('''
 Commands:
-  <text>                   Send prompt to default room, wait for result
-  /spawn <text>            Spawn background session in default room
+  <text>                   Send prompt (continues current thread)
+  /spawn <text>            Spawn background session (new thread)
   /room <roomId> <text>    Send prompt to a specific room
-  /sessions                List active sessions
+  /new [roomId] [prompt]   Start a fresh thread (optionally send prompt)
+  /thread                  Show active threads per room
+  /sessions                List active background sessions
   /waitall                 Wait for all background sessions
   /waitany                 Wait for first to complete
   /cancel                  Cancel all sessions
@@ -343,53 +396,61 @@ Commands:
 
 void _printExamples() {
   stdout.writeln('''
---- 1. Basic prompt (echo lifecycle) ---
+--- 1. Conversational thread (runs reuse the same thread) ---
   > Hello, how are you?
-  Spawns a session, waits, prints SUCCESS with the response.
+  > What did I just say?
+  Second prompt continues on the same thread.
 
---- 2. Tool call (secret_number) ---
+--- 2. Start a fresh thread ---
+  > /new
+  > Hello again!
+  Clears the thread for the default room, next prompt creates a new one.
+
+--- 2b. New thread with immediate prompt ---
+  > /new plain What is the meaning of life?
+  Clears the thread for "plain" and sends the prompt in one step.
+
+--- 3. Tool call (secret_number) ---
   > Call the secret_number tool and tell me what it returns
   Agent calls secret_number, CLI auto-executes it (returns "42"),
   agent incorporates the result.
 
---- 3. Multi-tool (chained) ---
+--- 4. Multi-tool (chained) ---
   > First echo "hello world", then call secret_number, summarize both
   Agent chains echo + secret_number, CLI auto-executes each.
 
---- 4. Target a different room ---
+--- 5. Target a different room ---
   > /room echo-room Just say hi
-  > /room tool-call-room Use the secret_number tool
+  > /room echo-room What did I just say?
+  Both prompts share the same thread in echo-room.
 
---- 5. Parallel spawn + waitAll ---
+--- 6. Parallel spawn + waitAll ---
   > /spawn Tell me a joke
   > /spawn What is 2+2?
   > /spawn Echo the word "alpha"
   > /sessions
   > /waitall
-  Spawns 3 background sessions, /sessions shows them,
-  /waitall blocks until all complete.
+  Each /spawn gets its own ephemeral thread.
 
---- 6. Parallel spawn + waitAny (race) ---
+--- 7. Parallel spawn + waitAny (race) ---
   > /spawn Write a haiku about the ocean
   > /spawn Say hello
   > /waitany
   > /waitany
-  First /waitany returns whichever finishes first.
-  Second /waitany returns the remaining one.
 
---- 7. Cancel ---
+--- 8. Cancel ---
   > /spawn Write a very long essay about computing
-  > /spawn Another long essay about marine biology
   > /sessions
   > /cancel
   > /sessions
-  Shows sessions active, cancels all, confirms empty.
 
---- 8. List rooms ---
-  > /rooms
-  Prints all backend rooms with id + name.
+--- 9. Show active threads ---
+  > Hello!
+  > /room echo-room Hi there
+  > /thread
+  Shows: plain -> <threadId>, echo-room -> <threadId>
 
---- 9. SIGINT cancel ---
+--- 10. SIGINT cancel ---
   > /spawn Some long running task
   Press Ctrl+C once to cancel gracefully.
   Press Ctrl+C again to force-exit.
