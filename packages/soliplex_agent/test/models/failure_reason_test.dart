@@ -3,8 +3,8 @@ import 'package:test/test.dart';
 
 void main() {
   group('FailureReason', () {
-    test('has exactly 6 values', () {
-      expect(FailureReason.values, hasLength(6));
+    test('has exactly 7 values', () {
+      expect(FailureReason.values, hasLength(7));
     });
 
     test('contains all expected values', () {
@@ -17,6 +17,7 @@ void main() {
           FailureReason.rateLimited,
           FailureReason.toolExecutionFailed,
           FailureReason.internalError,
+          FailureReason.cancelled,
         ]),
       );
     });

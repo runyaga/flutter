@@ -16,4 +16,7 @@ export 'src/models/thread_key.dart';
 export 'src/run/error_classifier.dart';
 export 'src/run/run_orchestrator.dart';
 export 'src/run/run_state.dart';
+export 'src/runtime/agent_runtime.dart';
+export 'src/runtime/agent_session.dart';
+export 'src/runtime/agent_session_state.dart';
 export 'src/tools/tool_registry_resolver.dart';

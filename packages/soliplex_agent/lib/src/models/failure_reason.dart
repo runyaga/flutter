@@ -21,4 +21,7 @@ enum FailureReason {
 
   /// Internal error in the orchestrator itself.
   internalError,
+
+  /// Run was cancelled by the caller.
+  cancelled,
 }
