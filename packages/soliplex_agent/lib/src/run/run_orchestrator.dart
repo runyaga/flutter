@@ -12,6 +12,30 @@ import 'package:soliplex_logging/soliplex_logging.dart';
 ///
 /// State machine: Idle -> Running -> Completed/Failed/Cancelled.
 /// Only one run at a time; concurrent `startRun()` throws [StateError].
+///
+/// ## Backend flow
+///
+/// The caller is responsible for creating the thread before calling
+/// [startRun]. Typical sequence:
+///
+/// ```dart
+/// // 1. Create thread (POST /rooms/{roomId}/agui)
+/// final (threadInfo, aguiState) = await api.createThread(roomId);
+///
+/// // 2. Build ThreadKey from server-assigned thread ID
+/// final key = (serverId: 'default', roomId: roomId, threadId: threadInfo.id);
+///
+/// // 3. Start orchestrator — creates a run (POST /rooms/{roomId}/agui/{threadId})
+/// //    or reuses initialRunId from createThread.
+/// await orchestrator.startRun(
+///   key: key,
+///   userMessage: 'Hello',
+///   existingRunId: threadInfo.hasInitialRun ? threadInfo.initialRunId : null,
+/// );
+/// ```
+///
+/// If `existingRunId` is provided, the orchestrator skips `createRun` and
+/// connects directly to the AG-UI SSE stream for that run.
 class RunOrchestrator {
   RunOrchestrator({
     required SoliplexApi api,
