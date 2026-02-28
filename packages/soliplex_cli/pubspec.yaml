@@ -1,0 +1,21 @@
+name: soliplex_cli
+description: CLI for exercising soliplex_agent against a live backend.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  args: ^2.4.0
+  soliplex_agent:
+    path: ../soliplex_agent
+  soliplex_client:
+    path: ../soliplex_client
+  soliplex_logging:
+    path: ../soliplex_logging
+
+dev_dependencies:
+  mocktail: ^1.0.0
+  test: ^1.24.0
+  very_good_analysis: ^10.0.0
