@@ -598,6 +598,70 @@ void main() {
     });
   });
 
+  group('cancel during async gap', () {
+    test('dispose during startRun await aborts', () async {
+      final createRunCompleter = Completer<RunInfo>();
+      when(() => api.createRun(any(), any())).thenAnswer(
+        (_) => createRunCompleter.future,
+      );
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      // Start run — will suspend on createRun.
+      unawaited(orchestrator.startRun(key: _key, userMessage: 'Hi'));
+      await Future<void>.delayed(Duration.zero);
+
+      // Dispose while awaiting createRun.
+      orchestrator.dispose();
+
+      // Complete the createRun after disposal.
+      createRunCompleter.complete(_runInfo());
+      await Future<void>.delayed(Duration.zero);
+
+      // Should not have subscribed to stream.
+      verifyNever(
+        () => agUiClient.runAgent(
+          any(),
+          any(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      );
+    });
+
+    test('cancelRun during submitToolOutputs await aborts', () async {
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: _registryWith(),
+        platformConstraints: const NativePlatformConstraints(),
+        logger: logger,
+      );
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_toolCallEvents()));
+
+      await orchestrator.startRun(key: _key, userMessage: 'Weather?');
+      await Future<void>.delayed(Duration.zero);
+      expect(orchestrator.currentState, isA<ToolYieldingState>());
+
+      // Make the resume createRun hang.
+      final resumeCompleter = Completer<RunInfo>();
+      when(() => api.createRun(any(), any())).thenAnswer(
+        (_) => resumeCompleter.future,
+      );
+
+      unawaited(orchestrator.submitToolOutputs(_executedTools()));
+      await Future<void>.delayed(Duration.zero);
+
+      // Cancel while awaiting resume createRun.
+      orchestrator.cancelRun();
+
+      // Complete the createRun after cancellation.
+      resumeCompleter.complete(_runInfo());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(orchestrator.currentState, isA<CancelledState>());
+    });
+  });
+
   group('dispose', () {
     test('cleans up resources', () async {
       orchestrator.dispose();

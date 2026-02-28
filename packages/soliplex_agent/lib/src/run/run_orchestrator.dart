@@ -124,6 +124,7 @@ class RunOrchestrator {
     _toolDepth = 0;
     try {
       final runId = await _createOrUseRun(key, existingRunId);
+      if (_disposedDuringAwait()) return;
       final conversation = _buildConversation(
         key,
         userMessage,
@@ -211,6 +212,7 @@ class RunOrchestrator {
     final conversation = _buildResumeConversation(yielding, executedTools);
     try {
       final newRunId = await _createOrUseRun(yielding.threadKey, null);
+      if (_interruptedDuringResume()) return;
       final input = _buildInput(yielding.threadKey, newRunId, conversation);
       final endpoint = _buildEndpoint(yielding.threadKey, newRunId);
       final initialState = RunningState(
@@ -256,6 +258,19 @@ class RunOrchestrator {
     if (_currentState is! ToolYieldingState) {
       throw StateError('Not in ToolYieldingState');
     }
+  }
+
+  /// Returns true if the orchestrator was disposed during an async gap.
+  ///
+  /// Use after `await` in [startRun] where the pre-await state is [IdleState].
+  bool _disposedDuringAwait() => _disposed;
+
+  /// Returns true if the state was changed during an async gap.
+  ///
+  /// Use after `await` in [submitToolOutputs] where the pre-await state is
+  /// [ToolYieldingState]. Detects cancel, reset, or dispose.
+  bool _interruptedDuringResume() {
+    return _disposed || _currentState is! ToolYieldingState;
   }
 
   List<ToolCallInfo> _extractPendingTools(Conversation conversation) {
