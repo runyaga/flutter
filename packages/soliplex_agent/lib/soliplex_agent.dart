@@ -5,6 +5,11 @@
 /// `soliplex_logging` — no Flutter imports allowed.
 library;
 
+export 'src/host/fake_host_api.dart';
+export 'src/host/host_api.dart';
+export 'src/host/native_platform_constraints.dart';
+export 'src/host/platform_constraints.dart';
+export 'src/host/web_platform_constraints.dart';
 export 'src/models/agent_result.dart';
 export 'src/models/failure_reason.dart';
 export 'src/models/thread_key.dart';
