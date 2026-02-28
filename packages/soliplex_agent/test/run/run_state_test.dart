@@ -228,6 +228,62 @@ void main() {
     });
   });
 
+  group('ToolYieldingState', () {
+    final pendingTools = [
+      const ToolCallInfo(id: 'tc-1', name: 'search'),
+    ];
+
+    test('equality with same fields', () {
+      final stateA = ToolYieldingState(
+        threadKey: _key,
+        runId: 'run-1',
+        conversation: conversation,
+        pendingToolCalls: pendingTools,
+        toolDepth: 0,
+      );
+      final stateB = ToolYieldingState(
+        threadKey: _key,
+        runId: 'run-1',
+        conversation: conversation,
+        pendingToolCalls: pendingTools,
+        toolDepth: 0,
+      );
+      expect(stateA, equals(stateB));
+    });
+
+    test('inequality with different toolDepth', () {
+      final stateA = ToolYieldingState(
+        threadKey: _key,
+        runId: 'run-1',
+        conversation: conversation,
+        pendingToolCalls: pendingTools,
+        toolDepth: 0,
+      );
+      final stateB = ToolYieldingState(
+        threadKey: _key,
+        runId: 'run-1',
+        conversation: conversation,
+        pendingToolCalls: pendingTools,
+        toolDepth: 1,
+      );
+      expect(stateA, isNot(equals(stateB)));
+    });
+
+    test('toString includes runId, pending count, and depth', () {
+      final state = ToolYieldingState(
+        threadKey: _key,
+        runId: 'run-1',
+        conversation: conversation,
+        pendingToolCalls: pendingTools,
+        toolDepth: 2,
+      );
+      final str = state.toString();
+      expect(str, contains('run-1'));
+      expect(str, contains('pending: 1'));
+      expect(str, contains('depth: 2'));
+    });
+  });
+
   group('exhaustive switch', () {
     test('all subtypes are matchable', () {
       final states = <RunState>[
@@ -243,6 +299,13 @@ void main() {
           runId: 'run-1',
           conversation: conversation,
         ),
+        ToolYieldingState(
+          threadKey: _key,
+          runId: 'run-1',
+          conversation: conversation,
+          pendingToolCalls: const [],
+          toolDepth: 0,
+        ),
         const FailedState(
           threadKey: _key,
           reason: FailureReason.internalError,
@@ -256,6 +319,7 @@ void main() {
           IdleState() => 'idle',
           RunningState() => 'running',
           CompletedState() => 'completed',
+          ToolYieldingState() => 'yielding',
           FailedState() => 'failed',
           CancelledState() => 'cancelled',
         };

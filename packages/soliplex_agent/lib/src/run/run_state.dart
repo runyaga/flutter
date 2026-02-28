@@ -15,6 +15,8 @@ import 'package:soliplex_client/soliplex_client.dart';
 ///     // Stream connected
 ///   case CompletedState(:final threadKey, :final runId):
 ///     // RunFinished received
+///   case ToolYieldingState(:final pendingToolCalls):
+///     // Waiting for client-side tool execution
 ///   case FailedState(:final reason, :final error):
 ///     // Error occurred
 ///   case CancelledState(:final threadKey):
@@ -163,6 +165,71 @@ class FailedState extends RunState {
   @override
   String toString() => 'FailedState(reason: $reason, error: $error, '
       'threadKey: $threadKey)';
+}
+
+/// Run yielded pending tool calls for client-side execution.
+///
+/// The orchestrator transitions here when `RunFinishedEvent` arrives with
+/// tool calls that are registered in the [ToolRegistry] (client-side tools).
+/// Server-side tool calls are not included in [pendingToolCalls].
+///
+/// The caller should:
+/// 1. Execute each tool in [pendingToolCalls] via `ToolRegistry.execute()`.
+/// 2. Build executed results with `ToolCallStatus.completed` or `.failed`.
+/// 3. Call `RunOrchestrator.submitToolOutputs(executedTools)` to resume.
+///
+/// Calling `cancelRun()` during this state transitions to [CancelledState].
+/// Calling `startRun()` during this state throws [StateError].
+@immutable
+class ToolYieldingState extends RunState {
+  const ToolYieldingState({
+    required this.threadKey,
+    required this.runId,
+    required this.conversation,
+    required this.pendingToolCalls,
+    required this.toolDepth,
+  });
+
+  /// The thread this run belongs to.
+  final ThreadKey threadKey;
+
+  /// The backend run ID.
+  final String runId;
+
+  /// Conversation state at yield point.
+  final Conversation conversation;
+
+  /// Client-side tool calls ready to execute.
+  final List<ToolCallInfo> pendingToolCalls;
+
+  /// Number of yield/resume cycles completed (0 = first yield).
+  final int toolDepth;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ToolYieldingState &&
+          threadKey == other.threadKey &&
+          runId == other.runId &&
+          conversation == other.conversation &&
+          toolDepth == other.toolDepth &&
+          _listEquals(pendingToolCalls, other.pendingToolCalls);
+
+  @override
+  int get hashCode => Object.hash(threadKey, runId, conversation, toolDepth);
+
+  @override
+  String toString() => 'ToolYieldingState(runId: $runId, '
+      'pending: ${pendingToolCalls.length}, depth: $toolDepth)';
+}
+
+bool _listEquals<T>(List<T> a, List<T> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
 
 /// Run was cancelled by the user.

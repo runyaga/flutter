@@ -46,6 +46,41 @@ List<BaseEvent> _happyPathEvents() => [
       const RunFinishedEvent(threadId: 'thread-1', runId: _runId),
     ];
 
+List<BaseEvent> _toolCallEvents({String toolName = 'weather'}) => [
+      const RunStartedEvent(threadId: 'thread-1', runId: _runId),
+      ToolCallStartEvent(toolCallId: 'tc-1', toolCallName: toolName),
+      const ToolCallArgsEvent(toolCallId: 'tc-1', delta: '{"city":"NYC"}'),
+      const ToolCallEndEvent(toolCallId: 'tc-1'),
+      const RunFinishedEvent(threadId: 'thread-1', runId: _runId),
+    ];
+
+List<BaseEvent> _resumeTextEvents() => [
+      const RunStartedEvent(threadId: 'thread-1', runId: _runId),
+      const TextMessageStartEvent(messageId: 'msg-2'),
+      const TextMessageContentEvent(messageId: 'msg-2', delta: 'Sunny'),
+      const TextMessageEndEvent(messageId: 'msg-2'),
+      const RunFinishedEvent(threadId: 'thread-1', runId: _runId),
+    ];
+
+ToolRegistry _registryWith({String toolName = 'weather'}) {
+  return const ToolRegistry().register(
+    ClientTool(
+      definition: Tool(name: toolName, description: 'A test tool'),
+      executor: (_) async => 'result',
+    ),
+  );
+}
+
+List<ToolCallInfo> _executedTools() => [
+      const ToolCallInfo(
+        id: 'tc-1',
+        name: 'weather',
+        arguments: '{"city":"NYC"}',
+        status: ToolCallStatus.completed,
+        result: '72°F, sunny',
+      ),
+    ];
+
 void main() {
   setUpAll(() {
     registerFallbackValue(_FakeSimpleRunAgentInput());
@@ -303,6 +338,263 @@ void main() {
       orchestrator.reset();
 
       expect(orchestrator.currentState, isA<IdleState>());
+    });
+  });
+
+  group('tool yielding', () {
+    test('pending client tools → ToolYieldingState', () async {
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: _registryWith(),
+        platformConstraints: const NativePlatformConstraints(),
+        logger: logger,
+      );
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_toolCallEvents()));
+
+      await orchestrator.startRun(key: _key, userMessage: 'Weather?');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(orchestrator.currentState, isA<ToolYieldingState>());
+      final yielding = orchestrator.currentState as ToolYieldingState;
+      expect(yielding.pendingToolCalls, hasLength(1));
+      expect(yielding.pendingToolCalls.first.name, equals('weather'));
+      expect(yielding.toolDepth, equals(0));
+    });
+
+    test('no pending client tools → CompletedState', () async {
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_toolCallEvents()));
+
+      await orchestrator.startRun(key: _key, userMessage: 'Hi');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(orchestrator.currentState, isA<CompletedState>());
+    });
+
+    test('server-side tools (not in registry) → CompletedState', () async {
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: _registryWith(toolName: 'other_tool'),
+        platformConstraints: const NativePlatformConstraints(),
+        logger: logger,
+      );
+      stubCreateRun();
+      stubRunAgent(
+        stream: Stream.fromIterable(
+          _toolCallEvents(toolName: 'server_only_tool'),
+        ),
+      );
+
+      await orchestrator.startRun(key: _key, userMessage: 'Hi');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(orchestrator.currentState, isA<CompletedState>());
+    });
+  });
+
+  group('submitToolOutputs', () {
+    late int callCount;
+
+    void stubRunAgentSequential({
+      required Stream<BaseEvent> first,
+      required Stream<BaseEvent> second,
+    }) {
+      callCount = 0;
+      when(
+        () => agUiClient.runAgent(
+          any(),
+          any(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).thenAnswer((_) {
+        callCount++;
+        return callCount == 1 ? first : second;
+      });
+    }
+
+    test('resume → Running → Completed', () async {
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: _registryWith(),
+        platformConstraints: const NativePlatformConstraints(),
+        logger: logger,
+      );
+      stubCreateRun();
+      stubRunAgentSequential(
+        first: Stream.fromIterable(_toolCallEvents()),
+        second: Stream.fromIterable(_resumeTextEvents()),
+      );
+
+      await orchestrator.startRun(key: _key, userMessage: 'Weather?');
+      await Future<void>.delayed(Duration.zero);
+      expect(orchestrator.currentState, isA<ToolYieldingState>());
+
+      await orchestrator.submitToolOutputs(_executedTools());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(orchestrator.currentState, isA<CompletedState>());
+    });
+
+    test('throws when not in ToolYieldingState', () {
+      expect(
+        () => orchestrator.submitToolOutputs(_executedTools()),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('Not in ToolYieldingState'),
+          ),
+        ),
+      );
+    });
+
+    test('throws when disposed', () async {
+      orchestrator.dispose();
+      expect(
+        () => orchestrator.submitToolOutputs(_executedTools()),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('disposed'),
+          ),
+        ),
+      );
+    });
+  });
+
+  group('tool chain', () {
+    test('2 rounds of yield/submit/resume', () async {
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: _registryWith(),
+        platformConstraints: const NativePlatformConstraints(),
+        logger: logger,
+      );
+      stubCreateRun();
+      var callCount = 0;
+      when(
+        () => agUiClient.runAgent(
+          any(),
+          any(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).thenAnswer((_) {
+        callCount++;
+        if (callCount <= 2) {
+          return Stream.fromIterable(_toolCallEvents());
+        }
+        return Stream.fromIterable(_resumeTextEvents());
+      });
+
+      await orchestrator.startRun(key: _key, userMessage: 'Weather?');
+      await Future<void>.delayed(Duration.zero);
+      expect(orchestrator.currentState, isA<ToolYieldingState>());
+      final yield1 = orchestrator.currentState as ToolYieldingState;
+      expect(yield1.toolDepth, equals(0));
+
+      await orchestrator.submitToolOutputs(_executedTools());
+      await Future<void>.delayed(Duration.zero);
+      expect(orchestrator.currentState, isA<ToolYieldingState>());
+      final yield2 = orchestrator.currentState as ToolYieldingState;
+      expect(yield2.toolDepth, equals(1));
+
+      await orchestrator.submitToolOutputs(_executedTools());
+      await Future<void>.delayed(Duration.zero);
+      expect(orchestrator.currentState, isA<CompletedState>());
+    });
+  });
+
+  group('depth limit', () {
+    test('exceed max → FailedState(toolExecutionFailed)', () async {
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: _registryWith(),
+        platformConstraints: const NativePlatformConstraints(),
+        logger: logger,
+      );
+      stubCreateRun();
+      when(
+        () => agUiClient.runAgent(
+          any(),
+          any(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).thenAnswer((_) => Stream.fromIterable(_toolCallEvents()));
+
+      await orchestrator.startRun(key: _key, userMessage: 'Weather?');
+      await Future<void>.delayed(Duration.zero);
+
+      for (var i = 0; i < 10; i++) {
+        expect(orchestrator.currentState, isA<ToolYieldingState>());
+        await orchestrator.submitToolOutputs(_executedTools());
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(orchestrator.currentState, isA<ToolYieldingState>());
+      await orchestrator.submitToolOutputs(_executedTools());
+
+      expect(orchestrator.currentState, isA<FailedState>());
+      final failed = orchestrator.currentState as FailedState;
+      expect(failed.reason, equals(FailureReason.toolExecutionFailed));
+      expect(failed.error, contains('depth limit'));
+    });
+  });
+
+  group('cancel during yield', () {
+    test('cancelRun → CancelledState', () async {
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: _registryWith(),
+        platformConstraints: const NativePlatformConstraints(),
+        logger: logger,
+      );
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_toolCallEvents()));
+
+      await orchestrator.startRun(key: _key, userMessage: 'Weather?');
+      await Future<void>.delayed(Duration.zero);
+      expect(orchestrator.currentState, isA<ToolYieldingState>());
+
+      orchestrator.cancelRun();
+
+      expect(orchestrator.currentState, isA<CancelledState>());
+      final cancelled = orchestrator.currentState as CancelledState;
+      expect(cancelled.conversation, isNotNull);
+    });
+
+    test('startRun blocked during ToolYieldingState', () async {
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: _registryWith(),
+        platformConstraints: const NativePlatformConstraints(),
+        logger: logger,
+      );
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_toolCallEvents()));
+
+      await orchestrator.startRun(key: _key, userMessage: 'Weather?');
+      await Future<void>.delayed(Duration.zero);
+      expect(orchestrator.currentState, isA<ToolYieldingState>());
+
+      expect(
+        () => orchestrator.startRun(key: _key, userMessage: 'Again'),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('already active'),
+          ),
+        ),
+      );
     });
   });
 

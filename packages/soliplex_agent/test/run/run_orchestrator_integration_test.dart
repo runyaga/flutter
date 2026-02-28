@@ -14,13 +14,12 @@ import 'package:test/test.dart';
 /// ------------------------------------------------------------------
 /// Integration test: RunOrchestrator ↔ real Soliplex backend
 ///
-/// Validates M4 state machine against a live AG-UI SSE stream.
-/// No Monty, no tool yielding — just the orchestrator processing
-/// real server events.
+/// Validates M4 state machine and M5 tool yielding against a live
+/// AG-UI SSE stream.
 ///
 /// Prerequisites:
 ///   1. A running Soliplex backend (local or remote, --no-auth-mode OK)
-///   2. A room that streams TEXT events (no tool calls required)
+///   2. The `plain` room with `get_current_datetime` server-side tool
 ///
 /// Run:
 ///   SOLIPLEX_BASE_URL=http://localhost:8000 \
@@ -192,26 +191,132 @@ void main() {
 
       expect(run4.runId, isNot(equals(run3.runId)));
     });
+  });
 
-    test('cancel mid-stream transitions to CancelledState',
-        skip: 'Backend does not support cancellation yet', () async {
-      await orchestrator.startRun(
-        key: sharedKey,
-        userMessage: 'Write a detailed 500 word essay about the history '
-            'of computing.',
+  group('M5 integration: tool yielding', () {
+    late ThreadKey m5Key;
+    late ToolRegistry toolRegistry;
+
+    setUpAll(() async {
+      // Separate thread for M5 tests — clean conversation history.
+      final (threadInfo, _) = await api.createThread(roomId);
+      print('Created M5 thread: ${threadInfo.id}');
+      m5Key = (
+        serverId: 'default',
+        roomId: roomId,
+        threadId: threadInfo.id,
       );
 
-      await _waitForState<RunningState>(orchestrator, timeout: 15);
-      expect(orchestrator.currentState, isA<RunningState>());
+      // Client-side tool: secret_number returns "42".
+      toolRegistry = const ToolRegistry().register(
+        ClientTool(
+          definition: const Tool(
+            name: 'secret_number',
+            description: 'Returns the secret number.',
+            parameters: <String, dynamic>{
+              'type': 'object',
+              'properties': <String, dynamic>{},
+            },
+          ),
+          executor: (_) async => '42',
+        ),
+      );
+    });
 
-      print('Cancelling mid-stream...');
-      orchestrator.cancelRun();
+    setUp(() {
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: toolRegistry,
+        platformConstraints: const NativePlatformConstraints(),
+        logger: _createTestLogger('m5-integration'),
+      );
+    });
 
-      expect(orchestrator.currentState, isA<CancelledState>());
-      final cancelled = orchestrator.currentState as CancelledState;
-      expect(cancelled.threadKey, equals(sharedKey));
-      print('Cancelled. Partial messages: '
-          '${cancelled.conversation?.messages.length ?? 0}');
+    test('Running → ToolYielding → submit → Completed', () async {
+      final states = <RunState>[];
+      orchestrator.stateChanges.listen(states.add);
+
+      print('Starting M5 run: thread=${m5Key.threadId}');
+      await orchestrator.startRun(
+        key: m5Key,
+        userMessage: 'Call the secret_number tool and tell me the result.',
+      );
+
+      // Wait for either ToolYielding or terminal state.
+      await _waitForYieldOrTerminal(orchestrator, timeout: 60);
+      print(
+        'States so far: ${states.map((s) => s.runtimeType).toList()}',
+      );
+
+      expect(
+        orchestrator.currentState,
+        isA<ToolYieldingState>(),
+        reason: 'Model should call the secret_number client tool',
+      );
+
+      final yielding = orchestrator.currentState as ToolYieldingState;
+      print(
+        'Yielded ${yielding.pendingToolCalls.length} tool(s): '
+        '${yielding.pendingToolCalls.map((t) => t.name).toList()}',
+      );
+      expect(yielding.pendingToolCalls, hasLength(1));
+      expect(yielding.pendingToolCalls.first.name, equals('secret_number'));
+      expect(yielding.toolDepth, equals(0));
+
+      // Execute tool and submit results.
+      final executed = yielding.pendingToolCalls
+          .map(
+            (tc) => tc.copyWith(
+              status: ToolCallStatus.completed,
+              result: '42',
+            ),
+          )
+          .toList();
+
+      print('Submitting tool outputs...');
+      await orchestrator.submitToolOutputs(executed);
+      await _waitForTerminalState(orchestrator, timeout: 60);
+
+      expect(orchestrator.currentState, isA<CompletedState>());
+      final completed = orchestrator.currentState as CompletedState;
+      print('M5 completed. Response: '
+          '${_lastAssistantText(completed.conversation)}');
+
+      // The model should mention "42" in its response.
+      final responseText = _lastAssistantText(completed.conversation);
+      expect(
+        responseText.toLowerCase(),
+        contains('42'),
+        reason: 'Response should include the secret number',
+      );
+    });
+
+    test('server-side tools do not trigger yielding', () async {
+      // Use empty registry — no client tools. Server-side
+      // get_current_datetime should not cause ToolYieldingState.
+      orchestrator = RunOrchestrator(
+        api: api,
+        agUiClient: agUiClient,
+        toolRegistry: const ToolRegistry(),
+        platformConstraints: const NativePlatformConstraints(),
+        logger: _createTestLogger('m5-server-tools'),
+      );
+
+      await orchestrator.startRun(
+        key: m5Key,
+        userMessage: 'What time is it right now?',
+      );
+      await _waitForTerminalState(orchestrator, timeout: 60);
+
+      expect(
+        orchestrator.currentState,
+        isA<CompletedState>(),
+        reason: 'Server-side tool calls should not yield',
+      );
+      final completed = orchestrator.currentState as CompletedState;
+      print('Server-side tool test completed: '
+          '${_lastAssistantText(completed.conversation)}');
     });
   });
 }
@@ -219,6 +324,37 @@ void main() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/// Waits until the orchestrator reaches [ToolYieldingState] or a terminal
+/// state, whichever comes first.
+Future<void> _waitForYieldOrTerminal(
+  RunOrchestrator orchestrator, {
+  required int timeout,
+}) async {
+  final completer = Completer<void>();
+  final sub = orchestrator.stateChanges.listen((state) {
+    if (state is ToolYieldingState ||
+        state is CompletedState ||
+        state is FailedState ||
+        state is CancelledState) {
+      if (!completer.isCompleted) completer.complete();
+    }
+  });
+
+  try {
+    await completer.future.timeout(
+      Duration(seconds: timeout),
+      onTimeout: () {
+        throw TimeoutException(
+          'Orchestrator did not yield or terminate within ${timeout}s. '
+          'Current state: ${orchestrator.currentState.runtimeType}',
+        );
+      },
+    );
+  } finally {
+    await sub.cancel();
+  }
+}
 
 /// Waits until the orchestrator reaches a terminal state (Completed, Failed,
 /// or Cancelled), or throws on timeout.
@@ -241,32 +377,6 @@ Future<void> _waitForTerminalState(
       onTimeout: () {
         throw TimeoutException(
           'Orchestrator did not reach terminal state within ${timeout}s. '
-          'Current state: ${orchestrator.currentState.runtimeType}',
-        );
-      },
-    );
-  } finally {
-    await sub.cancel();
-  }
-}
-
-/// Waits until the orchestrator reaches a specific state type.
-Future<void> _waitForState<T extends RunState>(
-  RunOrchestrator orchestrator, {
-  required int timeout,
-}) async {
-  if (orchestrator.currentState is T) return;
-  final completer = Completer<void>();
-  final sub = orchestrator.stateChanges.listen((state) {
-    if (state is T && !completer.isCompleted) completer.complete();
-  });
-
-  try {
-    await completer.future.timeout(
-      Duration(seconds: timeout),
-      onTimeout: () {
-        throw TimeoutException(
-          'Orchestrator did not reach $T within ${timeout}s. '
           'Current state: ${orchestrator.currentState.runtimeType}',
         );
       },

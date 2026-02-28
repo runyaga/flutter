@@ -10,7 +10,7 @@ import 'package:soliplex_logging/soliplex_logging.dart';
 
 /// Orchestrates a single AG-UI run lifecycle.
 ///
-/// State machine: Idle -> Running -> Completed/Failed/Cancelled.
+/// State machine: Idle -> Running -> Completed/ToolYielding/Failed/Cancelled.
 /// Only one run at a time; concurrent `startRun()` throws [StateError].
 ///
 /// ## Backend flow
@@ -36,6 +36,43 @@ import 'package:soliplex_logging/soliplex_logging.dart';
 ///
 /// If `existingRunId` is provided, the orchestrator skips `createRun` and
 /// connects directly to the AG-UI SSE stream for that run.
+///
+/// ## Tool yielding
+///
+/// When a `RunFinishedEvent` arrives with pending client-side tool calls
+/// (tools registered in the [ToolRegistry]), the orchestrator transitions
+/// to [ToolYieldingState] instead of [CompletedState]. Server-side tool
+/// calls (not in the registry) are ignored — they are executed by the
+/// backend and appear in the event stream for display only.
+///
+/// The caller executes the pending tools, then calls [submitToolOutputs]
+/// with results. This creates a **new backend run** (the backend rejects
+/// re-posting to an existing run ID) and reconnects the AG-UI stream.
+/// The cycle repeats until no pending client tools remain or the depth
+/// limit (10) is hit.
+///
+/// ```dart
+/// orchestrator.stateChanges.listen((state) {
+///   switch (state) {
+///     case ToolYieldingState(:final pendingToolCalls):
+///       // Execute each tool via ToolRegistry.execute(), then:
+///       final executed = pendingToolCalls.map((tc) => tc.copyWith(
+///         status: ToolCallStatus.completed,
+///         result: toolResult,
+///       )).toList();
+///       orchestrator.submitToolOutputs(executed);
+///     case CompletedState(:final conversation):
+///       // Done — display final response
+///     case FailedState(:final reason, :final error):
+///       // Handle error
+///     case _:
+///       break;
+///   }
+/// });
+/// ```
+///
+/// **Important:** Each [Tool] definition must include a `parameters` field
+/// (JSON Schema). The backend rejects tool definitions without it.
 class RunOrchestrator {
   RunOrchestrator({
     required SoliplexApi api,
@@ -52,9 +89,11 @@ class RunOrchestrator {
   final AgUiClient _agUiClient;
   final ToolRegistry _toolRegistry;
 
-  /// Platform capabilities (used in M5 for tool yielding decisions).
+  /// Platform capabilities for tool yielding decisions.
   final PlatformConstraints platformConstraints;
   final Logger _logger;
+
+  static const _maxToolDepth = 10;
 
   final StreamController<RunState> _controller =
       StreamController<RunState>.broadcast();
@@ -64,6 +103,7 @@ class RunOrchestrator {
   CancelToken? _cancelToken;
   StreamSubscription<BaseEvent>? _subscription;
   bool _receivedTerminalEvent = false;
+  int _toolDepth = 0;
 
   /// The current state of the orchestrator.
   RunState get currentState => _currentState;
@@ -81,6 +121,7 @@ class RunOrchestrator {
     ThreadHistory? cachedHistory,
   }) async {
     _guardNotRunning();
+    _toolDepth = 0;
     try {
       final runId = await _createOrUseRun(key, existingRunId);
       final conversation = _buildConversation(
@@ -105,16 +146,20 @@ class RunOrchestrator {
   /// Cancels the current run. No-op if idle.
   void cancelRun() {
     _guardNotDisposed();
-    if (_currentState is! RunningState) return;
-    final running = _currentState as RunningState;
-    _cancelToken?.cancel();
-    _cleanup();
-    _setState(
-      CancelledState(
-        threadKey: running.threadKey,
-        conversation: running.conversation,
-      ),
-    );
+    switch (_currentState) {
+      case RunningState(:final threadKey, :final conversation):
+        _cancelToken?.cancel();
+        _cleanup();
+        _setState(
+          CancelledState(threadKey: threadKey, conversation: conversation),
+        );
+      case ToolYieldingState(:final threadKey, :final conversation):
+        _setState(
+          CancelledState(threadKey: threadKey, conversation: conversation),
+        );
+      case _:
+        return;
+    }
   }
 
   /// Resets to [IdleState], cancelling any active run.
@@ -134,10 +179,50 @@ class RunOrchestrator {
       reset();
       return;
     }
-    if (_currentState is RunningState) {
+    if (_currentState is RunningState || _currentState is ToolYieldingState) {
       throw StateError('Cannot sync while a run is active');
     }
     _setState(const IdleState());
+  }
+
+  /// Submits executed tool results and resumes the agent.
+  ///
+  /// Creates a **new backend run** for the continuation — the backend
+  /// rejects re-posting to an existing run ID. The full conversation
+  /// (including a [ToolCallMessage] with results) is sent so the model
+  /// sees the tool output and can respond.
+  ///
+  /// Throws [StateError] if not in [ToolYieldingState] or disposed.
+  Future<void> submitToolOutputs(List<ToolCallInfo> executedTools) async {
+    _guardSubmitToolOutputs();
+    final yielding = _currentState as ToolYieldingState;
+    _toolDepth++;
+    if (_toolDepth > _maxToolDepth) {
+      _setState(
+        FailedState(
+          threadKey: yielding.threadKey,
+          reason: FailureReason.toolExecutionFailed,
+          error: 'Tool depth limit exceeded ($_maxToolDepth)',
+          conversation: yielding.conversation,
+        ),
+      );
+      return;
+    }
+    final conversation = _buildResumeConversation(yielding, executedTools);
+    try {
+      final newRunId = await _createOrUseRun(yielding.threadKey, null);
+      final input = _buildInput(yielding.threadKey, newRunId, conversation);
+      final endpoint = _buildEndpoint(yielding.threadKey, newRunId);
+      final initialState = RunningState(
+        threadKey: yielding.threadKey,
+        runId: newRunId,
+        conversation: conversation,
+        streaming: const AwaitingText(),
+      );
+      _subscribeToStream(endpoint, input, initialState);
+    } on Object catch (error, stackTrace) {
+      _handleStartError(yielding.threadKey, error, stackTrace);
+    }
   }
 
   /// Releases all resources. Must be called when done.
@@ -155,7 +240,7 @@ class RunOrchestrator {
 
   void _guardNotRunning() {
     _guardNotDisposed();
-    if (_currentState is RunningState) {
+    if (_currentState is RunningState || _currentState is ToolYieldingState) {
       throw StateError('A run is already active');
     }
   }
@@ -164,6 +249,44 @@ class RunOrchestrator {
     if (_disposed) {
       throw StateError('RunOrchestrator has been disposed');
     }
+  }
+
+  void _guardSubmitToolOutputs() {
+    _guardNotDisposed();
+    if (_currentState is! ToolYieldingState) {
+      throw StateError('Not in ToolYieldingState');
+    }
+  }
+
+  List<ToolCallInfo> _extractPendingTools(Conversation conversation) {
+    return conversation.toolCalls
+        .where(
+          (tc) =>
+              tc.status == ToolCallStatus.pending &&
+              _toolRegistry.contains(tc.name),
+        )
+        .toList();
+  }
+
+  Conversation _buildResumeConversation(
+    ToolYieldingState state,
+    List<ToolCallInfo> executedTools,
+  ) {
+    final executedIds = {for (final tc in executedTools) tc.id};
+    final updatedToolCalls = state.conversation.toolCalls.map((tc) {
+      if (executedIds.contains(tc.id)) {
+        return executedTools.firstWhere((e) => e.id == tc.id);
+      }
+      return tc;
+    }).toList();
+    final toolMsg = ToolCallMessage.fromExecuted(
+      id: 'tool-result-${DateTime.now().microsecondsSinceEpoch}',
+      toolCalls: executedTools,
+    );
+    return state.conversation.copyWith(
+      messages: [...state.conversation.messages, toolMsg],
+      toolCalls: updatedToolCalls,
+    );
   }
 
   Future<String> _createOrUseRun(
@@ -249,15 +372,7 @@ class RunOrchestrator {
     BaseEvent event,
   ) {
     if (event is RunFinishedEvent) {
-      _receivedTerminalEvent = true;
-      _cleanup();
-      _setState(
-        CompletedState(
-          threadKey: previous.threadKey,
-          runId: previous.runId,
-          conversation: result.conversation,
-        ),
-      );
+      _handleRunFinished(previous, result.conversation);
       return;
     }
     if (event is RunErrorEvent) {
@@ -279,6 +394,31 @@ class RunOrchestrator {
         streaming: result.streaming,
       ),
     );
+  }
+
+  void _handleRunFinished(RunningState previous, Conversation conversation) {
+    _receivedTerminalEvent = true;
+    _cleanup();
+    final pendingTools = _extractPendingTools(conversation);
+    if (pendingTools.isNotEmpty) {
+      _setState(
+        ToolYieldingState(
+          threadKey: previous.threadKey,
+          runId: previous.runId,
+          conversation: conversation,
+          pendingToolCalls: pendingTools,
+          toolDepth: _toolDepth,
+        ),
+      );
+    } else {
+      _setState(
+        CompletedState(
+          threadKey: previous.threadKey,
+          runId: previous.runId,
+          conversation: conversation,
+        ),
+      );
+    }
   }
 
   void _onStreamDone() {
