@@ -471,6 +471,103 @@ risking the production app.
 | M7 | Backend-validated agent | **Yes — proven against real rooms** |
 | M8 | Visual test harness | Yes — full validation without app risk |
 
+## Documentation Checkpoints
+
+Architecture documentation is produced at specific boundaries — not
+every milestone, only when the system's shape changes meaningfully.
+Each checkpoint produces or updates markdown in `docs/design/` with
+Mermaid diagrams that reflect the **actual implemented code**, not
+aspirational design.
+
+### Checkpoint 1: After M2 (Interfaces Locked)
+
+**Trigger:** M2 gate passes. `HostApi`, `PlatformConstraints`, fakes
+all exist as compiled Dart.
+
+**Produce:** `docs/design/api-reference.md`
+
+- Mermaid class diagram of all public types: `ThreadKey`, `HostApi`,
+  `PlatformConstraints`, `AgentResult` sealed hierarchy, fakes
+- Dependency graph showing what imports what
+- Table of every public symbol with one-line description
+- Code snippets showing how to instantiate each type in a test
+
+**Why here:** These interfaces are the contract other developers code
+against. Document them the moment they're real, not before.
+
+### Checkpoint 2: After M5 (MVP Agent)
+
+**Trigger:** M5 gate passes. Single-agent tool-yielding runs work
+end-to-end with mocks.
+
+**Produce:** `docs/design/orchestration-guide.md`
+
+- Mermaid state diagram of `RunOrchestrator` — generated from actual
+  state transitions in the code, not the aspirational diagram
+- Mermaid sequence diagram showing a full run: startRun → stream →
+  tool yield → tool execute → resume → complete
+- Error flow diagrams for each `FailureReason` (auth, network, rate
+  limit, tool failure)
+- Decision tree: "given this `AgentResult`, what should the UI do?"
+- Code snippets: how to wire `RunOrchestrator` with mocked deps
+
+**Why here:** M5 is the MVP. Anyone integrating the agent package
+needs to understand the orchestration flow. This is the onboarding
+doc for Flutter developers.
+
+### Checkpoint 3: After M6 (Multi-Agent Runtime)
+
+**Trigger:** M6 gate passes. `AgentRuntime` with `spawn`/`waitAll`/
+`waitAny` works.
+
+**Produce:** Update `docs/design/orchestration-guide.md` +
+`docs/design/runtime-guide.md`
+
+- Mermaid diagram of `AgentRuntime` → multiple `AgentSession` →
+  `RunOrchestrator` per session
+- Concurrency model diagram: how `PlatformConstraints.maxConcurrent`
+  limits parallel sessions
+- WASM deadlock guard flow diagram
+- Mermaid sequence diagram: spawn 3 agents → waitAll → collect results
+- Error propagation diagram: one session fails → how does `waitAll`
+  surface it?
+
+**Why here:** Multi-agent is a qualitative jump in complexity. The
+concurrency model and error propagation need visual documentation.
+
+### Checkpoint 4: After M7 (Backend Integration)
+
+**Trigger:** M7 gate passes. All 7 room scenarios pass against live
+backend.
+
+**Produce:** `docs/design/integration-map.md`
+
+- Mermaid diagram mapping each room scenario to the code paths it
+  exercises (which `FailureReason`, which state transitions, which
+  tool registry calls)
+- Data flow diagram: real AG-UI event types observed in each scenario
+- Table: room → features validated → gaps found → fixes applied
+- Network topology diagram: client ↔ backend ↔ LLM showing where
+  each failure mode (auth, network, rate limit) occurs
+
+**Why here:** M7 is the first time the system touches reality.
+Document what was discovered, not just what was designed.
+
+### Rules for Documentation Checkpoints
+
+1. **Diagrams reflect code, not aspirations.** If the state machine
+   has 6 states in the code, the diagram has 6 states. No "planned"
+   states.
+2. **Mermaid only.** No generated images, no external tools. Diagrams
+   render in GitHub, diffable in PRs.
+3. **Each checkpoint is a commit.** Tagged `(D{N})` in the message
+   (e.g., `docs(agent): checkpoint 2 — orchestration guide (D2)`).
+4. **Reviewed via `milestone_review.sh`.** Same Gemini review gate as
+   code milestones, but rubric focuses on accuracy vs. implementation
+   rather than code quality.
+5. **Update, don't accumulate.** If a diagram from Checkpoint 2 is
+   wrong by Checkpoint 3, fix it. Don't leave stale diagrams.
+
 ## Package Decisions
 
 | Question | Answer |
