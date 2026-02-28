@@ -42,6 +42,16 @@ Flutter App
 | `ToolRegistry` | Room-scoped tool execution. Contains `ClientTool` entries with executor closures. Constructed by Flutter, injected into bridge/orchestrator. |
 | `ToolRegistryResolver` | `Future<ToolRegistry> Function(String roomId)` — factory for room-scoped registries. Flutter implements, runtime consumes. |
 
+## Guides
+
+1. **[orchestration-guide.md](orchestration-guide.md)** —
+   RunOrchestrator state machine, startRun flow, tool yielding
+   semantics, AgentSession auto-execute loop.
+
+1. **[runtime-guide.md](runtime-guide.md)** — AgentRuntime facade:
+   spawn flow, concurrency model, WASM guard, waitAll/waitAny,
+   error propagation, ephemeral thread lifecycle, usage examples.
+
 ## Diagrams
 
 - **[diagrams.md](diagrams.md)** — Mermaid architecture diagrams: package
@@ -50,7 +60,7 @@ Flutter App
 
 ## Implementation
 
-- **[implementation-milestones.md](implementation-milestones.md)** — 7-milestone
+- **[implementation-milestones.md](implementation-milestones.md)** — 8-milestone
   build plan with capability gates, agent roles, and stop points.
 
 ## Archive

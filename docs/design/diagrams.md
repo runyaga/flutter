@@ -51,44 +51,30 @@ graph TD
 
 ## RunOrchestrator State Machine
 
+Reflects the actual 6-state sealed hierarchy in `run_state.dart`.
+
 ```mermaid
 stateDiagram-v2
     [*] --> Idle
 
-    Idle --> Preparing : startRun(prompt)
-    Preparing --> Running : stream connected
-
-    Running --> ExecutingTools : ToolCallEvent received
-    ExecutingTools --> Resuming : all tools complete
-    Resuming --> Running : submitToolOutputs()
-
+    Idle --> Running : startRun()
+    Running --> ToolYielding : RunFinished + pending client tools
     Running --> Completed : RunFinished + no pending tools
-    Running --> Failed : error event / serverError
-    Running --> Failed : onDone without terminal event / networkLost
-    Running --> Failed : 401·403 / authExpired
-    Running --> Failed : 429 / rateLimited
-    Running --> TimedOut : timeout exceeded
-    ExecutingTools --> Failed : tool error / toolExecutionFailed
-
-    Idle --> Cancelled : cancelRun()
-    Preparing --> Cancelled : cancelRun()
+    Running --> Failed : RunError / stream error / onDone without terminal
     Running --> Cancelled : cancelRun()
-    ExecutingTools --> Cancelled : cancelRun()
-    Resuming --> Cancelled : cancelRun()
+
+    ToolYielding --> Running : submitToolOutputs() → new backend run
+    ToolYielding --> Failed : depth limit exceeded (10)
+    ToolYielding --> Cancelled : cancelRun()
 
     Completed --> [*]
     Failed --> [*]
-    TimedOut --> [*]
     Cancelled --> [*]
 
-    note right of ExecutingTools
-        Tool Yield/Resume Loop
-        (depth-limited recursion)
+    note right of ToolYielding
+        yield/resume loop
+        depth-limited to 10
     end note
-
-    state "Running" as Running
-    state "ExecutingTools" as ExecutingTools
-    state "Resuming" as Resuming
 ```
 
 ## Milestone Roadmap
@@ -111,13 +97,13 @@ graph LR
     M7 -.- Stop3(("proven<br/>against real<br/>rooms"))
 
     style M1 fill:#e0e0e0,stroke:#616161
-    style M2 fill:#bbdefb,stroke:#1565c0
-    style M3 fill:#90caf9,stroke:#1565c0
-    style M4 fill:#fff9c4,stroke:#f9a825
-    style M5 fill:#ffcc80,stroke:#e65100,stroke-width:3px
-    style M6 fill:#c8e6c9,stroke:#2e7d32
-    style M7 fill:#b2dfdb,stroke:#00695c
-    style M8 fill:#a5d6a7,stroke:#2e7d32
+    style M2 fill:#e0e0e0,stroke:#616161
+    style M3 fill:#e0e0e0,stroke:#616161
+    style M4 fill:#e0e0e0,stroke:#616161
+    style M5 fill:#e0e0e0,stroke:#616161
+    style M6 fill:#e0e0e0,stroke:#616161
+    style M7 fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style M8 fill:#b2dfdb,stroke:#00695c
     style Stop1 fill:#fff,stroke:#1565c0
     style Stop2 fill:#fff,stroke:#e65100
     style Stop3 fill:#fff,stroke:#00695c
@@ -130,32 +116,42 @@ sequenceDiagram
     actor User
     participant UI as Flutter UI
     participant RT as AgentRuntime
+    participant Session as AgentSession
     participant RO as RunOrchestrator
     participant TR as ToolRegistry
-    participant HA as HostApi
+    participant AGUI as AgUiClient
     participant BE as SoliplexApi / Backend
 
     User->>UI: enters prompt
-    UI->>RT: startRun(prompt, ThreadKey)
-    RT->>RO: spawn session
+    UI->>RT: spawn(roomId, prompt)
+    RT->>BE: createThread(roomId)
+    BE-->>RT: ThreadInfo { id }
+    RT->>RT: resolveToolRegistry(roomId)
+    RT->>Session: create AgentSession + RunOrchestrator
 
-    RO->>BE: AG-UI SSE stream (prompt + tools)
-    activate BE
+    Session->>RO: startRun(key, userMessage)
+    RO->>BE: createRun(roomId, threadId)
+    BE-->>RO: RunInfo { id }
+    RO->>AGUI: runAgent(endpoint, input)
+    activate AGUI
 
-    loop Tool Yield/Resume (depth-limited)
-        BE-->>RO: ToolCallEvent
-        RO->>TR: execute(toolName, args)
-        TR->>HA: invoke() (if platform capability needed)
-        HA-->>TR: result
-        TR-->>RO: ToolResult
-        RO->>BE: submitToolOutputs(results)
+    loop Tool Yield/Resume (depth-limited to 10)
+        AGUI-->>RO: ToolCallStart/Args/End events
+        AGUI-->>RO: RunFinishedEvent (with pending tools)
+        RO-->>Session: ToolYieldingState
+        Session->>TR: execute(toolCall) per tool
+        TR-->>Session: result string
+        Session->>RO: submitToolOutputs(executed)
+        RO->>BE: createRun() (new run for continuation)
+        RO->>AGUI: runAgent(endpoint, input)
     end
 
-    BE-->>RO: RunFinished
-    deactivate BE
+    AGUI-->>RO: RunFinishedEvent (no pending tools)
+    deactivate AGUI
+    RO-->>Session: CompletedState
 
-    RO-->>RT: AgentResult (Success / Failure / TimedOut)
-    RT-->>UI: state update
+    Session-->>RT: AgentSuccess
+    RT-->>UI: session.result completes
     UI-->>User: display response
 
     Note over RO,TR: ThreadKey = {serverId, roomId, threadId}
