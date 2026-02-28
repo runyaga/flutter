@@ -64,6 +64,7 @@ void main() {
       api: api,
       agUiClient: agUiClient,
       toolRegistry: const ToolRegistry(),
+      platformConstraints: const NativePlatformConstraints(),
       logger: logger,
     );
   });

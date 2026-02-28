@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:soliplex_agent/src/host/platform_constraints.dart';
 import 'package:soliplex_agent/src/models/failure_reason.dart';
 import 'package:soliplex_agent/src/models/thread_key.dart';
 import 'package:soliplex_agent/src/run/error_classifier.dart';
@@ -16,6 +17,7 @@ class RunOrchestrator {
     required SoliplexApi api,
     required AgUiClient agUiClient,
     required ToolRegistry toolRegistry,
+    required this.platformConstraints,
     required Logger logger,
   })  : _api = api,
         _agUiClient = agUiClient,
@@ -25,6 +27,9 @@ class RunOrchestrator {
   final SoliplexApi _api;
   final AgUiClient _agUiClient;
   final ToolRegistry _toolRegistry;
+
+  /// Platform capabilities (used in M5 for tool yielding decisions).
+  final PlatformConstraints platformConstraints;
   final Logger _logger;
 
   final StreamController<RunState> _controller =
