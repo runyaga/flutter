@@ -1,9 +1,13 @@
-dart_code_metrics:
+dcm:
   metrics:
-    cyclomatic-complexity: 10
-    lines-of-code: 40
-    number-of-parameters: 4
-    maximum-nesting-level: 3
+    cyclomatic-complexity:
+      threshold: 10
+    lines-of-code:
+      threshold: 40
+    number-of-parameters:
+      threshold: 4
+    maximum-nesting-level:
+      threshold: 3
   rules:
     - avoid-nested-conditional-expressions
     - prefer-correct-identifier-length

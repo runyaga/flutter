@@ -7,8 +7,10 @@
 - **Codex** — parallel worker for isolated tasks (test scaffolding, boilerplate)
 
 **Constraint:** After every milestone the deliverable is fully working.
-Green build = `dart analyze` + `dart test` in the new package, plus
-`flutter analyze --fatal-infos` + `flutter test` unchanged in the app.
+Green build = `dart analyze` + `dcm analyze` + `dart test` in the new
+package, plus `flutter analyze --fatal-infos` + `flutter test` unchanged
+in the app. DCM is a separate CLI (`dcm analyze packages/soliplex_agent`)
+enforcing strict thresholds from `dcm_options.yaml`.
 
 **Approach:** Greenfield. We are NOT refactoring the existing app. The
 new package lives side-by-side. Existing `ActiveRunNotifier`, providers,
@@ -126,9 +128,10 @@ These gaps only matter for M4-M5. M1-M3 are clean.
 ### Tasks
 
 - Create `packages/soliplex_agent/` with `pubspec.yaml`
-- Create `analysis_options.yaml` including `very_good_analysis` + `dcm_options.yaml`
+- Create `analysis_options.yaml` including `very_good_analysis`
 - Create `dcm_options.yaml` with strict thresholds (cyclomatic 10, LOC 40,
-  params 4, nesting 3) and rules enabled from day one
+  params 4, nesting 3) and rules enabled from day one. DCM is a separate
+  CLI tool — `dcm_options.yaml` is read by `dcm analyze`, not by `dart analyze`
 - Smoke test: import `soliplex_client` and `soliplex_logging`, reference
   key types, pass `dart analyze`
 - Define core types: `ThreadKey` typedef
@@ -150,6 +153,7 @@ These gaps only matter for M4-M5. M1-M3 are clean.
 ### Gate
 
 - `cd packages/soliplex_agent && dart analyze && dart test`
+- `dcm analyze packages/soliplex_agent` (zero warnings with strict thresholds)
 - `dart format --set-exit-if-changed .` (zero diff)
 - Existing app `flutter analyze` + `flutter test` unchanged
 - Run `bash tool/milestone_review.sh M1` and pass Gemini review
@@ -187,7 +191,7 @@ Flutter and Monty bridge developers. The package compiles.
 
 ### Gate
 
-- Interfaces tested. Green build.
+- Interfaces tested. Green build (`dart analyze` + `dcm analyze` + `dart test`).
 - `bash tool/milestone_review.sh M2` + Gemini review passes
 
 ### Capability gained
@@ -223,7 +227,7 @@ markdown spec.
 
 ### Gate
 
-- Fully unit-tested registry. Green build.
+- Fully unit-tested registry. Green build (`dart analyze` + `dcm analyze` + `dart test`).
 - `bash tool/milestone_review.sh M3` + Gemini review passes
 
 ### Capability gained
@@ -265,7 +269,7 @@ machine transitions, and concurrency guard behavior.
 
 ### Gate
 
-- Unit tests proving lifecycle with mocks. Green build.
+- Unit tests proving lifecycle with mocks. Green build (`dart analyze` + `dcm analyze` + `dart test`).
 - `bash tool/milestone_review.sh M4` + Gemini review passes
 
 ### Capability gained
@@ -301,7 +305,7 @@ answer. But if the LLM asks to use a tool, it halts — no agency yet.
 
 ### Gate
 
-- Comprehensive multi-step run tests. Green build.
+- Comprehensive multi-step run tests. Green build (`dart analyze` + `dcm analyze` + `dart test`).
 - `bash tool/milestone_review.sh M5` + Gemini review passes
 
 ### Capability gained
@@ -344,7 +348,7 @@ No multi-session coordination.
 ### Gate
 
 - End-to-end pure Dart test: init runtime, register tool, spawn agent,
-  tool executes, agent completes. Green build.
+  tool executes, agent completes. Green build (`dart analyze` + `dcm analyze` + `dart test`).
 - `bash tool/milestone_review.sh M6` + Gemini review passes
 
 ### Capability gained
