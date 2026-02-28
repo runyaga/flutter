@@ -287,8 +287,33 @@ generate_metrics() {
 
 generate_metrics > "$METRICS_AFTER"
 
+# -------------------------------------------------------
+# Phase 4: Determine diff range + collect git data
+# -------------------------------------------------------
+echo "=== Phase 4: Collecting git data ==="
+GIT_SHA=$(git rev-parse --short HEAD)
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+GIT_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# Determine the upstream base ref (prefer origin/main over local main)
+BASE_REF=""
+if git rev-parse --verify origin/main &>/dev/null; then
+  BASE_REF="origin/main"
+elif git rev-parse --verify main &>/dev/null; then
+  BASE_REF="main"
+fi
+
+# Compute merge-base using upstream ref (not local main, which may be HEAD)
+MERGE_BASE=""
+if [[ -n "$BASE_REF" ]]; then
+  MERGE_BASE=$(git merge-base "$BASE_REF" HEAD 2>/dev/null || echo "")
+  # If merge-base equals HEAD (we're on main, ahead of origin), use BASE_REF directly
+  if [[ "$MERGE_BASE" == "$(git rev-parse HEAD)" && "$BASE_REF" == "origin/main" ]]; then
+    MERGE_BASE=$(git rev-parse origin/main 2>/dev/null || echo "")
+  fi
+fi
+
 # Generate baseline from merge-base if missing or stale
-MERGE_BASE=$(git merge-base main HEAD 2>/dev/null || echo "")
 if [[ ! -f "$BASELINE_FILE" ]]; then
   cp "$METRICS_AFTER" "$BASELINE_FILE"
   echo "  Baseline initialized from current state"
@@ -298,26 +323,6 @@ elif [[ -n "$MERGE_BASE" ]]; then
   if [[ "$BASELINE_SHA" != "$MERGE_BASE_SHORT" && "$BASELINE_SHA" != "$(git rev-parse --short HEAD)" ]]; then
     echo "  Baseline SHA ($BASELINE_SHA) differs from merge-base ($MERGE_BASE_SHORT)"
   fi
-fi
-
-# -------------------------------------------------------
-# Phase 4: Determine diff range + collect git data
-# -------------------------------------------------------
-echo "=== Phase 4: Collecting git data ==="
-GIT_SHA=$(git rev-parse --short HEAD)
-GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-GIT_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-# Check if origin/main or main exists
-BASE_REF=""
-if git rev-parse --verify origin/main &>/dev/null; then
-  BASE_REF="origin/main"
-elif git rev-parse --verify main &>/dev/null; then
-  BASE_REF="main"
-fi
-
-if [[ -z "$MERGE_BASE" && -n "$BASE_REF" ]]; then
-  MERGE_BASE=$(git merge-base "$BASE_REF" HEAD 2>/dev/null || echo "")
 fi
 
 # Diff excludes — Dart/Flutter specific
