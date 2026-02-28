@@ -574,18 +574,170 @@ class AgentTimedOut extends AgentResult {
 }
 ```
 
-### Error Propagation Model
+### Error Handling Contract
 
-Errors are **data, not exceptions** at the Dart layer. The sealed
-`AgentResult` type forces the caller to handle all cases:
+The `RunOrchestrator` must handle every failure mode that can occur
+during an AG-UI SSE stream. Errors are **data, not exceptions** at the
+Dart layer. The sealed `AgentResult` type forces the caller to handle
+all terminal states exhaustively.
+
+#### Failure Classification
+
+Every error the orchestrator encounters is classified into one of these
+categories, which determines the response:
+
+```dart
+/// Why a run failed. Attached to AgentFailure.
+enum FailureReason {
+  /// Server returned an error event in the AG-UI stream.
+  serverError,
+
+  /// Auth token expired or was rejected (401/403).
+  authExpired,
+
+  /// Network lost — SSE stream ended without a terminal event.
+  networkLost,
+
+  /// Server returned 429 Too Many Requests.
+  rateLimited,
+
+  /// Tool execution failed (all retries exhausted).
+  toolExecutionFailed,
+
+  /// Internal error in the orchestrator itself.
+  internalError,
+}
+```
+
+`AgentFailure` carries this classification:
+
+```dart
+class AgentFailure extends AgentResult {
+  final FailureReason reason;
+  final String error;
+  final String? partialOutput;
+  final ThreadKey threadKey;
+}
+```
+
+#### Scenario: Auth Token Expiry (401/403)
+
+**Problem:** The SSE stream or a tool-continuation HTTP request returns
+401/403. The bearer token has expired mid-run.
+
+**Contract:**
+
+1. `RunOrchestrator` catches `AuthException` from the stream or HTTP
+   call.
+2. Transitions to `AgentFailure(reason: FailureReason.authExpired)`.
+3. Preserves `partialOutput` from any messages received before the
+   error.
+4. Does NOT attempt token refresh — that is the Flutter app's
+   responsibility.
+5. The Flutter layer (provider/notifier) observes `authExpired` and
+   redirects to login.
+
+**Rationale:** `soliplex_agent` is pure Dart with no auth state. Token
+refresh requires `SharedPreferences`, secure storage, and UI navigation
+— all Flutter concerns. The orchestrator's job is to classify the error
+and preserve partial work.
+
+#### Scenario: Network Loss Mid-Stream
+
+**Problem:** WiFi drops, cellular switches, or the server crashes. The
+SSE stream's `onDone` fires without a `RunSuccessEvent` or error event.
+
+**Contract:**
+
+1. `RunOrchestrator` tracks whether a terminal event (`RunFinished`,
+   `RunFailed`) was received before `onDone`.
+2. If `onDone` fires WITHOUT a terminal event:
+   - Transition to `AgentFailure(reason: FailureReason.networkLost)`.
+   - Preserve `partialOutput` from messages received so far.
+   - Do NOT treat this as success.
+3. If `onDone` fires AFTER a terminal event: normal completion.
+
+**This is the most dangerous gap in the existing app** — today,
+`onDone` without a terminal event is silently treated as success.
+
+#### Scenario: SSE Reconnect Strategy
+
+**Problem:** Transient network interruption kills the SSE stream. Should
+the orchestrator reconnect?
+
+**Contract:**
+
+1. `RunOrchestrator` does NOT reconnect automatically.
+2. Stream end = run end. This is intentional.
+3. The AG-UI protocol does not support resuming an SSE stream mid-run.
+   A new `startRun` with the existing `runId` would need server support
+   for continuation, which is not currently available.
+4. The Flutter layer may offer a "Retry" action in the UI when it sees
+   `FailureReason.networkLost`.
+
+**Rationale:** Automatic reconnect with retry is complex, error-prone,
+and can cause duplicate tool executions. The safer path is: fail fast,
+preserve partial output, let the user decide. If the backend adds
+stream resumption support later, the orchestrator can add reconnect
+as an opt-in behavior gated by `PlatformConstraints`.
+
+**Future consideration:** If `PlatformConstraints` gains a
+`supportsStreamResumption` flag, the orchestrator could attempt one
+reconnect with an `If-None-Match` or `Last-Event-ID` header before
+failing.
+
+#### Scenario: Rate Limiting (429)
+
+**Problem:** Server returns 429 Too Many Requests on the initial SSE
+connection or on a tool-continuation request.
+
+**Contract:**
+
+1. `RunOrchestrator` catches the 429 response.
+2. Reads the `Retry-After` header if present.
+3. Transitions to `AgentFailure(reason: FailureReason.rateLimited)`.
+4. Includes the `Retry-After` duration in the error message.
+5. Does NOT retry automatically — the Flutter layer can schedule a
+   retry with backoff if desired.
+
+#### Scenario: Auth Header Injection
+
+**Problem:** Who puts the bearer token on the SSE request?
+
+**Contract:**
+
+1. `SoliplexApi` is constructed by the Flutter app with an
+   `HttpTransport` that has auth headers pre-configured.
+2. `RunOrchestrator` receives `SoliplexApi` via constructor injection.
+3. The orchestrator never touches auth headers — it calls
+   `api.startRun()` and trusts that the transport layer handles auth.
+4. If the token needs refreshing, the Flutter app's `AuthNotifier`
+   updates the transport's headers. The orchestrator is unaware.
+
+This wiring is the Flutter app's responsibility, not `soliplex_agent`'s.
+
+#### Error Propagation to Callers
+
+The sealed `AgentResult` forces exhaustive handling:
 
 ```dart
 final result = await session.result();
 switch (result) {
   case AgentSuccess(:final output):
     // Use output
-  case AgentFailure(:final error, :final partialOutput):
-    // Decide: retry, fallback, or propagate
+  case AgentFailure(:final reason, :final error, :final partialOutput):
+    switch (reason) {
+      case FailureReason.authExpired:
+        // Redirect to login, show partial output if available
+      case FailureReason.networkLost:
+        // Show "connection lost" with retry action
+      case FailureReason.rateLimited:
+        // Show "please wait" with retry-after countdown
+      case FailureReason.serverError:
+      case FailureReason.toolExecutionFailed:
+      case FailureReason.internalError:
+        // Show error message, offer retry
+    }
   case AgentTimedOut(:final elapsed):
     // Decide: retry with longer timeout, or fail
 }
@@ -595,6 +747,14 @@ At the Python layer, errors become exceptions (idiomatic Python).
 The Monty bridge translates between the two models — Dart sealed types
 ↔ Python exceptions. No automatic propagation — the script IS the
 supervisor.
+
+#### What the Orchestrator Does NOT Do
+
+- **No token refresh.** Pure Dart, no auth state.
+- **No automatic retry.** Caller decides retry policy.
+- **No automatic reconnect.** Stream end = run end.
+- **No UI navigation.** Reports `FailureReason`, never pops a dialog.
+- **No logging to backend.** Uses injected `Logger` for local logs only.
 
 ## ThreadHistoryCache (Phase 3)
 

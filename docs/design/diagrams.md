@@ -63,8 +63,12 @@ stateDiagram-v2
     Resuming --> Running : submitToolOutputs()
 
     Running --> Completed : RunFinished + no pending tools
-    Running --> Failed : error event
+    Running --> Failed : error event / serverError
+    Running --> Failed : onDone without terminal event / networkLost
+    Running --> Failed : 401·403 / authExpired
+    Running --> Failed : 429 / rateLimited
     Running --> TimedOut : timeout exceeded
+    ExecutingTools --> Failed : tool error / toolExecutionFailed
 
     Idle --> Cancelled : cancelRun()
     Preparing --> Cancelled : cancelRun()
