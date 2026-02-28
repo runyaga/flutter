@@ -13,3 +13,4 @@ export 'src/host/web_platform_constraints.dart';
 export 'src/models/agent_result.dart';
 export 'src/models/failure_reason.dart';
 export 'src/models/thread_key.dart';
+export 'src/tools/tool_registry_resolver.dart';
