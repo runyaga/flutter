@@ -1,0 +1,10 @@
+dart_code_metrics:
+  metrics:
+    cyclomatic-complexity: 10
+    lines-of-code: 40
+    number-of-parameters: 4
+    maximum-nesting-level: 3
+  rules:
+    - avoid-nested-conditional-expressions
+    - prefer-correct-identifier-length
+    - prefer-moving-to-variable
