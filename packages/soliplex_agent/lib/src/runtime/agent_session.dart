@@ -126,9 +126,17 @@ class AgentSession {
   // ---------------------------------------------------------------------------
 
   Future<void> _executeToolsAndResume(ToolYieldingState yielding) async {
-    final executed = await _executeAll(yielding.pendingToolCalls);
-    if (_disposed || _isTerminal) return;
-    await _orchestrator.submitToolOutputs(executed);
+    try {
+      final executed = await _executeAll(yielding.pendingToolCalls);
+      if (_disposed || _isTerminal) return;
+      await _orchestrator.submitToolOutputs(executed);
+    } on Object catch (error, stackTrace) {
+      _logger.warning(
+        'Tool execute/resume failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<List<ToolCallInfo>> _executeAll(
