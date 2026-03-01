@@ -2,10 +2,13 @@
 // Cleanup: delete this file when no longer needed.
 
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
+import 'package:soliplex_frontend/features/debug/debug_chart_config.dart';
+import 'package:soliplex_frontend/features/debug/debug_chart_renderer.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
 
 /// REPL-style debug screen for testing DataFrame operations directly.
@@ -24,6 +27,8 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
   final _inputController = TextEditingController();
   final _outputLines = <_OutputLine>[];
   final _scrollController = ScrollController();
+  final _charts = <DebugChartConfig>[];
+  int _currentChartIndex = 0;
 
   late final DfRegistry _registry;
   late final Map<String, _DfCommand> _commands;
@@ -53,10 +58,12 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
           padding: const EdgeInsets.all(8),
           color: Colors.amber.shade100,
           child: const Text(
-            '\u26A0 TEMPORARY SCAFFOLDING \u2014 remove after validation',
+            '\u26A0 TEMPORARY SCAFFOLDING '
+            '\u2014 remove after validation',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
+        if (_charts.isNotEmpty) _buildChartPanel(),
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
@@ -82,7 +89,7 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
                   controller: _inputController,
                   style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
                   decoration: const InputDecoration(
-                    hintText: 'df_create, df_head, df_filter, help ...',
+                    hintText: 'df_create, chart_line, chart_bar, help ...',
                     border: OutlineInputBorder(),
                     isDense: true,
                     contentPadding:
@@ -104,6 +111,58 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildChartPanel() {
+    final chart = _charts[_currentChartIndex];
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 250,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: DebugChartRenderer(config: chart),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: _currentChartIndex > 0
+                    ? () => setState(() => _currentChartIndex--)
+                    : null,
+              ),
+              Text(
+                '${chart.title}  '
+                '(${_currentChartIndex + 1}/${_charts.length})',
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: _currentChartIndex < _charts.length - 1
+                    ? () => setState(() => _currentChartIndex++)
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: 'Clear charts',
+                onPressed: () => setState(() {
+                  _charts.clear();
+                  _currentChartIndex = 0;
+                }),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
       ],
     );
   }
@@ -190,18 +249,46 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
       buf.writeln('  ${entry.key.padRight(20)} ${entry.value.help}');
     }
     buf
-      ..writeln('\nExamples:')
-      ..writeln(
-        '  df_create([{"name":"Alice","age":30},{"name":"Bob","age":25}])',
-      )
+      ..writeln('\nChart commands:')
+      ..writeln('  chart_line(handle, x_col, y_col)')
+      ..writeln('  chart_bar(handle, label_col, value_col)')
+      ..writeln('  chart_scatter(handle, x_col, y_col)');
+    _writeExamples(buf);
+    _addOutput(buf.toString(), _Kind.info);
+  }
+
+  void _writeExamples(StringBuffer buf) {
+    const lineData = '  df_create([{"x":1,"y":2},'
+        ' {"x":2,"y":4},{"x":3,"y":1},{"x":4,"y":5}])';
+    const barData = '  df_create([{"fruit":"apple","count":12},'
+        ' {"fruit":"banana","count":7},'
+        ' {"fruit":"cherry","count":19}])';
+    const scatterData = '  df_create([{"temp":20,"sales":100},'
+        ' {"temp":25,"sales":130},'
+        ' {"temp":30,"sales":180},'
+        ' {"temp":35,"sales":160}])';
+    const createData = '  df_create([{"name":"Alice","age":30},'
+        ' {"name":"Bob","age":25}])';
+    const filterData = '  df_filter({"handle":1,'
+        ' "column":"age","op":">","value":28})';
+
+    buf
+      ..writeln('\nQuick start — line chart:')
+      ..writeln(lineData)
+      ..writeln('  chart_line(1, x, y)')
+      ..writeln('\nQuick start — bar chart:')
+      ..writeln(barData)
+      ..writeln('  chart_bar(2, fruit, count)')
+      ..writeln('\nQuick start — scatter chart:')
+      ..writeln(scatterData)
+      ..writeln('  chart_scatter(3, temp, sales)')
+      ..writeln('\nDataFrame examples:')
+      ..writeln(createData)
       ..writeln('  df_head 1')
-      ..writeln(
-        '  df_filter({"handle":1,"column":"age","op":">","value":28})',
-      )
       ..writeln('  df_shape 1')
       ..writeln('  df_columns 1')
+      ..writeln(filterData)
       ..writeln(r'  df_from_csv name,age\nAlice,30\nBob,25');
-    _addOutput(buf.toString(), _Kind.info);
   }
 
   Map<String, _DfCommand> _buildCommands() {
@@ -240,7 +327,99 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
       );
     }
 
+    // Chart commands
+    cmds['chart_line'] = _DfCommand(
+      help: '(handle, x_col, y_col) '
+          'Render a line chart',
+      execute: (rawArgs) async =>
+          _executeChartCommand(rawArgs, _ChartType.line),
+    );
+    cmds['chart_bar'] = _DfCommand(
+      help: '(handle, label_col, value_col) '
+          'Render a bar chart',
+      execute: (rawArgs) async => _executeChartCommand(rawArgs, _ChartType.bar),
+    );
+    cmds['chart_scatter'] = _DfCommand(
+      help: '(handle, x_col, y_col) '
+          'Render a scatter chart',
+      execute: (rawArgs) async => _executeChartCommand(
+        rawArgs,
+        _ChartType.scatter,
+      ),
+    );
+
     return cmds;
+  }
+
+  String _executeChartCommand(String rawArgs, _ChartType type) {
+    final parts = rawArgs.split(',').map((s) => s.trim()).toList();
+    if (parts.length < 3) {
+      throw ArgumentError('Expected: handle, column1, column2');
+    }
+
+    final handle = int.parse(parts[0]);
+    final col1 = parts[1];
+    final col2 = parts[2];
+
+    final df = _registry.get(handle);
+    final col1Values = df.columnValues(col1);
+    final col2Values = df.columnValues(col2);
+
+    final DebugChartConfig config;
+    switch (type) {
+      case _ChartType.line:
+        config = LineChartConfig(
+          title: 'Line: $col1 vs $col2',
+          xLabel: col1,
+          yLabel: col2,
+          points: _extractPoints(col1Values, col2Values),
+        );
+      case _ChartType.bar:
+        config = BarChartConfig(
+          title: 'Bar: $col1 vs $col2',
+          xLabel: col1,
+          yLabel: col2,
+          labels: col1Values.map((v) => '$v').toList(),
+          values: _toDoubles(col2Values),
+        );
+      case _ChartType.scatter:
+        config = ScatterChartConfig(
+          title: 'Scatter: $col1 vs $col2',
+          xLabel: col1,
+          yLabel: col2,
+          points: _extractPoints(col1Values, col2Values),
+        );
+    }
+
+    setState(() {
+      _charts.add(config);
+      _currentChartIndex = _charts.length - 1;
+    });
+    return 'Chart added (${type.name}): ${config.title}';
+  }
+
+  List<math.Point<double>> _extractPoints(
+    List<Object?> xValues,
+    List<Object?> yValues,
+  ) {
+    final points = <math.Point<double>>[];
+    for (var i = 0; i < math.min(xValues.length, yValues.length); i++) {
+      final x = _toDouble(xValues[i]);
+      final y = _toDouble(yValues[i]);
+      if (x != null && y != null) {
+        points.add(math.Point(x, y));
+      }
+    }
+    return points;
+  }
+
+  List<double> _toDoubles(List<Object?> values) =>
+      values.map((v) => _toDouble(v) ?? 0).toList();
+
+  double? _toDouble(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   Object? _parseSimpleArg(String raw) {
@@ -275,6 +454,8 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
 }
 
 enum _Kind { input, result, error, info }
+
+enum _ChartType { line, bar, scatter }
 
 class _OutputLine {
   const _OutputLine(this.text, this.kind);

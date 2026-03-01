@@ -12,6 +12,8 @@ import 'package:soliplex_frontend/features/auth/auth_callback_screen.dart';
 // TEMPORARY: Debug screens — remove after validation.
 import 'package:soliplex_frontend/features/debug/debug_agent_screen.dart';
 import 'package:soliplex_frontend/features/debug/debug_dataframe_screen.dart';
+import 'package:soliplex_frontend/features/demos/debate_arena/debate_arena_screen.dart';
+import 'package:soliplex_frontend/features/demos/pipeline_visualizer/pipeline_screen.dart';
 import 'package:soliplex_frontend/features/home/home_screen.dart';
 import 'package:soliplex_frontend/features/inspector/network_inspector_screen.dart';
 import 'package:soliplex_frontend/features/log_viewer/log_viewer_screen.dart';
@@ -45,14 +47,33 @@ class _SettingsButton extends StatelessWidget {
   }
 }
 
+/// Back button that navigates to settings.
+class _BackToSettingsButton extends StatelessWidget {
+  const _BackToSettingsButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => context.go('/settings'),
+      tooltip: 'Back to settings',
+    );
+  }
+}
+
 /// Creates an AppShell with the given configuration.
 AppShell _staticShell({
   required Widget title,
   required Widget body,
+  Widget? leading,
   List<Widget> actions = const [],
 }) {
   return AppShell(
-    config: ShellConfig(title: title, actions: actions),
+    config: ShellConfig(
+      title: title,
+      leading: leading,
+      actions: actions,
+    ),
     body: body,
   );
 }
@@ -61,10 +82,16 @@ AppShell _staticShell({
 NoTransitionPage<void> _staticPage({
   required Widget title,
   required Widget body,
+  Widget? leading,
   List<Widget> actions = const [],
 }) {
   return NoTransitionPage(
-    child: _staticShell(title: title, body: body, actions: actions),
+    child: _staticShell(
+      title: title,
+      body: body,
+      leading: leading,
+      actions: actions,
+    ),
   );
 }
 
@@ -334,6 +361,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'debug-agent',
         pageBuilder: (context, state) => _staticPage(
           title: const Text('DEBUG: Agent Run'),
+          leading: const _BackToSettingsButton(),
           body: const DebugAgentScreen(),
         ),
       ),
@@ -342,10 +370,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'debug-dataframe',
         pageBuilder: (context, state) => _staticPage(
           title: const Text('DEBUG: DataFrame REPL'),
+          leading: const _BackToSettingsButton(),
           body: const DebugDataFrameScreen(),
         ),
       ),
       // --- END TEMPORARY ---
+      GoRoute(
+        path: '/demos/debate',
+        name: 'debate-arena',
+        pageBuilder: (context, state) => _staticPage(
+          title: const Text('Debate Arena'),
+          leading: const _BackToSettingsButton(),
+          body: const DebateArenaScreen(),
+          actions: [
+            if (features.enableSettings) const _SettingsButton(),
+          ],
+        ),
+      ),
+      GoRoute(
+        path: '/demos/pipeline',
+        name: 'pipeline-visualizer',
+        pageBuilder: (context, state) => _staticPage(
+          title: const Text('Pipeline Visualizer'),
+          leading: const _BackToSettingsButton(),
+          body: const PipelineScreen(),
+          actions: [
+            if (features.enableSettings) const _SettingsButton(),
+          ],
+        ),
+      ),
       if (features.enableSettings)
         GoRoute(
           path: '/settings',
