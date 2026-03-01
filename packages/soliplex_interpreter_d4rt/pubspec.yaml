@@ -1,0 +1,16 @@
+name: soliplex_interpreter_d4rt
+description: Spike — validate BridgeEvent portability with the d4rt Dart interpreter.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  d4rt: ^0.2.2
+  meta: ^1.11.0
+
+dev_dependencies:
+  mocktail: ^1.0.4
+  test: ^1.24.0
+  very_good_analysis: ^10.0.0
