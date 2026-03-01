@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_frontend/core/providers/api_provider.dart';
@@ -26,6 +28,7 @@ class DebateState {
     this.rebuttalText = '',
     this.verdictText = '',
     this.error = '',
+    this.isStreaming = false,
     this.startedAt,
     this.completedAt,
   });
@@ -37,6 +40,7 @@ class DebateState {
   final String rebuttalText;
   final String verdictText;
   final String error;
+  final bool isStreaming;
   final DateTime? startedAt;
   final DateTime? completedAt;
 
@@ -59,6 +63,7 @@ class DebateState {
     String? rebuttalText,
     String? verdictText,
     String? error,
+    bool? isStreaming,
     DateTime? startedAt,
     DateTime? completedAt,
   }) {
@@ -70,6 +75,7 @@ class DebateState {
       rebuttalText: rebuttalText ?? this.rebuttalText,
       verdictText: verdictText ?? this.verdictText,
       error: error ?? this.error,
+      isStreaming: isStreaming ?? this.isStreaming,
       startedAt: startedAt ?? this.startedAt,
       completedAt: completedAt ?? this.completedAt,
     );
@@ -87,6 +93,10 @@ class DebateNotifier extends Notifier<DebateState> {
 
   @override
   DebateState build() => const DebateState();
+
+  /// Set to `false` to disable live text streaming (output appears on
+  /// completion only, matching pre-streaming behavior).
+  bool streamingEnabled = true;
 
   Future<void> startDebate(String topic) async {
     if (state.isRunning) return;
@@ -115,9 +125,12 @@ class DebateNotifier extends Notifier<DebateState> {
         prompt: 'Argue FOR: $topic',
         ephemeral: false,
       );
-      _log.debug('[Stage 1] Waiting for advocate result...');
-      final advResult = await advSession.awaitResult(timeout: _timeout);
-      final forArgs = _extractOutput(advResult, 'Advocate');
+      state = state.copyWith(isStreaming: true);
+      final forArgs = await _runWithStreaming(
+        advSession,
+        'Advocate',
+        (text) => state = state.copyWith(advocateText: text),
+      );
       _log.info(
         '[Stage 1] Advocate done (${forArgs.length} chars): '
         '${forArgs.substring(0, forArgs.length.clamp(0, 80))}...',
@@ -125,6 +138,7 @@ class DebateNotifier extends Notifier<DebateState> {
       state = state.copyWith(
         stage: DebateStage.critiquing,
         advocateText: forArgs,
+        isStreaming: false,
       );
 
       // Stage 2: Critic argues AGAINST
@@ -134,9 +148,12 @@ class DebateNotifier extends Notifier<DebateState> {
         prompt: 'Counter these arguments:\n$forArgs',
         ephemeral: false,
       );
-      _log.debug('[Stage 2] Waiting for critic result...');
-      final crtResult = await crtSession.awaitResult(timeout: _timeout);
-      final againstArgs = _extractOutput(crtResult, 'Critic');
+      state = state.copyWith(isStreaming: true);
+      final againstArgs = await _runWithStreaming(
+        crtSession,
+        'Critic',
+        (text) => state = state.copyWith(criticText: text),
+      );
       _log.info(
         '[Stage 2] Critic done (${againstArgs.length} chars): '
         '${againstArgs.substring(0, againstArgs.length.clamp(0, 80))}...',
@@ -144,6 +161,7 @@ class DebateNotifier extends Notifier<DebateState> {
       state = state.copyWith(
         stage: DebateStage.rebutting,
         criticText: againstArgs,
+        isStreaming: false,
       );
 
       // Stage 3: Advocate rebuttal
@@ -154,9 +172,12 @@ class DebateNotifier extends Notifier<DebateState> {
             'Defend your strongest point in 2 sentences.',
         ephemeral: false,
       );
-      _log.debug('[Stage 3] Waiting for rebuttal result...');
-      final rebResult = await rebSession.awaitResult(timeout: _timeout);
-      final rebuttal = _extractOutput(rebResult, 'Rebuttal');
+      state = state.copyWith(isStreaming: true);
+      final rebuttal = await _runWithStreaming(
+        rebSession,
+        'Rebuttal',
+        (text) => state = state.copyWith(rebuttalText: text),
+      );
       _log.info(
         '[Stage 3] Rebuttal done (${rebuttal.length} chars): '
         '${rebuttal.substring(0, rebuttal.length.clamp(0, 80))}...',
@@ -164,6 +185,7 @@ class DebateNotifier extends Notifier<DebateState> {
       state = state.copyWith(
         stage: DebateStage.judging,
         rebuttalText: rebuttal,
+        isStreaming: false,
       );
 
       // Stage 4: Judge verdict
@@ -175,9 +197,12 @@ class DebateNotifier extends Notifier<DebateState> {
             'REBUTTAL:\n$rebuttal\n\nRender your verdict.',
         ephemeral: false,
       );
-      _log.debug('[Stage 4] Waiting for judge result...');
-      final jdgResult = await jdgSession.awaitResult(timeout: _timeout);
-      final verdict = _extractOutput(jdgResult, 'Judge');
+      state = state.copyWith(isStreaming: true);
+      final verdict = await _runWithStreaming(
+        jdgSession,
+        'Judge',
+        (text) => state = state.copyWith(verdictText: text),
+      );
       _log.info(
         '[Stage 4] Judge done (${verdict.length} chars): '
         '${verdict.substring(0, verdict.length.clamp(0, 80))}...',
@@ -185,6 +210,7 @@ class DebateNotifier extends Notifier<DebateState> {
       state = state.copyWith(
         stage: DebateStage.complete,
         verdictText: verdict,
+        isStreaming: false,
         completedAt: DateTime.now(),
       );
       _log.info('Debate complete in ${state.elapsed?.inSeconds}s');
@@ -197,12 +223,30 @@ class DebateNotifier extends Notifier<DebateState> {
       state = state.copyWith(
         stage: DebateStage.error,
         error: e.toString(),
+        isStreaming: false,
         completedAt: DateTime.now(),
       );
     }
   }
 
   void reset() => state = const DebateState();
+
+  Future<String> _runWithStreaming(
+    AgentSession session,
+    String stageName,
+    void Function(String text) onPartial,
+  ) async {
+    StreamSubscription<String>? sub;
+    if (streamingEnabled) {
+      sub = session.textStream.listen(onPartial);
+    }
+    try {
+      final result = await session.awaitResult(timeout: _timeout);
+      return _extractOutput(result, stageName);
+    } finally {
+      await sub?.cancel();
+    }
+  }
 
   String _extractOutput(AgentResult result, String stageName) {
     return switch (result) {

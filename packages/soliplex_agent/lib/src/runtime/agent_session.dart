@@ -45,12 +45,18 @@ class AgentSession {
   final Logger _logger;
 
   final Completer<AgentResult> _resultCompleter = Completer<AgentResult>();
+  final StreamController<String> _textController =
+      StreamController<String>.broadcast();
   StreamSubscription<RunState>? _subscription;
   AgentSessionState _state = AgentSessionState.spawning;
   bool _disposed = false;
 
   /// Current session lifecycle state.
   AgentSessionState get state => _state;
+
+  /// Accumulated text as it streams from the model.
+  /// Closes when the session reaches a terminal state.
+  Stream<String> get textStream => _textController.stream;
 
   /// Completes when the session reaches a terminal state.
   Future<AgentResult> get result => _resultCompleter.future;
@@ -95,6 +101,7 @@ class AgentSession {
     _disposed = true;
     unawaited(_subscription?.cancel());
     _subscription = null;
+    unawaited(_textController.close());
     _orchestrator.dispose();
     _completeIfPending();
   }
@@ -106,8 +113,11 @@ class AgentSession {
   void _onStateChange(RunState runState) {
     if (_disposed) return;
     switch (runState) {
-      case RunningState():
+      case RunningState(:final streaming):
         _state = AgentSessionState.running;
+        if (streaming is TextStreaming) {
+          _textController.add(streaming.text);
+        }
       case ToolYieldingState():
         unawaited(_executeToolsAndResume(runState));
       case CompletedState():
@@ -220,6 +230,7 @@ class AgentSession {
       case AgentTimedOut():
         _state = AgentSessionState.failed;
     }
+    unawaited(_textController.close());
     if (!_resultCompleter.isCompleted) {
       _resultCompleter.complete(agentResult);
     }

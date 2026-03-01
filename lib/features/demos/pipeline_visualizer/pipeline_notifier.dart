@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart' show ClientTool;
@@ -16,6 +18,7 @@ class NodeState {
     this.status = NodeStatus.pending,
     this.input,
     this.output,
+    this.streamingOutput,
     this.elapsed,
   });
 
@@ -23,12 +26,17 @@ class NodeState {
   final NodeStatus status;
   final String? input;
   final String? output;
+  final String? streamingOutput;
   final Duration? elapsed;
+
+  /// Returns streaming text while running, final output otherwise.
+  String? get displayOutput => streamingOutput ?? output;
 
   NodeState copyWith({
     NodeStatus? status,
     String? input,
     String? output,
+    String? streamingOutput,
     Duration? elapsed,
   }) {
     return NodeState(
@@ -36,6 +44,7 @@ class NodeState {
       status: status ?? this.status,
       input: input ?? this.input,
       output: output ?? this.output,
+      streamingOutput: streamingOutput ?? this.streamingOutput,
       elapsed: elapsed ?? this.elapsed,
     );
   }
@@ -115,6 +124,9 @@ final _log = LogManager.instance.getLogger('PipelineNotifier');
 
 class PipelineNotifier extends Notifier<PipelineState> {
   static const _timeout = Duration(seconds: 120);
+
+  /// Set to `false` to disable live text streaming.
+  bool streamingEnabled = true;
 
   @override
   PipelineState build() => const PipelineState();
@@ -218,6 +230,21 @@ class PipelineNotifier extends Notifier<PipelineState> {
           );
         }
 
+        // Subscribe to text streams for live updates.
+        final subs = <StreamSubscription<String>>[];
+        if (streamingEnabled) {
+          for (final entry in sessions.entries) {
+            subs.add(
+              entry.value.textStream.listen((text) {
+                final updated = Map<String, NodeState>.from(state.nodeStates);
+                updated[entry.key] =
+                    updated[entry.key]!.copyWith(streamingOutput: text);
+                state = state.copyWith(nodeStates: updated);
+              }),
+            );
+          }
+        }
+
         // Wait for all nodes in this layer.
         if (sessions.length == 1) {
           final entry = sessions.entries.first;
@@ -244,6 +271,11 @@ class PipelineNotifier extends Notifier<PipelineState> {
               outputs,
             );
           }
+        }
+
+        // Cancel streaming subscriptions for this layer.
+        for (final sub in subs) {
+          await sub.cancel();
         }
       }
 
@@ -294,8 +326,12 @@ class PipelineNotifier extends Notifier<PipelineState> {
     switch (result) {
       case AgentSuccess(:final output):
         outputs[nodeId] = output;
-        updatedStates[nodeId] = updatedStates[nodeId]!.copyWith(
+        // Reconstruct to clear streamingOutput.
+        final prev = updatedStates[nodeId]!;
+        updatedStates[nodeId] = NodeState(
+          nodeId: prev.nodeId,
           status: NodeStatus.completed,
+          input: prev.input,
           output: output,
           elapsed: elapsed,
         );
@@ -303,16 +339,22 @@ class PipelineNotifier extends Notifier<PipelineState> {
           '  $nodeId completed (${output.length} chars)',
         );
       case AgentFailure(:final error):
-        updatedStates[nodeId] = updatedStates[nodeId]!.copyWith(
+        final prev = updatedStates[nodeId]!;
+        updatedStates[nodeId] = NodeState(
+          nodeId: prev.nodeId,
           status: NodeStatus.failed,
+          input: prev.input,
           output: 'Error: $error',
           elapsed: elapsed,
         );
         _log.error('  $nodeId failed: $error');
         throw Exception('Node $nodeId failed: $error');
       case AgentTimedOut(:final elapsed):
-        updatedStates[nodeId] = updatedStates[nodeId]!.copyWith(
+        final prev = updatedStates[nodeId]!;
+        updatedStates[nodeId] = NodeState(
+          nodeId: prev.nodeId,
           status: NodeStatus.failed,
+          input: prev.input,
           output: 'Timed out after ${elapsed.inSeconds}s',
           elapsed: elapsed,
         );

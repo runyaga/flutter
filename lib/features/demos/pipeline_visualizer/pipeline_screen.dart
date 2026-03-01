@@ -675,12 +675,30 @@ class _NodeDetailPanel extends StatelessWidget {
                 ),
               ),
             ],
-            if (nodeState.output != null) ...[
+            if (nodeState.displayOutput != null) ...[
               const SizedBox(height: SoliplexSpacing.s3),
-              Text(
-                'OUTPUT',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Text(
+                    nodeState.status == NodeStatus.running &&
+                            nodeState.streamingOutput != null
+                        ? 'OUTPUT (streaming...)'
+                        : 'OUTPUT',
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  if (nodeState.status == NodeStatus.running &&
+                      nodeState.streamingOutput != null) ...[
+                    const SizedBox(width: 6),
+                    SizedBox.square(
+                      dimension: 10,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: SoliplexSpacing.s1),
               Container(
@@ -695,9 +713,18 @@ class _NodeDetailPanel extends StatelessWidget {
                 ),
                 child: SingleChildScrollView(
                   child: SelectableText(
-                    nodeState.output!,
+                    nodeState.displayOutput!,
                     style: const TextStyle(fontSize: 12),
                   ),
+                ),
+              ),
+            ] else if (nodeState.status == NodeStatus.running) ...[
+              const SizedBox(height: SoliplexSpacing.s3),
+              Text(
+                'Waiting for response...',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],

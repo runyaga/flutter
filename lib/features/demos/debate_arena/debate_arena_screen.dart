@@ -65,7 +65,11 @@ class _DebateArenaScreenState extends ConsumerState<DebateArenaScreen> {
           _DebatePanels(debate: debate),
           if (debate.verdictText.isNotEmpty) ...[
             const SizedBox(height: SoliplexSpacing.s4),
-            _VerdictPanel(verdict: debate.verdictText),
+            _VerdictPanel(
+              verdict: debate.verdictText,
+              isStreaming:
+                  debate.isStreaming && debate.stage == DebateStage.judging,
+            ),
           ],
           if (debate.error.isNotEmpty) ...[
             const SizedBox(height: SoliplexSpacing.s4),
@@ -282,6 +286,9 @@ class _DebatePanels extends StatelessWidget {
           color: Colors.green,
           text: debate.advocateText,
           isActive: debate.stage == DebateStage.advocating,
+          isStreaming: debate.isStreaming &&
+              (debate.stage == DebateStage.advocating ||
+                  debate.stage == DebateStage.rebutting),
           rebuttalText: debate.rebuttalText,
         );
         final againstPanel = _AgentPanel(
@@ -290,6 +297,8 @@ class _DebatePanels extends StatelessWidget {
           color: Colors.red,
           text: debate.criticText,
           isActive: debate.stage == DebateStage.critiquing,
+          isStreaming:
+              debate.isStreaming && debate.stage == DebateStage.critiquing,
         );
 
         if (isWide) {
@@ -323,6 +332,7 @@ class _AgentPanel extends StatelessWidget {
     required this.color,
     required this.text,
     required this.isActive,
+    this.isStreaming = false,
     this.rebuttalText,
   });
 
@@ -331,6 +341,7 @@ class _AgentPanel extends StatelessWidget {
   final Color color;
   final String text;
   final bool isActive;
+  final bool isStreaming;
   final String? rebuttalText;
 
   @override
@@ -376,8 +387,31 @@ class _AgentPanel extends StatelessWidget {
               )
             else if (text.isEmpty)
               const SizedBox.shrink()
-            else
+            else ...[
               SelectableText(text),
+              if (isStreaming && text.isNotEmpty) ...[
+                const SizedBox(height: SoliplexSpacing.s1),
+                Row(
+                  children: [
+                    SizedBox.square(
+                      dimension: 10,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Typing...',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: color,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
             if (rebuttalText != null && rebuttalText!.isNotEmpty) ...[
               const Divider(height: 24),
               Text(
@@ -402,9 +436,13 @@ class _AgentPanel extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _VerdictPanel extends StatelessWidget {
-  const _VerdictPanel({required this.verdict});
+  const _VerdictPanel({
+    required this.verdict,
+    this.isStreaming = false,
+  });
 
   final String verdict;
+  final bool isStreaming;
 
   @override
   Widget build(BuildContext context) {
@@ -433,6 +471,16 @@ class _VerdictPanel extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (isStreaming) ...[
+                  const Spacer(),
+                  SizedBox.square(
+                    dimension: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.onTertiaryContainer,
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: SoliplexSpacing.s3),
@@ -442,6 +490,16 @@ class _VerdictPanel extends StatelessWidget {
                 color: theme.colorScheme.onTertiaryContainer,
               ),
             ),
+            if (isStreaming && verdict.isNotEmpty) ...[
+              const SizedBox(height: SoliplexSpacing.s1),
+              Text(
+                'Typing...',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onTertiaryContainer,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ],
         ),
       ),
