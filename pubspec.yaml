@@ -13,6 +13,7 @@ dependencies:
   connectivity_plus: ^7.0.0
   cupertino_icons: ^1.0.8
   device_info_plus: ^12.3.0
+  fl_chart: ^0.70.2
   flutter:
     sdk: flutter
 
