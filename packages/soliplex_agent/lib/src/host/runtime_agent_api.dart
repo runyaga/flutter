@@ -37,7 +37,9 @@ class RuntimeAgentApi implements AgentApi {
   Future<List<String>> waitAll(List<int> handles, {Duration? timeout}) async {
     final sessions = handles.map(_lookupSession).toList();
     final results = await _runtime.waitAll(sessions, timeout: timeout);
-    handles.forEach(_handles.remove);
+    for (final h in handles) {
+      _handles.remove(h);
+    }
     return results.map(_extractOutput).toList();
   }
 
