@@ -7,7 +7,8 @@ import 'package:soliplex_agent/src/runtime/agent_session.dart';
 ///
 /// Maintains a handle table mapping integer handles to [AgentSession]s.
 /// Each call to [spawnAgent] creates a new session and returns a unique
-/// monotonically-increasing handle.
+/// monotonically-increasing handle. Handles are evicted after terminal
+/// operations ([getResult], [cancelAgent]) to prevent unbounded growth.
 class RuntimeAgentApi implements AgentApi {
   /// Creates a [RuntimeAgentApi] wrapping [runtime].
   RuntimeAgentApi({required AgentRuntime runtime}) : _runtime = runtime;
@@ -36,6 +37,7 @@ class RuntimeAgentApi implements AgentApi {
   Future<List<String>> waitAll(List<int> handles, {Duration? timeout}) async {
     final sessions = handles.map(_lookupSession).toList();
     final results = await _runtime.waitAll(sessions, timeout: timeout);
+    handles.forEach(_handles.remove);
     return results.map(_extractOutput).toList();
   }
 
@@ -43,12 +45,14 @@ class RuntimeAgentApi implements AgentApi {
   Future<String> getResult(int handle, {Duration? timeout}) async {
     final session = _lookupSession(handle);
     final result = await session.awaitResult(timeout: timeout);
+    _handles.remove(handle);
     return _extractOutput(result);
   }
 
   @override
   Future<bool> cancelAgent(int handle) async {
     _lookupSession(handle).cancel();
+    _handles.remove(handle);
     return true;
   }
 
