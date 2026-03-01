@@ -1,0 +1,17 @@
+name: soliplex_interpreter_js
+description: >-
+  Spike: validate BridgeEvent interface portability to js_interpreter runtime
+  (pure Dart, throwaway).
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  js_interpreter: ^0.0.2
+  meta: ^1.11.0
+
+dev_dependencies:
+  test: ^1.24.0
+  very_good_analysis: ^10.0.0
