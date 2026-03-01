@@ -1,4 +1,5 @@
 import 'package:soliplex_agent/soliplex_agent.dart' show HostApi;
+import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
 import 'package:test/test.dart';
@@ -68,29 +69,32 @@ void main() {
       wiring = HostFunctionWiring(hostApi: hostApi);
     });
 
-    test('registerOnto registers the 4 host functions + introspection', () {
+    test('registerOnto registers df + chart + platform + introspection', () {
       wiring.registerOnto(bridge);
 
       final names = bridge.registered.map((f) => f.schema.name).toSet();
-      // 4 domain functions + 2 introspection builtins
-      expect(names, containsAll(['df_create', 'df_get', 'chart_create']));
+      // 37 df + 1 chart + 1 platform + 2 introspection = 41
+      expect(bridge.registered, hasLength(41));
+      expect(names, contains('df_create'));
+      expect(names, contains('df_head'));
+      expect(names, contains('df_filter'));
+      expect(names, contains('chart_create'));
       expect(names, contains('host_invoke'));
       expect(names, contains('list_functions'));
       expect(names, contains('help'));
-      expect(bridge.registered, hasLength(6));
     });
 
-    test('registers correct function names', () {
-      wiring.registerOnto(bridge);
+    test('exposes dfRegistry', () {
+      expect(wiring.dfRegistry, isA<DfRegistry>());
+    });
 
-      final names = bridge.registered.map((f) => f.schema.name).toList();
-      // Domain functions appear before introspection builtins.
-      expect(names.sublist(0, 4), [
-        'df_create',
-        'df_get',
-        'chart_create',
-        'host_invoke',
-      ]);
+    test('accepts injected DfRegistry', () {
+      final registry = DfRegistry();
+      final custom = HostFunctionWiring(
+        hostApi: hostApi,
+        dfRegistry: registry,
+      );
+      expect(custom.dfRegistry, same(registry));
     });
 
     group('handler delegation', () {
@@ -103,22 +107,35 @@ void main() {
         };
       });
 
-      test('df_create delegates to HostApi.registerDataFrame', () async {
+      test('df_create creates via DfRegistry', () async {
         final result = await byName['df_create']!.handler({
-          'columns': <String, Object?>{
-            'a': [1, 2],
-          },
+          'data': <Object?>[
+            <String, Object?>{'a': 1, 'b': 2},
+          ],
+          'columns': null,
         });
 
-        expect(result, 42);
-        expect(hostApi.calls, contains('registerDataFrame'));
+        expect(result, isA<int>());
+        expect(result! as int, isPositive);
       });
 
-      test('df_get delegates to HostApi.getDataFrame', () async {
-        final result = await byName['df_get']!.handler({'handle': 5});
+      test('df_head returns rows', () async {
+        // First create a DataFrame
+        final handle = (await byName['df_create']!.handler({
+          'data': <Object?>[
+            <String, Object?>{'x': 1},
+            <String, Object?>{'x': 2},
+            <String, Object?>{'x': 3},
+          ],
+          'columns': null,
+        }))! as int;
 
-        expect(result, isA<Map<String, List<Object?>>>());
-        expect(hostApi.calls['getDataFrame'], [5]);
+        final rows = await byName['df_head']!.handler({
+          'handle': handle,
+          'n': 2,
+        });
+        expect(rows, isA<List<Object?>>());
+        expect((rows! as List<Object?>).length, 2);
       });
 
       test('chart_create delegates to HostApi.registerChart', () async {

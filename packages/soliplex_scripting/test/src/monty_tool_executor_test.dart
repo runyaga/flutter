@@ -177,8 +177,8 @@ void main() {
         );
 
         await executor.execute(_toolCall('x = 1'));
-        // 4 domain functions + 2 introspection builtins
-        expect(bridge.registered, hasLength(6));
+        // 37 df + 1 chart + 1 platform + 2 introspection = 41
+        expect(bridge.registered, hasLength(41));
       });
 
       test('releases bridge even on error', () async {

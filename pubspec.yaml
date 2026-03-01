@@ -35,8 +35,12 @@ dependencies:
     path: packages/soliplex_client
   soliplex_client_native:
     path: packages/soliplex_client_native
+  soliplex_dataframe:
+    path: packages/soliplex_dataframe
   soliplex_logging:
     path: packages/soliplex_logging
+  soliplex_scripting:
+    path: packages/soliplex_scripting
   url_launcher: ^6.3.2
   uuid: ^4.5.1
   wakelock_plus: ^1.4.0

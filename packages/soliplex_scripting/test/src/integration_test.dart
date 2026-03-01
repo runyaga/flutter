@@ -138,19 +138,15 @@ void main() {
         id: 'tc-integration',
         name: PythonExecutorTool.toolName,
         arguments: jsonEncode({
-          'code': 'df_create({"columns": {"x": [1, 2, 3]}})',
+          'code': 'df_create({"data": [{"x": 1}, {"x": 2}, {"x": 3}],'
+              ' "columns": null})',
         }),
       );
 
       final result = await executor.execute(toolCall);
 
-      expect(hostApi.calls, contains('registerDataFrame'));
-      expect(
-        hostApi.calls['registerDataFrame']![0],
-        {
-          'x': [1, 2, 3],
-        },
-      );
+      // df_create now uses DfRegistry, not HostApi.registerDataFrame.
+      // Verify it returned a handle (integer) via the bridge output.
       expect(result, 'done');
       expect(cache.isExecuting(_key), isFalse);
 

@@ -1,0 +1,14 @@
+name: soliplex_dataframe
+description: Pure Dart DataFrame engine with handle-based registry.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  meta: ^1.11.0
+
+dev_dependencies:
+  test: ^1.24.0
+  very_good_analysis: ^10.0.0
