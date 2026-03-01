@@ -102,6 +102,23 @@ class SettingsScreen extends ConsumerWidget {
         ),
         // --- END TEMPORARY ---
         const Divider(),
+        ListTile(
+          leading: const Icon(Icons.forum),
+          title: const Text('Debate Arena'),
+          subtitle: const Text('Live multi-agent debate demo'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.go('/demos/debate'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.account_tree),
+          title: const Text('Pipeline Visualizer'),
+          subtitle: const Text(
+            'Configurable DAG agent pipelines',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.go('/demos/pipeline'),
+        ),
+        const Divider(),
         _AuthSection(authState: authState),
       ],
     );
