@@ -1,0 +1,75 @@
+# =============================================================================
+# DCM Configuration — Strict (soliplex_scripting)
+# =============================================================================
+# Strict thresholds and rules for the soliplex_scripting package.
+# New code should be written clean from day one — no relaxed baselines.
+#
+# Usage:
+#   dcm analyze packages/soliplex_scripting --options PLANS/0008-soliplex-scripting/dcm_options.yaml
+#
+# Documentation: https://dcm.dev/docs/configuration
+# =============================================================================
+
+dcm:
+  # ---------------------------------------------------------------------------
+  # Metrics Thresholds (strict)
+  # ---------------------------------------------------------------------------
+  metrics:
+    cyclomatic-complexity:
+      threshold: 15
+
+    lines-of-code:
+      threshold: 50
+
+    number-of-parameters:
+      threshold: 5
+
+    maximum-nesting-level:
+      threshold: 4
+
+    number-of-methods:
+      threshold: 12
+
+    weight-of-class:
+      threshold: 0.33
+
+  # ---------------------------------------------------------------------------
+  # Exclusions
+  # ---------------------------------------------------------------------------
+  exclude:
+    metrics:
+      - "**/*.g.dart"
+      - "**/*.freezed.dart"
+      - "build/**"
+
+  # ---------------------------------------------------------------------------
+  # Rules
+  # ---------------------------------------------------------------------------
+  rules:
+    # --- Correctness ---
+    - avoid-unused-parameters
+    - avoid-unnecessary-type-assertions
+    - avoid-unnecessary-type-casts
+    - avoid-unrelated-type-assertions
+    - avoid-missing-enum-constant-in-map
+
+    # --- Style & naming ---
+    - prefer-match-file-name
+    - prefer-trailing-comma
+    - prefer-conditional-expressions
+    - prefer-immediate-return
+    - prefer-moving-to-variable
+
+    # --- Complexity ---
+    - avoid-nested-conditional-expressions
+    - prefer-extracting-callbacks
+    - avoid-cascade-after-if-null
+
+    # --- Safety ---
+    - avoid-throw-in-catch-block
+    - avoid-returning-widgets
+    - always-remove-listener
+
+    # --- Immutability ---
+    - prefer-const-border-radius
+    - avoid-collection-methods-with-unrelated-types

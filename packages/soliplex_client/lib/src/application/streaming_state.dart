@@ -64,8 +64,10 @@ class ToolCallActivity extends ActivityType {
   final String? _singleToolName;
 
   /// All tool names (handles both constructors).
-  Set<String> get allToolNames =>
-      _singleToolName != null ? {_singleToolName!} : toolNames;
+  Set<String> get allToolNames {
+    final name = _singleToolName;
+    return name != null ? {name} : toolNames;
+  }
 
   /// Creates a new activity with an additional tool name.
   ToolCallActivity withToolName(String name) {
