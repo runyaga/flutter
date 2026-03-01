@@ -5,6 +5,7 @@
 /// requiring a running backend or Monty WASM runtime.
 library;
 
+// Commented-out code below references variables that would be unused.
 // ignore_for_file: unused_local_variable
 
 import 'package:soliplex_scripting/soliplex_scripting.dart';

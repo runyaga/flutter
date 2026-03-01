@@ -58,6 +58,12 @@ Flutter App
   layers, RunOrchestrator state machine, milestone roadmap, data flow,
   ThreadKey identity model. Render in GitHub or any Mermaid viewer.
 
+## Specs
+
+- **[multi-server-support.md](multi-server-support.md)** — Multi-server
+  support: `ServerConnection`, `ServerRegistry`, `MultiServerRuntime`,
+  federated tool registries. 3-phase plan.
+
 ## Implementation
 
 - **[implementation-milestones.md](implementation-milestones.md)** — 8-milestone
