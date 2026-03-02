@@ -15,7 +15,7 @@
 #   0  All gates passed
 #   1  One or more gates failed
 # =============================================================================
-set -euo pipefail
+set -eo pipefail
 
 # ── defaults ─────────────────────────────────────────────────────────────────
 BASE_BRANCH="clean/integration"
@@ -59,8 +59,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
 if [[ -z "$RESULTS_DIR" ]]; then
-  RESULTS_DIR="$(mktemp -d)"
-  trap 'rm -rf "$RESULTS_DIR"' EXIT
+  RESULTS_DIR="$REPO_ROOT/.validation"
 fi
 mkdir -p "$RESULTS_DIR"
 
@@ -83,7 +82,7 @@ echo "$DIFF_STAT"
 LINE_COUNT=$(wc -l < "$DIFF_FILE" | tr -d ' ')
 echo "Diff: $LINE_COUNT lines"
 
-if [[ -n "$DIFF_OUTPUT" ]]; then
+if [[ -n "$DIFF_OUTPUT" && "$DIFF_OUTPUT" != "$DIFF_FILE" ]]; then
   cp "$DIFF_FILE" "$DIFF_OUTPUT"
   echo "Diff written to: $DIFF_OUTPUT"
 fi

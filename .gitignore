@@ -177,3 +177,7 @@ integration_test/test_bundle.dart
 
 # FVM Version Cache
 .fvm/
+
+# Validation pipeline artifacts
+.validation/
+.validation-output.txt
