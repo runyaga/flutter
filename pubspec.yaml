@@ -3,7 +3,7 @@ description: Cross-platform Flutter frontend for Soliplex AI-powered RAG system
 publish_to: 'none'
 # To update version, run:
 # dart run tool/bump_version.dart <major|minor|patch|build>
-version: 0.64.1+15
+version: 0.64.2+16
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
@@ -12,7 +12,10 @@ environment:
 dependencies:
   connectivity_plus: ^7.0.0
   cupertino_icons: ^1.0.8
+  dart_monty_native:
+    path: /Users/runyaga/dev/dart_monty/packages/dart_monty_native
   device_info_plus: ^12.3.0
+  fl_chart: ^0.70.2
   flutter:
     sdk: flutter
 
@@ -35,11 +38,18 @@ dependencies:
     path: packages/soliplex_client
   soliplex_client_native:
     path: packages/soliplex_client_native
+  soliplex_dataframe:
+    path: packages/soliplex_dataframe
   soliplex_logging:
     path: packages/soliplex_logging
+  soliplex_scripting:
+    path: packages/soliplex_scripting
   url_launcher: ^6.3.2
   uuid: ^4.5.1
-  wakelock_plus: ^1.4.0
+  wakelock_plus:
+    git:
+      url: https://github.com/soliplex/wakelock_plus.git
+      path: wakelock_plus
   web: ^1.1.1
 
 dev_dependencies:
@@ -57,6 +67,13 @@ dev_dependencies:
   # Riverpod for testing (explicit version from transitive)
   riverpod: 3.2.1
   very_good_analysis: ^10.1.0
+
+dependency_overrides:
+  dart_monty_platform_interface:
+    path: /Users/runyaga/dev/dart_monty/packages/dart_monty_platform_interface
+  dart_monty_ffi:
+    path: /Users/runyaga/dev/dart_monty/packages/dart_monty_ffi
+
 flutter:
   uses-material-design: true
   assets:

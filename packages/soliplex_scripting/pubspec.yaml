@@ -16,6 +16,8 @@ dependencies:
     path: ../soliplex_agent
   soliplex_client:
     path: ../soliplex_client
+  soliplex_dataframe:
+    path: ../soliplex_dataframe
   soliplex_interpreter_monty:
     path: ../soliplex_interpreter_monty
 

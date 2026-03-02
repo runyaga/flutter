@@ -46,11 +46,13 @@ class PipelinePattern {
     required this.description,
     required this.nodes,
     required this.edges,
+    this.examplePrompt = '',
   });
 
   final String id;
   final String name;
   final String description;
+  final String examplePrompt;
   final List<DagNode> nodes;
   final List<DagEdge> edges;
 
@@ -91,6 +93,11 @@ const planFanOutSynthesize = PipelinePattern(
   name: 'Plan-FanOut-Synthesize',
   description: 'A planner splits work across parallel workers, '
       'then a synthesizer combines their outputs.',
+  examplePrompt: 'Build a disaster recovery playbook for a fintech '
+      'startup: Worker 1 maps infrastructure dependencies, '
+      'Worker 2 drafts regulatory compliance steps (SOC2, '
+      'PCI-DSS), Worker 3 writes runbook scripts for DB '
+      'failover and cache invalidation',
   nodes: [
     DagNode(id: 'planner', label: 'Planner', roomId: 'plain'),
     DagNode(
@@ -131,13 +138,18 @@ const planFanOutSynthesize = PipelinePattern(
 const mapReduce = PipelinePattern(
   id: 'map-reduce',
   name: 'MapReduce',
-  description: 'Five parallel mappers feed into a single reducer.',
+  description: 'Four parallel mappers feed into a single reducer.',
+  examplePrompt: 'Analyze a SaaS pricing pivot: Mapper 1 reverse-engineers '
+      'competitor unit economics (Stripe, Square, Adyen), '
+      'Mapper 2 models churn sensitivity at 5 price points, '
+      'Mapper 3 simulates usage-based vs seat-based revenue '
+      'over 18 months, Mapper 4 drafts the migration email '
+      'sequence for existing customers',
   nodes: [
     DagNode(id: 'mapper-1', label: 'Mapper 1', roomId: 'plain'),
     DagNode(id: 'mapper-2', label: 'Mapper 2', roomId: 'plain'),
     DagNode(id: 'mapper-3', label: 'Mapper 3', roomId: 'plain'),
     DagNode(id: 'mapper-4', label: 'Mapper 4', roomId: 'plain'),
-    DagNode(id: 'mapper-5', label: 'Mapper 5', roomId: 'plain'),
     DagNode(
       id: 'reducer',
       label: 'Reducer',
@@ -147,7 +159,6 @@ const mapReduce = PipelinePattern(
         'mapper-2',
         'mapper-3',
         'mapper-4',
-        'mapper-5',
       ],
     ),
   ],
@@ -156,7 +167,6 @@ const mapReduce = PipelinePattern(
     DagEdge(from: 'mapper-2', to: 'reducer'),
     DagEdge(from: 'mapper-3', to: 'reducer'),
     DagEdge(from: 'mapper-4', to: 'reducer'),
-    DagEdge(from: 'mapper-5', to: 'reducer'),
   ],
 );
 
@@ -165,6 +175,12 @@ const consensusVoting = PipelinePattern(
   name: 'Consensus Voting',
   description: 'Three independent opinions feed into a judge '
       'who renders a verdict.',
+  examplePrompt: 'Should we open-source our core inference engine? '
+      'Opinion 1: CTO perspective on competitive moat and '
+      'developer ecosystem growth. Opinion 2: CFO perspective '
+      'on revenue cannibalization vs enterprise conversion '
+      'funnel. Opinion 3: Head of Security on supply-chain '
+      'attack surface and vulnerability disclosure obligations',
   nodes: [
     DagNode(id: 'opinion-1', label: 'Opinion 1', roomId: 'plain'),
     DagNode(id: 'opinion-2', label: 'Opinion 2', roomId: 'plain'),
@@ -188,6 +204,12 @@ const adversarialDebate = PipelinePattern(
   name: 'Adversarial Debate',
   description: 'Advocate → Critic → Rebuttal → Judge, '
       'rendered as a DAG.',
+  examplePrompt: 'Autonomous drone swarms should be authorized for '
+      'wildfire containment without human-in-the-loop '
+      'approval. The advocate argues lives saved per hour '
+      'of faster response; the critic argues liability, '
+      'FAA sovereignty, and cascading failure modes when '
+      'swarm coordination breaks down mid-fire',
   nodes: [
     DagNode(
       id: 'advocate',
