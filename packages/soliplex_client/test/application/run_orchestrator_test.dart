@@ -701,9 +701,9 @@ void main() {
     });
 
     test('double dispose is a no-op', () {
-      orchestrator.dispose();
-      // Second call should not throw.
-      orchestrator.dispose();
+      orchestrator
+        ..dispose()
+        ..dispose(); // Second call should not throw.
     });
   });
 }

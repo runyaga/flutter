@@ -20,7 +20,7 @@ ClientBundle createClientBundle(String serverUrl) {
   assert(
     !serverUrl.endsWith('/api/v1') && !serverUrl.endsWith('/api/v1/'),
     'serverUrl should be the root URL without /api/v1 suffix. '
-        'Got: $serverUrl',
+    'Got: $serverUrl',
   );
   final baseUrl = '$serverUrl/api/v1';
 
