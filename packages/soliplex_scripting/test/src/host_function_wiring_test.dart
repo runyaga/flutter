@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:soliplex_agent/soliplex_agent.dart' show FakeAgentApi, HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
@@ -330,6 +332,119 @@ void main() {
         expect(schema.params[1].type, HostParamType.string);
         expect(schema.params[1].isRequired, isFalse);
         expect(schema.params[1].defaultValue, 'general');
+      });
+    });
+  });
+
+  group('HostFunctionWiring with StreamRegistry', () {
+    late _RecordingBridge bridge;
+    late _FakeHostApi hostApi;
+    late StreamRegistry streamRegistry;
+    late HostFunctionWiring wiring;
+
+    setUp(() {
+      bridge = _RecordingBridge();
+      hostApi = _FakeHostApi();
+      streamRegistry = StreamRegistry()
+        ..registerFactory(
+          'test_stream',
+          () => Stream.fromIterable([
+            <String, Object?>{'v': 1},
+            <String, Object?>{'v': 2},
+            <String, Object?>{'v': 3},
+          ]),
+        );
+      wiring = HostFunctionWiring(
+        hostApi: hostApi,
+        dfRegistry: DfRegistry(),
+        streamRegistry: streamRegistry,
+      );
+    });
+
+    tearDown(() async {
+      await streamRegistry.dispose();
+    });
+
+    test('registers 3 stream functions (total 46)', () {
+      wiring.registerOnto(bridge);
+
+      final names = bridge.registered.map((f) => f.schema.name).toSet();
+      // 37 df + 2 chart + 2 platform + 3 stream + 2 introspection = 46
+      expect(bridge.registered, hasLength(46));
+      expect(names, contains('stream_subscribe'));
+      expect(names, contains('stream_next'));
+      expect(names, contains('stream_close'));
+    });
+
+    group('handler delegation', () {
+      late Map<String, HostFunction> byName;
+
+      setUp(() {
+        wiring.registerOnto(bridge);
+        byName = {
+          for (final f in bridge.registered) f.schema.name: f,
+        };
+      });
+
+      test('stream_subscribe returns a handle', () async {
+        final result = await byName['stream_subscribe']!.handler({
+          'name': 'test_stream',
+        });
+
+        expect(result, isA<int>());
+        expect(result! as int, isPositive);
+      });
+
+      test('stream_subscribe throws for unknown stream', () async {
+        expect(
+          () => byName['stream_subscribe']!.handler({'name': 'no_such'}),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
+
+      test('stream_next returns values then null at end', () async {
+        final handle = (await byName['stream_subscribe']!.handler({
+          'name': 'test_stream',
+        }))! as int;
+
+        final v1 = await byName['stream_next']!.handler({'handle': handle});
+        expect(v1, {'v': 1});
+
+        final v2 = await byName['stream_next']!.handler({'handle': handle});
+        expect(v2, {'v': 2});
+
+        final v3 = await byName['stream_next']!.handler({'handle': handle});
+        expect(v3, {'v': 3});
+
+        final end = await byName['stream_next']!.handler({'handle': handle});
+        expect(end, isNull);
+      });
+
+      test('stream_close cancels subscription', () async {
+        final handle = (await byName['stream_subscribe']!.handler({
+          'name': 'test_stream',
+        }))! as int;
+
+        // Read one value
+        await byName['stream_next']!.handler({'handle': handle});
+
+        final closed = await byName['stream_close']!.handler({
+          'handle': handle,
+        });
+        expect(closed, isTrue);
+
+        // Closing again returns false
+        final again = await byName['stream_close']!.handler({
+          'handle': handle,
+        });
+        expect(again, isFalse);
+      });
+
+      test('stream_next throws for unknown handle', () async {
+        expect(
+          () => byName['stream_next']!.handler({'handle': 999}),
+          throwsA(isA<ArgumentError>()),
+        );
       });
     });
   });

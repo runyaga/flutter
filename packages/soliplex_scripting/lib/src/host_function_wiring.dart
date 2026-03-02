@@ -2,6 +2,7 @@ import 'package:soliplex_agent/soliplex_agent.dart' show AgentApi, HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/src/df_functions.dart';
+import 'package:soliplex_scripting/src/stream_registry.dart';
 
 /// Wires [HostApi] methods to [HostFunction]s and registers them onto a
 /// [MontyBridge] via a [HostFunctionRegistry].
@@ -14,18 +15,22 @@ import 'package:soliplex_scripting/src/df_functions.dart';
 /// | df       | `df_*` (37)   | via DfRegistry       |
 /// | chart    | `chart_create`| `registerChart`      |
 /// | platform | `host_invoke` | `invoke`             |
+/// | streams  | `stream_*`(3) | via StreamRegistry   |
 class HostFunctionWiring {
   HostFunctionWiring({
     required HostApi hostApi,
     AgentApi? agentApi,
     DfRegistry? dfRegistry,
+    StreamRegistry? streamRegistry,
   })  : _hostApi = hostApi,
         _agentApi = agentApi,
-        _dfRegistry = dfRegistry ?? DfRegistry();
+        _dfRegistry = dfRegistry ?? DfRegistry(),
+        _streamRegistry = streamRegistry;
 
   final HostApi _hostApi;
   final AgentApi? _agentApi;
   final DfRegistry _dfRegistry;
+  final StreamRegistry? _streamRegistry;
 
   /// Registers all host function categories (plus introspection builtins)
   /// onto [bridge].
@@ -34,6 +39,9 @@ class HostFunctionWiring {
       ..addCategory('df', buildDfFunctions(_dfRegistry))
       ..addCategory('chart', _chartFunctions())
       ..addCategory('platform', _platformFunctions());
+    if (_streamRegistry != null) {
+      registry.addCategory('streams', _streamFunctions());
+    }
     if (_agentApi != null) {
       registry.addCategory('agent', _agentFunctions());
     }
@@ -138,6 +146,78 @@ class HostFunctionWiring {
             final ms = args['ms']! as int;
             await Future<void>.delayed(Duration(milliseconds: ms));
             return null;
+          },
+        ),
+      ];
+
+  List<HostFunction> _streamFunctions() => [
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'stream_subscribe',
+            description: 'Subscribe to a named Dart stream.',
+            params: [
+              HostParam(
+                name: 'name',
+                type: HostParamType.string,
+                description: 'Registered stream name.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final name = args['name'];
+            if (name is! String) {
+              throw ArgumentError.value(name, 'name', 'Expected a string.');
+            }
+            return _streamRegistry!.subscribe(name);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'stream_next',
+            description: 'Pull the next value from a stream subscription. '
+                'Returns null when the stream is done.',
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Subscription handle from stream_subscribe.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = args['handle'];
+            if (handle is! int) {
+              throw ArgumentError.value(
+                handle,
+                'handle',
+                'Expected an integer.',
+              );
+            }
+            return _streamRegistry!.next(handle);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'stream_close',
+            description: 'Close a stream subscription early.',
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Subscription handle from stream_subscribe.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = args['handle'];
+            if (handle is! int) {
+              throw ArgumentError.value(
+                handle,
+                'handle',
+                'Expected an integer.',
+              );
+            }
+            return _streamRegistry!.close(handle);
           },
         ),
       ];

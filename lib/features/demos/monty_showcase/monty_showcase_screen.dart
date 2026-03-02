@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -112,14 +113,15 @@ print(f"Plotted {len(points)} points")
     ],
   ),
   (
-    'Streaming Gauges',
-    'A live server dashboard — bar gauges adjusting in real time '
-        'via mean-reverting random streams.',
+    'Fake Streaming Gauges',
+    'A live server dashboard — all computation happens in Python '
+        'with sleep-based pacing.',
     [
       _DemoStep(
-        title: 'Step 1: Live dashboard',
+        title: 'Step 1: Live dashboard (Python-driven)',
         narration: 'Creates a bar chart as gauge display, then streams '
-            '30 ticks of Ornstein-Uhlenbeck random data at ~400ms intervals.',
+            '30 ticks of Ornstein-Uhlenbeck random data at ~400ms intervals. '
+            'Python computes the data and calls sleep() between ticks.',
         code: '''
 seed = [42]
 labels = ["CPU", "MEM", "NET", "DSK", "TMP"]
@@ -147,6 +149,40 @@ for tick in range(30):
         "labels": labels, "values": r
     })
     await sleep(400)
+print("Stream ended.")
+''',
+      ),
+    ],
+  ),
+  (
+    'Stream Gauges',
+    'A live server dashboard — Dart produces O-U data via a stream, '
+        'Python consumes it with stream_subscribe / stream_next.',
+    [
+      _DemoStep(
+        title: 'Step 1: Live dashboard (Dart-driven)',
+        narration: 'Subscribes to a Dart-side "server_metrics" stream that '
+            'emits 30 ticks at ~400ms. Python pulls each snapshot and '
+            'updates the chart — no sleep needed.',
+        code: '''
+chart_id = await chart_create({
+    "type": "bar", "title": "Server Dashboard (Live)",
+    "labels": ["CPU", "MEM", "NET", "DSK", "TMP"],
+    "values": [50, 50, 50, 50, 50]
+})
+
+handle = await stream_subscribe("server_metrics")
+tick = 0
+while True:
+    snapshot = await stream_next(handle)
+    if snapshot is None:
+        break
+    tick = tick + 1
+    vals = snapshot["values"]
+    print(f"[{tick:02d}] CPU:{vals[0]}% MEM:{vals[1]}% NET:{vals[2]}% DSK:{vals[3]}% TMP:{vals[4]}%")
+    await chart_update(chart_id, snapshot)
+
+await stream_close(handle)
 print("Stream ended.")
 ''',
       ),
@@ -249,7 +285,8 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
 
   late final BridgeCache _bridgeCache;
   late final MontyToolExecutor _executor;
-  late final DfRegistry _registry;
+  late final DfRegistry _dfRegistry;
+  late final StreamRegistry _streamRegistry;
   final _charts = <int, DebugChartConfig>{};
   final _log = <_LogEntry>[];
   int _selectedDemo = 0;
@@ -269,20 +306,24 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
         setState(() => _charts[id] = config);
       },
     );
-    _registry = dfRegistry;
+    _dfRegistry = dfRegistry;
+    _streamRegistry = StreamRegistry()
+      ..registerFactory('server_metrics', _serverMetricsStream);
     _executor = MontyToolExecutor(
       threadKey: _threadKey,
       bridgeCache: _bridgeCache,
       hostWiring: HostFunctionWiring(
         hostApi: hostApi,
         dfRegistry: dfRegistry,
+        streamRegistry: _streamRegistry,
       ),
     );
   }
 
   @override
   void dispose() {
-    _registry.disposeAll();
+    unawaited(_streamRegistry.dispose());
+    _dfRegistry.disposeAll();
     _bridgeCache.evict(_threadKey);
     super.dispose();
   }
@@ -592,7 +633,7 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
       _log.clear();
       _charts.clear();
     });
-    _registry.disposeAll();
+    _dfRegistry.disposeAll();
   }
 
   void _reset() {
@@ -602,7 +643,7 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
       _log.clear();
       _charts.clear();
     });
-    _registry.disposeAll();
+    _dfRegistry.disposeAll();
   }
 
   Future<void> _runAllSteps() async {
@@ -680,6 +721,29 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
 
   void _addLog(String text, _LogKind kind) {
     setState(() => _log.add(_LogEntry(text, kind)));
+  }
+
+  /// Ornstein-Uhlenbeck stream: 30 ticks at ~400ms with mean-reverting noise.
+  static Stream<Object?> _serverMetricsStream() async* {
+    final labels = ['CPU', 'MEM', 'NET', 'DSK', 'TMP'];
+    final mus = [55.0, 40.0, 65.0, 25.0, 50.0];
+    final vals = [...mus];
+    var seed = 42;
+
+    for (var tick = 0; tick < 30; tick++) {
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      for (var i = 0; i < 5; i++) {
+        seed = (seed * 1103515245 + 12345) % 2147483648;
+        final n = (seed / 2147483648) * 2 - 1;
+        vals[i] = (vals[i] + 0.15 * (mus[i] - vals[i]) + 8 * n).clamp(0, 100);
+      }
+      yield <String, Object?>{
+        'type': 'bar',
+        'title': 'Server Dashboard (Live)',
+        'labels': labels,
+        'values': vals.map((v) => (v * 10).round() / 10).toList(),
+      };
+    }
   }
 }
 
