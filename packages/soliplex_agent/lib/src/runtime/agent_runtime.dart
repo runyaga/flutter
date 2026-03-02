@@ -5,6 +5,7 @@ import 'package:soliplex_agent/src/models/agent_result.dart';
 import 'package:soliplex_agent/src/runtime/agent_session.dart';
 import 'package:soliplex_agent/src/runtime/agent_session_state.dart';
 import 'package:soliplex_agent/src/tools/tool_registry_resolver.dart';
+import 'package:soliplex_client/run.dart';
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 

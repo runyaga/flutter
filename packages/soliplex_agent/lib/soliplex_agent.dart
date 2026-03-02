@@ -6,11 +6,7 @@
 library;
 
 // Re-exported from soliplex_client (moved in agent-package-split refactor).
-export 'package:soliplex_client/src/application/error_classifier.dart';
-export 'package:soliplex_client/src/application/run_orchestrator.dart';
-export 'package:soliplex_client/src/application/run_state.dart';
-export 'package:soliplex_client/src/domain/failure_reason.dart';
-export 'package:soliplex_client/src/domain/thread_key.dart';
+export 'package:soliplex_client/run.dart';
 
 export 'src/host/fake_host_api.dart';
 export 'src/host/host_api.dart';

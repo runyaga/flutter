@@ -1,6 +1,6 @@
 import 'package:meta/meta.dart';
 
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_client/run.dart';
 
 /// Result of a completed agent session.
 ///

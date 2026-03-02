@@ -1,6 +1,8 @@
 import 'package:meta/meta.dart';
-
 import 'package:soliplex_client/soliplex_client.dart';
+
+import 'package:soliplex_client/src/domain/failure_reason.dart';
+import 'package:soliplex_client/src/domain/thread_key.dart';
 
 /// State of a single agent run lifecycle.
 ///
