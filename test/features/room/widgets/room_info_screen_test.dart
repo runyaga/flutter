@@ -1136,6 +1136,11 @@ void main() {
     group('documents states', () {
       testWidgets('shows error with retry button when loading fails',
           (tester) async {
+        tester.view.physicalSize = const Size(800, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
         const room = Room(id: 'room-1', name: 'Test Room');
         final (docsOverride, notifier) = documentsErrorOverride('room-1');
 

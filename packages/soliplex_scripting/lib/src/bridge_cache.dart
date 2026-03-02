@@ -83,7 +83,7 @@ class BridgeCache {
     _bridges.remove(key)?.dispose();
   }
 
-  /// Disposes all cached bridges and clears the cache.
+  /// Disposes all cached bridges, then clears the cache.
   void disposeAll() {
     for (final bridge in _bridges.values) {
       bridge.dispose();

@@ -9,9 +9,11 @@ import 'package:soliplex_frontend/core/models/features.dart';
 import 'package:soliplex_frontend/core/models/route_config.dart';
 import 'package:soliplex_frontend/core/providers/shell_config_provider.dart';
 import 'package:soliplex_frontend/features/auth/auth_callback_screen.dart';
-// TEMPORARY: Debug agent screen — remove after F1 validation.
+// TEMPORARY: Debug screens — remove after validation.
 import 'package:soliplex_frontend/features/debug/debug_agent_screen.dart';
+import 'package:soliplex_frontend/features/debug/debug_dataframe_screen.dart';
 import 'package:soliplex_frontend/features/demos/debate_arena/debate_arena_screen.dart';
+import 'package:soliplex_frontend/features/demos/monty_showcase/monty_showcase_screen.dart';
 import 'package:soliplex_frontend/features/demos/pipeline_visualizer/pipeline_screen.dart';
 import 'package:soliplex_frontend/features/home/home_screen.dart';
 import 'package:soliplex_frontend/features/inspector/network_inspector_screen.dart';
@@ -55,6 +57,164 @@ class _BackToSettingsButton extends StatelessWidget {
       icon: const Icon(Icons.arrow_back),
       onPressed: () => context.go('/settings'),
       tooltip: 'Back to settings',
+    );
+  }
+}
+
+/// Settings hub with navigation to debug screens and demos.
+class _SettingsHub extends StatelessWidget {
+  const _SettingsHub();
+
+  static const _items = <(
+    String title,
+    String subtitle,
+    String route,
+    IconData icon,
+    Color? color,
+  )>[
+    // -- LLM + Monty autonomy demos --
+    (
+      'LLM Agent + Python',
+      'LLM writes code, Monty executes it, charts render. '
+          'Errors flow back to the LLM which retries autonomously.',
+      '/debug/agent',
+      Icons.smart_toy,
+      null,
+    ),
+    (
+      'Monty Bridge Showcase',
+      'Pre-scripted demos: error recovery, DataFrame → chart, '
+          'scatter plots, multi-step analysis. No backend needed.',
+      '/demos/showcase',
+      Icons.auto_awesome,
+      null,
+    ),
+    (
+      'DataFrame REPL',
+      'Interactive Python REPL backed by Monty. '
+          'Create DataFrames, run computations, render charts live.',
+      '/debug/dataframe',
+      Icons.table_chart,
+      null,
+    ),
+    // -- Multi-agent demos --
+    (
+      'Pipeline Visualizer',
+      'DAG-based multi-agent pipelines. Nodes run concurrently, '
+          'each with isolated Monty interpreters and state.',
+      '/demos/pipeline',
+      Icons.account_tree,
+      null,
+    ),
+    (
+      'Debate Arena',
+      'Multi-agent debate: advocate, critic, rebuttal, judge. '
+          'Each agent can use Python for evidence and charts.',
+      '/demos/debate',
+      Icons.forum,
+      null,
+    ),
+    // -- System --
+    (
+      'Backend Versions',
+      'Connected server versions and capabilities.',
+      '/settings/backend-versions',
+      Icons.dns,
+      null,
+    ),
+    (
+      'Network Inspector',
+      'Live HTTP traffic and AG-UI event stream.',
+      '/settings/network',
+      Icons.wifi_tethering,
+      null,
+    ),
+    (
+      'Log Viewer',
+      'Structured application logs.',
+      '/settings/logs',
+      Icons.list_alt,
+      null,
+    ),
+    (
+      'Telemetry',
+      'Usage metrics and diagnostics.',
+      '/settings/telemetry',
+      Icons.analytics,
+      null,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _items.length + 2, // +2 for section headers
+      separatorBuilder: (_, i) {
+        // Dividers before section headers
+        if (i == 3 || i == 6) return const Divider(height: 24);
+        return const SizedBox.shrink();
+      },
+      itemBuilder: (context, i) {
+        // Section headers
+        if (i == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'Monty Autonomy',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          );
+        }
+        if (i == 4) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'Multi-Agent',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          );
+        }
+        if (i == 7) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'System',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          );
+        }
+        // Map index to item index (skip headers)
+        final itemIndex = i < 4
+            ? i - 1
+            : i < 7
+                ? i - 2
+                : i - 3;
+        if (itemIndex < 0 || itemIndex >= _items.length) {
+          return const SizedBox.shrink();
+        }
+        final (title, subtitle, route, icon, _) = _items[itemIndex];
+        return Card(
+          child: ListTile(
+            leading: Icon(icon, size: 28),
+            title: Text(title),
+            subtitle: Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(route),
+          ),
+        );
+      },
     );
   }
 }
@@ -353,7 +513,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             return '/rooms/$roomId?thread=$threadId';
           },
         ),
-      // --- TEMPORARY: Debug agent run screen — remove after F1 validation ---
+      // --- TEMPORARY: Debug screens — remove after validation ---
       GoRoute(
         path: '/debug/agent',
         name: 'debug-agent',
@@ -361,6 +521,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           title: const Text('DEBUG: Agent Run'),
           leading: const _BackToSettingsButton(),
           body: const DebugAgentScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/debug/dataframe',
+        name: 'debug-dataframe',
+        pageBuilder: (context, state) => _staticPage(
+          title: const Text('DEBUG: DataFrame REPL'),
+          leading: const _BackToSettingsButton(),
+          body: const DebugDataFrameScreen(),
         ),
       ),
       // --- END TEMPORARY ---
@@ -371,6 +540,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           title: const Text('Debate Arena'),
           leading: const _BackToSettingsButton(),
           body: const DebateArenaScreen(),
+          actions: [
+            if (features.enableSettings) const _SettingsButton(),
+          ],
+        ),
+      ),
+      GoRoute(
+        path: '/demos/showcase',
+        name: 'monty-showcase',
+        pageBuilder: (context, state) => _staticPage(
+          title: const Text('Monty Bridge Showcase'),
+          leading: const _BackToSettingsButton(),
+          body: const MontyShowcaseScreen(),
           actions: [
             if (features.enableSettings) const _SettingsButton(),
           ],
@@ -394,7 +575,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           name: 'settings',
           pageBuilder: (context, state) => _staticPage(
             title: const Text('Settings'),
-            body: const Center(child: Text('Settings — under construction')),
+            body: const _SettingsHub(),
           ),
           routes: [
             GoRoute(
