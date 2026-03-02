@@ -1,0 +1,283 @@
+#!/usr/bin/env bash
+# =============================================================================
+# validate_pr.sh — PR validation gate for clean git history workflow
+# =============================================================================
+# Runs: static analysis, DCM, tests + coverage, patch coverage check.
+# Outputs unified diff for external review (Gemini).
+#
+# Usage:
+#   tool/validate_pr.sh --base clean/integration \
+#     --packages packages/soliplex_agent \
+#     --app-tests \
+#     --coverage-threshold 90
+#
+# Exit codes:
+#   0  All gates passed
+#   1  One or more gates failed
+# =============================================================================
+set -euo pipefail
+
+# ── defaults ─────────────────────────────────────────────────────────────────
+BASE_BRANCH="clean/integration"
+PACKAGES=()
+RUN_APP_TESTS=false
+COVERAGE_THRESHOLD=90
+DIFF_OUTPUT=""
+RESULTS_DIR=""
+DART_CMD="fvm dart"
+FLUTTER_CMD="fvm flutter"
+
+# ── parse args ───────────────────────────────────────────────────────────────
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base)        BASE_BRANCH="$2"; shift 2 ;;
+    --packages)    shift; while [[ $# -gt 0 && ! "$1" =~ ^-- ]]; do PACKAGES+=("$1"); shift; done ;;
+    --app-tests)   RUN_APP_TESTS=true; shift ;;
+    --coverage-threshold) COVERAGE_THRESHOLD="$2"; shift 2 ;;
+    --diff-output) DIFF_OUTPUT="$2"; shift 2 ;;
+    --results-dir) RESULTS_DIR="$2"; shift 2 ;;
+    --dart-cmd)    DART_CMD="$2"; shift 2 ;;
+    --flutter-cmd) FLUTTER_CMD="$2"; shift 2 ;;
+    -h|--help)
+      echo "Usage: $0 [options]"
+      echo "  --base BRANCH          Base branch for diff (default: clean/integration)"
+      echo "  --packages DIR [DIR..] Package directories to validate"
+      echo "  --app-tests            Also run flutter test on the app root"
+      echo "  --coverage-threshold N Minimum patch coverage % (default: 90)"
+      echo "  --diff-output FILE     Write unified diff to file"
+      echo "  --results-dir DIR      Directory for coverage/results artifacts"
+      echo "  --dart-cmd CMD         Dart command (default: fvm dart)"
+      echo "  --flutter-cmd CMD      Flutter command (default: fvm flutter)"
+      exit 0
+      ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+  esac
+done
+
+# ── setup ────────────────────────────────────────────────────────────────────
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+if [[ -z "$RESULTS_DIR" ]]; then
+  RESULTS_DIR="$(mktemp -d)"
+  trap 'rm -rf "$RESULTS_DIR"' EXIT
+fi
+mkdir -p "$RESULTS_DIR"
+
+GATE_FAILURES=()
+GATE_PASSES=()
+
+log_pass() { GATE_PASSES+=("$1"); echo "✓ PASS: $1"; }
+log_fail() { GATE_FAILURES+=("$1"); echo "✗ FAIL: $1"; }
+log_step() { echo ""; echo "━━━ $1 ━━━"; }
+
+# ── step 1: generate unified diff ───────────────────────────────────────────
+log_step "UNIFIED DIFF"
+
+DIFF_FILE="$RESULTS_DIR/pr.diff"
+git diff "$BASE_BRANCH"...HEAD > "$DIFF_FILE" 2>/dev/null || git diff "$BASE_BRANCH"..HEAD > "$DIFF_FILE"
+
+DIFF_STAT=$(git diff --stat "$BASE_BRANCH"...HEAD 2>/dev/null || git diff --stat "$BASE_BRANCH"..HEAD)
+echo "$DIFF_STAT"
+
+LINE_COUNT=$(wc -l < "$DIFF_FILE" | tr -d ' ')
+echo "Diff: $LINE_COUNT lines"
+
+if [[ -n "$DIFF_OUTPUT" ]]; then
+  cp "$DIFF_FILE" "$DIFF_OUTPUT"
+  echo "Diff written to: $DIFF_OUTPUT"
+fi
+
+if [[ "$LINE_COUNT" -eq 0 ]]; then
+  echo "No changes detected against $BASE_BRANCH. Nothing to validate."
+  exit 0
+fi
+
+# ── step 2: static analysis (dart analyze) ───────────────────────────────────
+log_step "STATIC ANALYSIS"
+
+analyze_failed=false
+
+# Analyze each package
+for pkg in "${PACKAGES[@]}"; do
+  if [[ -d "$pkg" && -f "$pkg/pubspec.yaml" ]]; then
+    echo "Analyzing $pkg..."
+    if $DART_CMD analyze --fatal-infos "$pkg" 2>&1; then
+      log_pass "dart analyze: $pkg"
+    else
+      log_fail "dart analyze: $pkg"
+      analyze_failed=true
+    fi
+  else
+    echo "Skipping $pkg (not a package directory)"
+  fi
+done
+
+# Analyze app root if running app tests
+if $RUN_APP_TESTS; then
+  echo "Analyzing app (lib/ test/)..."
+  if $DART_CMD analyze --fatal-infos lib/ test/ 2>&1; then
+    log_pass "dart analyze: app (lib/ test/)"
+  else
+    log_fail "dart analyze: app (lib/ test/)"
+    analyze_failed=true
+  fi
+fi
+
+# ── step 3: DCM analysis (scoped to changed .dart files) ─────────────────────
+log_step "DCM ANALYSIS"
+
+dcm_failed=false
+
+# Extract changed .dart lib files from diff (not test files)
+CHANGED_DART_FILES=()
+while IFS= read -r f; do
+  if [[ "$f" == *.dart && "$f" == lib/* ]] || [[ "$f" == *.dart && "$f" == packages/*/lib/* ]]; then
+    if [[ -f "$f" ]]; then
+      CHANGED_DART_FILES+=("$f")
+    fi
+  fi
+done < <(git diff --name-only "$BASE_BRANCH"...HEAD 2>/dev/null || git diff --name-only "$BASE_BRANCH"..HEAD)
+
+if [[ ${#CHANGED_DART_FILES[@]} -eq 0 ]]; then
+  echo "No changed .dart lib files — skipping DCM"
+  log_pass "dcm analyze: skipped (no changed dart files)"
+else
+  echo "DCM analyzing ${#CHANGED_DART_FILES[@]} changed file(s)..."
+  # Run DCM on each changed file individually to avoid scope bleed
+  dcm_issues=0
+  for dart_file in "${CHANGED_DART_FILES[@]}"; do
+    dcm_out=$(env -u GIT_DIR -u GIT_WORK_TREE dcm analyze "$dart_file" --fatal-warnings 2>&1) || {
+      echo "$dcm_out"
+      dcm_issues=$((dcm_issues + 1))
+    }
+  done
+
+  if [[ $dcm_issues -eq 0 ]]; then
+    log_pass "dcm analyze: ${#CHANGED_DART_FILES[@]} file(s) clean"
+  else
+    log_fail "dcm analyze: $dcm_issues file(s) with issues"
+    dcm_failed=true
+  fi
+fi
+
+# ── step 4: tests with coverage ─────────────────────────────────────────────
+log_step "TESTS + COVERAGE"
+
+COMBINED_LCOV="$RESULTS_DIR/combined_lcov.info"
+: > "$COMBINED_LCOV"  # empty file
+
+test_failed=false
+
+for pkg in "${PACKAGES[@]}"; do
+  if [[ -d "$pkg/test" ]]; then
+    pkg_name=$(basename "$pkg")
+    pkg_cov_dir="$RESULTS_DIR/coverage_$pkg_name"
+    mkdir -p "$pkg_cov_dir"
+
+    echo "Testing $pkg..."
+    if (cd "$pkg" && $DART_CMD test --coverage="$pkg_cov_dir" 2>&1); then
+      log_pass "tests: $pkg"
+      # Convert to lcov if coverage data exists
+      if ls "$pkg_cov_dir"/*.json 1>/dev/null 2>&1; then
+        (cd "$pkg" && $DART_CMD pub global run coverage:format_coverage \
+          --lcov \
+          --in="$pkg_cov_dir" \
+          --out="$pkg_cov_dir/lcov.info" \
+          --report-on=lib/ 2>/dev/null) || true
+        if [[ -f "$pkg_cov_dir/lcov.info" ]]; then
+          cat "$pkg_cov_dir/lcov.info" >> "$COMBINED_LCOV"
+        fi
+      fi
+    else
+      log_fail "tests: $pkg"
+      test_failed=true
+    fi
+  else
+    echo "No tests found for $pkg"
+  fi
+done
+
+if $RUN_APP_TESTS; then
+  app_cov_dir="$RESULTS_DIR/coverage_app"
+  mkdir -p "$app_cov_dir"
+
+  echo "Testing app (flutter test)..."
+  if $FLUTTER_CMD test --coverage --coverage-path="$app_cov_dir/lcov.info" 2>&1; then
+    log_pass "tests: app"
+    if [[ -f "$app_cov_dir/lcov.info" ]]; then
+      cat "$app_cov_dir/lcov.info" >> "$COMBINED_LCOV"
+    fi
+  else
+    log_fail "tests: app"
+    test_failed=true
+  fi
+fi
+
+# ── step 5: patch coverage ──────────────────────────────────────────────────
+log_step "PATCH COVERAGE (threshold: ${COVERAGE_THRESHOLD}%)"
+
+if [[ -s "$COMBINED_LCOV" ]]; then
+  PATCH_COV_RESULT=$("$REPO_ROOT/tool/patch_coverage.py" \
+    --diff "$DIFF_FILE" \
+    --lcov "$COMBINED_LCOV" \
+    --threshold "$COVERAGE_THRESHOLD" \
+    --report "$RESULTS_DIR/patch_coverage_report.txt" 2>&1) || true
+
+  echo "$PATCH_COV_RESULT"
+
+  if echo "$PATCH_COV_RESULT" | grep -q "PATCH COVERAGE: PASS"; then
+    log_pass "patch coverage >= ${COVERAGE_THRESHOLD}%"
+  else
+    log_fail "patch coverage < ${COVERAGE_THRESHOLD}%"
+  fi
+else
+  echo "No coverage data collected — skipping patch coverage check"
+  echo "(This is expected if packages have no tests yet)"
+  log_pass "patch coverage: skipped (no coverage data)"
+fi
+
+# ── step 6: summary ─────────────────────────────────────────────────────────
+log_step "VALIDATION SUMMARY"
+
+echo ""
+echo "Passes: ${#GATE_PASSES[@]}"
+for p in "${GATE_PASSES[@]}"; do echo "  ✓ $p"; done
+
+echo ""
+echo "Failures: ${#GATE_FAILURES[@]}"
+for f in "${GATE_FAILURES[@]}"; do echo "  ✗ $f"; done
+
+echo ""
+echo "Diff file: $DIFF_FILE"
+echo "Results:   $RESULTS_DIR"
+
+# ── gemini review prompt ─────────────────────────────────────────────────────
+REVIEW_PROMPT_FILE="$RESULTS_DIR/gemini_review_prompt.txt"
+cat > "$REVIEW_PROMPT_FILE" << 'PROMPT_EOF'
+Review this PR diff against the stated goals. Check:
+1. Do the changes accomplish the PR's stated feature/fix goals?
+2. Are there any files from the DROP LIST that leaked in?
+   Drop list: docs/design/*, tool/milestone_review.sh, lib/features/debug/*,
+   debug routes in app_router.dart, debug tiles in settings_screen.dart,
+   TEMPORARY blocks in api_provider.dart, PLANS/0010-documentation-audit/*,
+   packages/soliplex_schema/test/*
+3. Are there dead imports, unused code, or stale references?
+4. Do CLAUDE.md and docs/index.md changes match only the packages that
+   exist at this point in the stack?
+5. Is the change minimal — no over-engineering or scope creep?
+
+Report: PASS/FAIL for each check with specific line references.
+PROMPT_EOF
+
+echo "Gemini review prompt: $REVIEW_PROMPT_FILE"
+
+if [[ ${#GATE_FAILURES[@]} -gt 0 ]]; then
+  echo ""
+  echo "RESULT: FAILED (${#GATE_FAILURES[@]} gate(s) failed)"
+  exit 1
+else
+  echo ""
+  echo "RESULT: ALL GATES PASSED"
+  exit 0
+fi
