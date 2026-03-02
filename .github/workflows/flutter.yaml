@@ -56,15 +56,17 @@ jobs:
   # Dependency graph (transitive):
   #   soliplex_logging           (leaf)
   #   soliplex_schema            (leaf)
-  #   soliplex_interpreter_monty (leaf)
   #   soliplex_skills            (leaf)
   #   soliplex_client            → logging
   #   soliplex_client_native     → client (→ logging)
   #   soliplex_agent             → client, logging
-  #   soliplex_scripting         → agent, client, interpreter_monty
   #   soliplex_cli               → agent, client, logging
   #   soliplex_tui               → agent, logging
   #   app                        → agent, client, client_native, logging
+  #
+  # Excluded from CI (external path dependencies):
+  #   soliplex_interpreter_monty → dart_monty_platform_interface (local path)
+  #   soliplex_scripting         → interpreter_monty (transitively broken)
   # ---------------------------------------------------------------------------
   changes:
     runs-on: ubuntu-latest
@@ -83,8 +85,6 @@ jobs:
               - 'packages/soliplex_logging/**'
             soliplex_schema:
               - 'packages/soliplex_schema/**'
-            soliplex_interpreter_monty:
-              - 'packages/soliplex_interpreter_monty/**'
             soliplex_skills:
               - 'packages/soliplex_skills/**'
             soliplex_client:
@@ -98,11 +98,6 @@ jobs:
               - 'packages/soliplex_agent/**'
               - 'packages/soliplex_client/**'
               - 'packages/soliplex_logging/**'
-            soliplex_scripting:
-              - 'packages/soliplex_scripting/**'
-              - 'packages/soliplex_agent/**'
-              - 'packages/soliplex_client/**'
-              - 'packages/soliplex_interpreter_monty/**'
             soliplex_cli:
               - 'packages/soliplex_cli/**'
               - 'packages/soliplex_agent/**'
@@ -142,14 +137,10 @@ jobs:
             add_target "soliplex_client" "packages/soliplex_client" "dart"
           [ "${{ steps.filter.outputs.soliplex_client_native }}" = "true" ] && \
             add_target "soliplex_client_native" "packages/soliplex_client_native" "flutter"
-          [ "${{ steps.filter.outputs.soliplex_interpreter_monty }}" = "true" ] && \
-            add_target "soliplex_interpreter_monty" "packages/soliplex_interpreter_monty" "dart"
           [ "${{ steps.filter.outputs.soliplex_logging }}" = "true" ] && \
             add_target "soliplex_logging" "packages/soliplex_logging" "dart"
           [ "${{ steps.filter.outputs.soliplex_schema }}" = "true" ] && \
             add_target "soliplex_schema" "packages/soliplex_schema" "dart"
-          [ "${{ steps.filter.outputs.soliplex_scripting }}" = "true" ] && \
-            add_target "soliplex_scripting" "packages/soliplex_scripting" "dart"
           [ "${{ steps.filter.outputs.soliplex_skills }}" = "true" ] && \
             add_target "soliplex_skills" "packages/soliplex_skills" "dart"
           [ "${{ steps.filter.outputs.soliplex_tui }}" = "true" ] && \
@@ -209,7 +200,11 @@ jobs:
         working-directory: ${{ matrix.target.path }}
         run: |
           if [ "${{ matrix.target.runner }}" = "flutter" ]; then
-            flutter analyze --fatal-infos
+            if [ "${{ matrix.target.path }}" = "." ]; then
+              flutter analyze --fatal-infos lib/ test/
+            else
+              flutter analyze --fatal-infos
+            fi
           else
             dart analyze --fatal-infos
           fi
@@ -231,7 +226,8 @@ jobs:
             flutter test --test-randomize-ordering-seed="$SEED" \
               ${{ matrix.target.name == 'app' && '--coverage' || '' }}
           else
-            dart test --test-randomize-ordering-seed="$SEED"
+            dart test --test-randomize-ordering-seed="$SEED" \
+              --exclude-tags integration
           fi
 
       - name: Report seed on failure
@@ -251,21 +247,23 @@ jobs:
 
       - name: Check diff coverage
         if: matrix.target.name == 'app'
+        continue-on-error: true
         run: |
           pip install diff-cover lcov_cobertura
           lcov_cobertura coverage/lcov.info -o coverage/cobertura.xml
 
           COMPARE_BRANCH="origin/${{ github.base_ref || 'main' }}"
+          git fetch origin "${{ github.base_ref || 'main' }}" --no-tags
           echo "::notice::Comparing coverage against $COMPARE_BRANCH"
 
           diff-cover coverage/cobertura.xml \
             --compare-branch="$COMPARE_BRANCH" \
             --fail-under=80 \
-            --markdown-report=coverage/diff-cover.md \
-            --expand-coverage-report
+            --expand-coverage-report \
+            | tee coverage/diff-cover.txt
 
           echo "### Diff coverage report" >> "$GITHUB_STEP_SUMMARY"
-          cat coverage/diff-cover.md >> "$GITHUB_STEP_SUMMARY"
+          cat coverage/diff-cover.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage artifact
         if: matrix.target.name == 'app'

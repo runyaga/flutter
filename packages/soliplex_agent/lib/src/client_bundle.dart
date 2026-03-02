@@ -11,9 +11,17 @@ typedef ClientBundle = ({
 
 /// Creates a [ClientBundle] from a server URL.
 ///
+/// [serverUrl] must be the root URL (e.g., `http://localhost:8000`).
+/// The `/api/v1` prefix is added automatically — do not include it.
+///
 /// Wires up HTTP transport, URL builder, and AG-UI client so that
 /// consumers only need a server URL — no knowledge of HTTP internals.
 ClientBundle createClientBundle(String serverUrl) {
+  assert(
+    !serverUrl.endsWith('/api/v1') && !serverUrl.endsWith('/api/v1/'),
+    'serverUrl should be the root URL without /api/v1 suffix. '
+    'Got: $serverUrl',
+  );
   final baseUrl = '$serverUrl/api/v1';
 
   final apiHttpClient = DartHttpClient();

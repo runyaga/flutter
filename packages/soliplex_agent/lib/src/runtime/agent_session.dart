@@ -52,6 +52,23 @@ class AgentSession {
   /// Completes when the session reaches a terminal state.
   Future<AgentResult> get result => _resultCompleter.future;
 
+  /// Broadcast stream of [RunState] changes from the underlying orchestrator.
+  ///
+  /// Use this to observe live token streaming, tool calls, and other
+  /// intermediate events. The stream completes when the orchestrator is
+  /// disposed.
+  ///
+  /// ```dart
+  /// session.stateChanges.listen((state) {
+  ///   if (state case RunningState(:final streaming)) {
+  ///     if (streaming case TextStreaming(:final text)) {
+  ///       stdout.write(text);
+  ///     }
+  ///   }
+  /// });
+  /// ```
+  Stream<RunState> get stateChanges => _orchestrator.stateChanges;
+
   /// Waits for the session result with an optional timeout.
   Future<AgentResult> awaitResult({Duration? timeout}) {
     if (timeout == null) return result;
