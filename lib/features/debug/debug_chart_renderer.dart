@@ -124,7 +124,6 @@ class _ScatterChartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.secondary;
     return ScatterChart(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -135,7 +134,7 @@ class _ScatterChartView extends StatelessWidget {
               p.x,
               p.y,
               dotPainter: FlDotCirclePainter(
-                color: color,
+                color: Colors.red,
                 radius: 10,
               ),
             ),
