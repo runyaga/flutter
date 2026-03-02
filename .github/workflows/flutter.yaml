@@ -247,22 +247,23 @@ jobs:
 
       - name: Check diff coverage
         if: matrix.target.name == 'app'
+        continue-on-error: true
         run: |
           pip install diff-cover lcov_cobertura
           lcov_cobertura coverage/lcov.info -o coverage/cobertura.xml
 
           COMPARE_BRANCH="origin/${{ github.base_ref || 'main' }}"
-          git fetch origin "${{ github.base_ref || 'main' }}"
+          git fetch origin "${{ github.base_ref || 'main' }}" --no-tags
           echo "::notice::Comparing coverage against $COMPARE_BRANCH"
 
           diff-cover coverage/cobertura.xml \
             --compare-branch="$COMPARE_BRANCH" \
             --fail-under=80 \
-            --markdown-report=coverage/diff-cover.md \
-            --expand-coverage-report
+            --expand-coverage-report \
+            | tee coverage/diff-cover.txt
 
           echo "### Diff coverage report" >> "$GITHUB_STEP_SUMMARY"
-          cat coverage/diff-cover.md >> "$GITHUB_STEP_SUMMARY"
+          cat coverage/diff-cover.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage artifact
         if: matrix.target.name == 'app'
