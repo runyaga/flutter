@@ -148,8 +148,8 @@ class DefaultMontyBridge implements MontyBridge {
       }
     } on MontyException catch (e) {
       controller.add(BridgeRunError(message: e.message));
-    } on Exception catch (e) {
-      controller.addError(e);
+    } on Object catch (e) {
+      controller.add(BridgeRunError(message: '$e'));
     } finally {
       _pendingFutures.clear();
     }

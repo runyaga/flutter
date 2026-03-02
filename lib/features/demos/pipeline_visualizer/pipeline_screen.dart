@@ -49,8 +49,17 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
             selected: pipeline.pattern,
             onChanged: pipeline.isRunning
                 ? null
-                : (p) => ref.read(pipelineProvider.notifier).selectPattern(p),
+                : (p) {
+                    ref.read(pipelineProvider.notifier).selectPattern(p);
+                    if (p.examplePrompt.isNotEmpty) {
+                      _promptController.text = p.examplePrompt;
+                    }
+                  },
           ),
+          if (pipeline.pattern != null) ...[
+            const SizedBox(height: SoliplexSpacing.s2),
+            _PatternInfo(pattern: pipeline.pattern!),
+          ],
           const SizedBox(height: SoliplexSpacing.s3),
           _PromptInput(
             controller: _promptController,
@@ -138,6 +147,58 @@ class _PatternSelector extends StatelessWidget {
               );
               onChanged!(pattern);
             },
+    );
+  }
+}
+
+class _PatternInfo extends StatelessWidget {
+  const _PatternInfo({required this.pattern});
+  final PipelinePattern pattern;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final layers = pattern.executionLayers();
+    final layerDesc = layers.asMap().entries.map((e) {
+      final names = e.value.map((n) => n.label).join(', ');
+      return 'Layer ${e.key}: $names';
+    }).join('  →  ');
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(SoliplexSpacing.s3),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              pattern.name,
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              pattern.description,
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Execution: $layerDesc',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontFamily: 'monospace',
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            Text(
+              '${pattern.nodes.length} nodes, '
+              '${layers.length} layers, '
+              'max ${layers.map((l) => l.length).reduce(math.max)} '
+              'parallel',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -250,6 +311,8 @@ class _StatusBar extends StatelessWidget {
 // DAG visualization
 // ---------------------------------------------------------------------------
 
+enum _EdgeState { idle, flowing, complete }
+
 class _DagView extends StatelessWidget {
   const _DagView({
     required this.pattern,
@@ -269,11 +332,30 @@ class _DagView extends StatelessWidget {
     return Column(
       children: [
         for (var i = 0; i < layers.length; i++) ...[
-          if (i > 0) _buildEdges(context, layers[i - 1], layers[i]),
+          if (i > 0)
+            _AnimatedEdge(
+              state: _computeEdgeState(layers[i - 1], layers[i]),
+            ),
           _buildLayer(context, layers[i]),
         ],
       ],
     );
+  }
+
+  _EdgeState _computeEdgeState(List<DagNode> from, List<DagNode> to) {
+    final allFromDone = from.every(
+      (n) => nodeStates[n.id]?.status == NodeStatus.completed,
+    );
+    final allToDone = to.every(
+      (n) => nodeStates[n.id]?.status == NodeStatus.completed,
+    );
+    final anyToRunning = to.any(
+      (n) => nodeStates[n.id]?.status == NodeStatus.running,
+    );
+
+    if (allToDone) return _EdgeState.complete;
+    if (allFromDone && anyToRunning) return _EdgeState.flowing;
+    return _EdgeState.idle;
   }
 
   Widget _buildLayer(
@@ -302,29 +384,114 @@ class _DagView extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildEdges(
-    BuildContext context,
-    List<DagNode> fromLayer,
-    List<DagNode> toLayer,
-  ) {
+// ---------------------------------------------------------------------------
+// Animated edge between DAG layers
+// ---------------------------------------------------------------------------
+
+class _AnimatedEdge extends StatefulWidget {
+  const _AnimatedEdge({required this.state});
+
+  final _EdgeState state;
+
+  @override
+  State<_AnimatedEdge> createState() => _AnimatedEdgeState();
+}
+
+class _AnimatedEdgeState extends State<_AnimatedEdge>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    if (widget.state == _EdgeState.flowing) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedEdge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.state == _EdgeState.flowing && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (widget.state != _EdgeState.flowing && _controller.isAnimating) {
+      _controller
+        ..stop()
+        ..reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Simple arrow indicator between layers.
-    final anyCompleted = fromLayer.any((n) {
-      final s = nodeStates[n.id]?.status;
-      return s == NodeStatus.completed;
-    });
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: SoliplexSpacing.s1,
+    if (widget.state == _EdgeState.complete) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: SoliplexSpacing.s1),
+        child: Icon(Icons.arrow_downward, size: 20, color: Colors.green),
+      );
+    }
+
+    if (widget.state == _EdgeState.idle) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: SoliplexSpacing.s1),
+        child: Icon(
+          Icons.arrow_downward,
+          size: 20,
+          color: theme.colorScheme.outlineVariant,
+        ),
+      );
+    }
+
+    // flowing — 3 animated dots traveling downward
+    return SizedBox(
+      height: 40,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < 3; i++) _buildDot(theme, phase: i / 3.0),
+            ],
+          );
+        },
       ),
-      child: Icon(
-        Icons.arrow_downward,
-        size: 20,
-        color: anyCompleted
-            ? theme.colorScheme.primary
-            : theme.colorScheme.outlineVariant,
+    );
+  }
+
+  Widget _buildDot(ThemeData theme, {required double phase}) {
+    final t = (_controller.value + phase) % 1.0;
+    // Vertical travel: 0→1 maps to -14→+14 (within 40px container)
+    final dy = -14.0 + 28.0 * t;
+    // Sine-based opacity: peak at center, fade at edges
+    final opacity = math.sin(t * math.pi).clamp(0.0, 1.0);
+    return Transform.translate(
+      offset: Offset(0, dy),
+      child: Opacity(
+        opacity: opacity,
+        child: Container(
+          width: 6,
+          height: 6,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: theme.colorScheme.primary,
+          ),
+        ),
       ),
     );
   }

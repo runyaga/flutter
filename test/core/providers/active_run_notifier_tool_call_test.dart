@@ -33,7 +33,7 @@ void main() {
         agUiClientProvider.overrideWithValue(fakeAgUiClient),
         apiProvider.overrideWithValue(mockApi),
         if (toolRegistry != null)
-          toolRegistryProvider.overrideWithValue(toolRegistry),
+          clientToolRegistryProvider.overrideWithValue(toolRegistry),
       ],
     );
   }
@@ -551,6 +551,56 @@ void main() {
         // Should have made exactly 11 runAgent calls:
         // initial + 10 continuations (depth 0-9), then circuit breaker at 10.
         expect(fakeAgUiClient.runAgentCallCount, 11);
+      });
+    });
+
+    group('server-side tools', () {
+      test('unregistered tool calls are not executed client-side', () async {
+        // Empty registry — no client tools registered.
+        const toolRegistry = ToolRegistry();
+
+        fakeAgUiClient.onRunAgent = (endpoint, input) {
+          return buildMockEventStream([
+            const RunStartedEvent(threadId: 'thread-1', runId: 'run-1'),
+            // Server-side tool call (not in registry)
+            const ToolCallStartEvent(
+              toolCallId: 'tc-1',
+              toolCallName: 'server_tool',
+            ),
+            const ToolCallArgsEvent(
+              toolCallId: 'tc-1',
+              delta: '{"prompt":"hello"}',
+            ),
+            const ToolCallEndEvent(toolCallId: 'tc-1'),
+            const TextMessageStartEvent(messageId: 'msg-1'),
+            const TextMessageContentEvent(
+              messageId: 'msg-1',
+              delta: 'Response',
+            ),
+            const TextMessageEndEvent(messageId: 'msg-1'),
+            const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
+          ]);
+        };
+
+        stubCreateRun();
+
+        final container = createContainer(toolRegistry: toolRegistry);
+        addTearDown(container.dispose);
+
+        await container.read(activeRunNotifierProvider.notifier).startRun(
+          key: (roomId: 'room-1', threadId: 'thread-1'),
+          userMessage: 'Ask the server tool',
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
+        final state = container.read(activeRunNotifierProvider);
+        // Should complete normally — not stuck in ExecutingToolsState
+        expect(state, isA<CompletedState>());
+        expect((state as CompletedState).result, isA<Success>());
+
+        // Only 1 runAgent call — no continuation for server-side tool
+        expect(fakeAgUiClient.runAgentCallCount, 1);
       });
     });
 

@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_frontend/core/providers/api_provider.dart';
+import 'package:soliplex_frontend/core/providers/flutter_host_api.dart';
 import 'package:soliplex_frontend/features/demos/pipeline_visualizer/pipeline_pattern.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
+import 'package:soliplex_scripting/soliplex_scripting.dart';
 
 // ---------------------------------------------------------------------------
 // Per-node runtime state
@@ -134,11 +136,43 @@ class PipelineNotifier extends Notifier<PipelineState> {
       '"${prompt.substring(0, prompt.length.clamp(0, 60))}"',
     );
 
+    final bridgeCache = ref.read(bridgeCacheProvider);
+    var nodeCounter = 0;
+
     final runtime = AgentRuntime(
       api: ref.read(apiProvider),
       agUiClient: ref.read(agUiClientProvider),
-      toolRegistryResolver: (roomId) async => ref.read(toolRegistryProvider),
-      platform: const NativePlatformConstraints(),
+      toolRegistryResolver: (roomId) async {
+        final base = ref.read(toolRegistryProvider);
+        final threadKey = (
+          serverId: 'pipeline',
+          roomId: roomId,
+          threadId: 'node-${nodeCounter++}',
+        );
+        // Per-node isolated HostApi + DfRegistry.
+        final hostBundle = createFlutterHostBundle(
+          onChartCreated: (_, __) {
+            // Charts in pipeline nodes are silently captured;
+            // per-node chart rendering is a future enhancement.
+          },
+        );
+        final wiring = HostFunctionWiring(
+          hostApi: hostBundle.hostApi,
+          dfRegistry: hostBundle.dfRegistry,
+        );
+        final executor = MontyToolExecutor(
+          threadKey: threadKey,
+          bridgeCache: bridgeCache,
+          hostWiring: wiring,
+        );
+        return base.register(
+          ClientTool(
+            definition: PythonExecutorTool.definition,
+            executor: executor.execute,
+          ),
+        );
+      },
+      platform: ref.read(platformConstraintsProvider),
       logger: LogManager.instance.getLogger('PipelineViz'),
     );
 
@@ -232,11 +266,24 @@ class PipelineNotifier extends Notifier<PipelineState> {
       );
     } on Object catch (e, st) {
       _log.error('Pipeline failed', error: e, stackTrace: st);
+      final cleanedStates = Map<String, NodeState>.from(state.nodeStates);
+      for (final entry in cleanedStates.entries) {
+        if (entry.value.status == NodeStatus.running) {
+          cleanedStates[entry.key] = entry.value.copyWith(
+            status: NodeStatus.cancelled,
+            output: 'Aborted due to pipeline error',
+          );
+        }
+      }
       state = state.copyWith(
         status: PipelineStatus.error,
         error: e.toString(),
+        nodeStates: cleanedStates,
         completedAt: DateTime.now(),
       );
+    } finally {
+      // BridgeCache lifecycle managed by bridgeCacheProvider.
+      // Per-node DfRegistry instances are GC'd with their HostApi closures.
     }
   }
 

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:soliplex_agent/soliplex_agent.dart' show HostApi;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;
+import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
 import 'package:test/test.dart';
@@ -72,7 +73,10 @@ void main() {
         final executor = MontyToolExecutor(
           threadKey: _key,
           bridgeCache: cache,
-          hostWiring: HostFunctionWiring(hostApi: _StubHostApi()),
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
         );
 
         final result = await executor.execute(_toolCall('print("hi")'));
@@ -85,7 +89,10 @@ void main() {
         final executor = MontyToolExecutor(
           threadKey: _key,
           bridgeCache: cache,
-          hostWiring: HostFunctionWiring(hostApi: _StubHostApi()),
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
         );
 
         expect(
@@ -106,7 +113,10 @@ void main() {
         final executor = MontyToolExecutor(
           threadKey: _key,
           bridgeCache: cache,
-          hostWiring: HostFunctionWiring(hostApi: _StubHostApi()),
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
         );
 
         expect(
@@ -127,7 +137,10 @@ void main() {
         final executor = MontyToolExecutor(
           threadKey: _key,
           bridgeCache: cache,
-          hostWiring: HostFunctionWiring(hostApi: _StubHostApi()),
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
         );
 
         expect(
@@ -159,7 +172,10 @@ void main() {
         final executor = MontyToolExecutor(
           threadKey: _key,
           bridgeCache: cache,
-          hostWiring: HostFunctionWiring(hostApi: _StubHostApi()),
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
         );
 
         final result =
@@ -173,12 +189,15 @@ void main() {
         final executor = MontyToolExecutor(
           threadKey: _key,
           bridgeCache: cache,
-          hostWiring: HostFunctionWiring(hostApi: _StubHostApi()),
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
         );
 
         await executor.execute(_toolCall('x = 1'));
-        // 4 domain functions + 2 introspection builtins
-        expect(bridge.registered, hasLength(6));
+        // 37 df + 1 chart + 1 platform + 2 introspection = 41
+        expect(bridge.registered, hasLength(41));
       });
 
       test('releases bridge even on error', () async {
@@ -192,7 +211,10 @@ void main() {
         final executor = MontyToolExecutor(
           threadKey: _key,
           bridgeCache: cache,
-          hostWiring: HostFunctionWiring(hostApi: _StubHostApi()),
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
         );
 
         expect(
@@ -216,7 +238,10 @@ void main() {
         final executor = MontyToolExecutor(
           threadKey: _key,
           bridgeCache: cache,
-          hostWiring: HostFunctionWiring(hostApi: _StubHostApi()),
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
         );
 
         expect(
@@ -242,7 +267,10 @@ void main() {
         final executor = MontyToolExecutor(
           threadKey: _key,
           bridgeCache: cache,
-          hostWiring: HostFunctionWiring(hostApi: _StubHostApi()),
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
         );
 
         final result = await executor.execute(_toolCall('x = 1'));

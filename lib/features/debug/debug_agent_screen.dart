@@ -1,6 +1,8 @@
 // TEMPORARY: Debug agent screen — remove after F1 validation.
 // Cleanup: git rm -rf lib/features/debug/
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,8 @@ import 'package:soliplex_frontend/core/providers/agent_run_provider.dart';
 import 'package:soliplex_frontend/core/providers/api_provider.dart';
 import 'package:soliplex_frontend/core/providers/rooms_provider.dart';
 import 'package:soliplex_frontend/core/providers/threads_provider.dart';
+import 'package:soliplex_frontend/features/debug/debug_chart_config.dart';
+import 'package:soliplex_frontend/features/debug/debug_chart_renderer.dart';
 
 class DebugAgentScreen extends ConsumerStatefulWidget {
   const DebugAgentScreen({super.key});
@@ -48,6 +52,7 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
 
     final runState = ref.watch(agentRunProvider);
     final roomsAsync = ref.watch(roomsProvider);
+    final charts = ref.watch(agentChartProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -84,11 +89,17 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
           const Divider(height: 32),
           _buildStateIndicator(runState),
           const Divider(height: 32),
+          _buildDemoPrompts(runState),
+          const SizedBox(height: 8),
           _buildMessageInput(runState),
           const SizedBox(height: 8),
           _buildActionButtons(runState),
           const Divider(height: 32),
           _buildConversationLog(runState),
+          if (charts.isNotEmpty) ...[
+            const Divider(height: 32),
+            _buildChartPanel(charts),
+          ],
           const Divider(height: 32),
           _buildEventLog(),
         ],
@@ -310,17 +321,18 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
 
   Widget _buildMessageInput(RunState runState) {
     final isRunning = runState is RunningState || runState is ToolYieldingState;
-    final canSend =
-        _selectedRoomId != null && _selectedThreadId != null && !isRunning;
+    final canSend = _selectedRoomId != null && !isRunning && !_isCreatingThread;
 
     return Row(
       children: [
         Expanded(
           child: TextField(
             controller: _messageController,
-            decoration: const InputDecoration(
-              hintText: 'Enter message...',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: _selectedThreadId == null
+                  ? 'Type to auto-create thread and send...'
+                  : 'Enter message...',
+              border: const OutlineInputBorder(),
             ),
             onSubmitted: canSend ? (_) => _sendMessage() : null,
           ),
@@ -334,20 +346,25 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
     );
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final roomId = _selectedRoomId;
-    final threadId = _selectedThreadId;
     final message = _messageController.text.trim();
-    if (roomId == null || threadId == null || message.isEmpty) {
-      return;
+    if (roomId == null || message.isEmpty) return;
+
+    // Auto-create thread if none selected.
+    if (_selectedThreadId == null) {
+      await _createThread();
+      if (_selectedThreadId == null) return; // creation failed
     }
 
     _messageController.clear();
-    ref.read(agentRunProvider.notifier).startRun(
-          roomId: roomId,
-          threadId: threadId,
-          userMessage: message,
-        );
+    unawaited(
+      ref.read(agentRunProvider.notifier).startRun(
+            roomId: roomId,
+            threadId: _selectedThreadId!,
+            userMessage: message,
+          ),
+    );
   }
 
   // -- Cancel / Reset -----------------------------------------------------
@@ -441,6 +458,96 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
       dense: true,
       leading: Icon(icon, size: 20),
       title: Text('$role: $text'),
+    );
+  }
+
+  // -- Demo prompts -------------------------------------------------------
+
+  static const _demoPrompts = <(String label, String prompt)>[
+    (
+      'Scatter: x^2',
+      'Use execute_python to plot the squares of numbers 1 through 10 '
+          'as a scatter chart. Call chart_create with type "scatter", '
+          'a title, and points as [[x,y], ...] pairs.',
+    ),
+    (
+      'Bar: city populations',
+      'Use execute_python to create a bar chart comparing the '
+          'populations (in millions) of Tokyo, Delhi, Shanghai, '
+          'São Paulo, and Mexico City. Call chart_create with '
+          'type "bar", labels, and values.',
+    ),
+    (
+      'Line: fibonacci',
+      'Use execute_python to compute fibonacci numbers up to 100, '
+          'then plot them as a line chart. '
+          'Call chart_create with type "line" and points.',
+    ),
+    (
+      'DataFrame + chart',
+      'Use execute_python to create a DataFrame with '
+          'df_create_from_rows using columns name and score, '
+          'with rows: Alice 92, Bob 85, Carol 97, Dave 78. '
+          'Then call chart_create to show a bar chart of the scores.',
+    ),
+  ];
+
+  Widget _buildDemoPrompts(RunState runState) {
+    final isRunning = runState is RunningState || runState is ToolYieldingState;
+    final canSend = _selectedRoomId != null && !isRunning && !_isCreatingThread;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Demo Prompts:',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (final (label, prompt) in _demoPrompts)
+              ActionChip(
+                label: Text(label, style: const TextStyle(fontSize: 12)),
+                onPressed: canSend
+                    ? () {
+                        _messageController.text = prompt;
+                        _sendMessage();
+                      }
+                    : null,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // -- Chart panel --------------------------------------------------------
+
+  Widget _buildChartPanel(List<dynamic> charts) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Charts (${charts.length}):',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        for (var i = 0; i < charts.length; i++) ...[
+          SizedBox(
+            height: 250,
+            child: DebugChartRenderer(
+              config: charts[i] as DebugChartConfig,
+            ),
+          ),
+          if (i < charts.length - 1) const SizedBox(height: 16),
+        ],
+      ],
     );
   }
 
