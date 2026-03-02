@@ -2,18 +2,31 @@
 # =============================================================================
 # validate_pr.sh — PR validation gate for clean git history workflow
 # =============================================================================
-# Runs: static analysis, DCM, tests + coverage, patch coverage check.
-# Outputs unified diff for external review (Gemini).
+#
+# Prerequisites:
+#   - Must run from a git WORKTREE (not the main checkout)
+#   - Must be on a feature branch (not main, master, or clean/integration)
+#   - Create a worktree with:
+#       git worktree add .claude/worktrees/<name> -b <branch> clean/integration
+#
+# What it does (in order):
+#   1. Generates a unified diff against the base branch
+#   2. Runs `dart analyze --fatal-infos` on each --packages dir (and app if --app-tests)
+#   3. Runs DCM analysis scoped to changed .dart lib files only
+#   4. Runs `dart test` (packages) / `flutter test` (app) with coverage
+#   5. Checks patch coverage on new/changed lines against threshold
+#   6. Produces a Gemini review package (file list + structured prompt)
 #
 # Usage:
 #   tool/validate_pr.sh --base clean/integration \
-#     --packages packages/soliplex_agent \
+#     --packages packages/soliplex_client packages/soliplex_agent \
 #     --app-tests \
-#     --coverage-threshold 90
+#     --coverage-threshold 85 \
+#     --pr-goal "Move run types from agent to client"
 #
 # Exit codes:
 #   0  All gates passed
-#   1  One or more gates failed
+#   1  One or more gates failed (or safety guard tripped)
 # =============================================================================
 set -eo pipefail
 
@@ -55,6 +68,32 @@ while [[ $# -gt 0 ]]; do
       ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
+done
+
+# ── safety guards ─────────────────────────────────────────────────────────────
+# Must run in a git worktree, not the main checkout.
+if ! git rev-parse --git-common-dir >/dev/null 2>&1; then
+  echo "ERROR: Not inside a git repository." >&2
+  exit 1
+fi
+
+GIT_COMMON="$(git rev-parse --git-common-dir)"
+GIT_DIR_VAL="$(git rev-parse --git-dir)"
+if [[ "$GIT_COMMON" == "$GIT_DIR_VAL" ]]; then
+  echo "ERROR: Must run from a git worktree, not the main checkout." >&2
+  echo "  Create one with: git worktree add .claude/worktrees/<name> <branch>" >&2
+  exit 1
+fi
+
+# Must not be on a protected branch.
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+PROTECTED_BRANCHES=("main" "master" "clean/integration")
+for pb in "${PROTECTED_BRANCHES[@]}"; do
+  if [[ "$CURRENT_BRANCH" == "$pb" ]]; then
+    echo "ERROR: Cannot run on protected branch '$pb'." >&2
+    echo "  Switch to a feature branch (e.g., refactor/agent-package-split)." >&2
+    exit 1
+  fi
 done
 
 # ── setup ────────────────────────────────────────────────────────────────────
