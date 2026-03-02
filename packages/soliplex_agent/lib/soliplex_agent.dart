@@ -5,17 +5,19 @@
 /// `soliplex_logging` — no Flutter imports allowed.
 library;
 
+// Re-exported from soliplex_client (moved in agent-package-split refactor).
+export 'package:soliplex_client/src/application/error_classifier.dart';
+export 'package:soliplex_client/src/application/run_orchestrator.dart';
+export 'package:soliplex_client/src/application/run_state.dart';
+export 'package:soliplex_client/src/domain/failure_reason.dart';
+export 'package:soliplex_client/src/domain/thread_key.dart';
+
 export 'src/host/fake_host_api.dart';
 export 'src/host/host_api.dart';
 export 'src/host/native_platform_constraints.dart';
 export 'src/host/platform_constraints.dart';
 export 'src/host/web_platform_constraints.dart';
 export 'src/models/agent_result.dart';
-export 'src/models/failure_reason.dart';
-export 'src/models/thread_key.dart';
-export 'src/run/error_classifier.dart';
-export 'src/run/run_orchestrator.dart';
-export 'src/run/run_state.dart';
 export 'src/runtime/agent_runtime.dart';
 export 'src/runtime/agent_session.dart';
 export 'src/runtime/agent_session_state.dart';

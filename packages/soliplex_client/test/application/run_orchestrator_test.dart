@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:mocktail/mocktail.dart';
-import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:test/test.dart';
@@ -99,7 +98,6 @@ void main() {
       api: api,
       agUiClient: agUiClient,
       toolRegistry: const ToolRegistry(),
-      platformConstraints: const NativePlatformConstraints(),
       logger: logger,
     );
   });
@@ -347,7 +345,6 @@ void main() {
         api: api,
         agUiClient: agUiClient,
         toolRegistry: _registryWith(),
-        platformConstraints: const NativePlatformConstraints(),
         logger: logger,
       );
       stubCreateRun();
@@ -378,7 +375,6 @@ void main() {
         api: api,
         agUiClient: agUiClient,
         toolRegistry: _registryWith(toolName: 'other_tool'),
-        platformConstraints: const NativePlatformConstraints(),
         logger: logger,
       );
       stubCreateRun();
@@ -420,7 +416,6 @@ void main() {
         api: api,
         agUiClient: agUiClient,
         toolRegistry: _registryWith(),
-        platformConstraints: const NativePlatformConstraints(),
         logger: logger,
       );
       stubCreateRun();
@@ -473,7 +468,6 @@ void main() {
         api: api,
         agUiClient: agUiClient,
         toolRegistry: _registryWith(),
-        platformConstraints: const NativePlatformConstraints(),
         logger: logger,
       );
       stubCreateRun();
@@ -516,7 +510,6 @@ void main() {
         api: api,
         agUiClient: agUiClient,
         toolRegistry: _registryWith(),
-        platformConstraints: const NativePlatformConstraints(),
         logger: logger,
       );
       stubCreateRun();
@@ -553,7 +546,6 @@ void main() {
         api: api,
         agUiClient: agUiClient,
         toolRegistry: _registryWith(),
-        platformConstraints: const NativePlatformConstraints(),
         logger: logger,
       );
       stubCreateRun();
@@ -575,7 +567,6 @@ void main() {
         api: api,
         agUiClient: agUiClient,
         toolRegistry: _registryWith(),
-        platformConstraints: const NativePlatformConstraints(),
         logger: logger,
       );
       stubCreateRun();
@@ -632,7 +623,6 @@ void main() {
         api: api,
         agUiClient: agUiClient,
         toolRegistry: _registryWith(),
-        platformConstraints: const NativePlatformConstraints(),
         logger: logger,
       );
       stubCreateRun();
