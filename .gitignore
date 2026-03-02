@@ -175,5 +175,9 @@ integration_test/test_bundle.dart
 .claude/*
 !.claude/skills/
 
-# Milestone review outputs (ephemeral)
-ci-review/
+# FVM Version Cache
+.fvm/
+
+# Validation pipeline artifacts
+.validation/
+.validation-output.txt

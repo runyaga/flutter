@@ -1,10 +1,8 @@
 # =============================================================================
-# DCM Configuration - Stage 1: Metrics Only
+# DCM Configuration — Strict
 # =============================================================================
-# This file configures Dart Code Metrics (DCM) for static analysis.
-# Stage 1 collects metrics without enforcing any rules.
-#
-# See docs/planning/START_DCM.md for the full rollout plan.
+# Rules sourced from soliplex_interpreter_monty (most mature package config).
+# Metrics tightened from Stage 1 relaxed values.
 # Documentation: https://dcm.dev/docs/configuration
 # =============================================================================
 
@@ -12,50 +10,101 @@ dcm:
   # ---------------------------------------------------------------------------
   # Metrics Thresholds
   # ---------------------------------------------------------------------------
-  # These thresholds generate WARNINGS when exceeded.
-  # Stage 1 uses relaxed values to establish a baseline.
-
   metrics:
-    # Cyclomatic complexity measures decision points (if/else/switch/loops)
-    # High complexity = hard to test and maintain
-    # Relaxed: 20 (will tighten to 15 in Stage 5)
     cyclomatic-complexity:
-      threshold: 20
-
-    # Lines of executable code per function (excludes comments/blanks)
-    # Long functions are hard to understand
-    # Relaxed: 100 (will tighten to 50 in Stage 5)
+      threshold: 15
     lines-of-code:
-      threshold: 100
-
-    # Maximum parameters per function/method
-    # Many parameters suggest the function does too much
-    # Relaxed: 7 (will tighten to 5 in Stage 5)
+      threshold: 50
     number-of-parameters:
-      threshold: 7
-
-    # Maximum nesting depth (if inside if inside loop, etc.)
-    # Deep nesting is hard to follow
-    # Relaxed: 5 (will tighten to 4 in Stage 5)
-    maximum-nesting-level:
       threshold: 5
+    maximum-nesting-level:
+      threshold: 4
 
   # ---------------------------------------------------------------------------
   # Exclusions
   # ---------------------------------------------------------------------------
-  # Skip generated and third-party code
-
   exclude:
     metrics:
       - "**/*.g.dart"
       - "**/*.freezed.dart"
       - "build/**"
       - "packages/soliplex_client/lib/src/schema/**"
+      - "test/**"
+    rules:
+      - "**/*.g.dart"
+      - "**/*.freezed.dart"
 
   # ---------------------------------------------------------------------------
   # Rules
   # ---------------------------------------------------------------------------
-  # Stage 1: No rules enabled - metrics collection only
-  # Rules will be added progressively in Stages 3-5.
 
-  rules: []
+  rules:
+    # --- Anti-Patterns ---
+    - avoid-unused-parameters
+    - avoid-nested-conditional-expressions
+    - avoid-missing-enum-constant-in-map
+    - avoid-unnecessary-type-assertions
+    - avoid-unnecessary-type-casts
+    - avoid-unrelated-type-assertions
+    - avoid-redundant-async
+    - avoid-duplicate-exports
+    - avoid-collection-methods-with-unrelated-types
+    - avoid-passing-async-when-sync-expected
+    - avoid-collapsible-if
+    - avoid-redundant-else
+    - avoid-incomplete-copy-with
+    - avoid-self-compare
+    - avoid-self-assignment
+    - avoid-unnecessary-nullable-return-type
+    - avoid-unrelated-type-casts
+
+    # --- Style & Formatting ---
+    - prefer-match-file-name:
+        exclude:
+          - "test/**"
+    - prefer-immediate-return
+    - prefer-commenting-analyzer-ignores
+    - prefer-conditional-expressions
+    - prefer-trailing-comma
+    - prefer-moving-to-variable:
+        exclude:
+          - "test/**"
+    - prefer-correct-identifier-length
+    - prefer-declaring-const-constructor
+    - prefer-first
+    - prefer-last
+    - newline-before-return
+    - no-boolean-literal-compare
+    - no-empty-block
+    - no-equal-then-else
+    - binary-expression-operand-order
+    - double-literal-format
+
+    # --- Null Safety & Types ---
+    - avoid-late-keyword:
+        exclude:
+          - "test/**"
+    - avoid-dynamic:
+        exclude:
+          - "test/**"
+    - avoid-non-null-assertion:
+        exclude:
+          - "test/**"
+
+    # --- Member Ordering ---
+    - member-ordering:
+        exclude:
+          - "lib/**/widgets/**"
+          - "lib/features/**"
+        order:
+          - constructors
+          - public-fields
+          - private-fields
+          - get-setters
+          - public-methods
+          - private-methods
+          - overridden-methods
+
+    # --- Testing ---
+    - prefer-test-matcher
+    - prefer-correct-test-file-name
