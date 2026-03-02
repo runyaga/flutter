@@ -948,6 +948,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  soliplex_monty:
+    dependency: "direct main"
+    description:
+      path: "packages/soliplex_monty"
+      relative: true
+    source: path
+    version: "0.1.0"
   soliplex_scripting:
     dependency: "direct main"
     description:

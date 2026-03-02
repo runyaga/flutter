@@ -42,6 +42,8 @@ dependencies:
     path: packages/soliplex_dataframe
   soliplex_logging:
     path: packages/soliplex_logging
+  soliplex_monty:
+    path: packages/soliplex_monty
   soliplex_scripting:
     path: packages/soliplex_scripting
   url_launcher: ^6.3.2
