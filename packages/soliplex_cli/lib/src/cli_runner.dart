@@ -38,7 +38,7 @@ Future<void> runCli(List<String> args) async {
   final host = parsed.option('host')!;
   final room = parsed.option('room')!;
 
-  final bundle = createClients(host);
+  final bundle = createClientBundle(host);
   final logManager = LogManager.instance
     ..minimumLevel = LogLevel.debug
     ..addSink(StdoutSink(useColors: true));
@@ -77,7 +77,7 @@ Future<void> runCli(List<String> args) async {
   await _readLoop(ctx);
 
   await runtime.dispose();
-  bundle.close();
+  await bundle.close();
 }
 
 class _CliContext {

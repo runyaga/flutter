@@ -441,4 +441,78 @@ void main() {
       expect(session.ephemeral, isTrue);
     });
   });
+
+  group('stateChanges', () {
+    test('emits RunningState during active run', () async {
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      final session = createSession(
+        api: api,
+        agUiClient: agUiClient,
+        logger: logger,
+      );
+      addTearDown(session.dispose);
+
+      final states = <RunState>[];
+      session.stateChanges.listen(states.add);
+
+      await session.start(userMessage: 'Hi');
+      await session.result;
+
+      expect(states, isNotEmpty);
+      expect(states.first, isA<RunningState>());
+      expect(states.last, isA<CompletedState>());
+    });
+
+    test('supports multiple listeners (broadcast)', () async {
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      final session = createSession(
+        api: api,
+        agUiClient: agUiClient,
+        logger: logger,
+      );
+      addTearDown(session.dispose);
+
+      final states1 = <RunState>[];
+      final states2 = <RunState>[];
+      session.stateChanges.listen(states1.add);
+      session.stateChanges.listen(states2.add);
+
+      await session.start(userMessage: 'Hi');
+      await session.result;
+
+      expect(states1, isNotEmpty);
+      expect(states2, isNotEmpty);
+      expect(states1.length, equals(states2.length));
+    });
+
+    test('emits TextStreaming with content', () async {
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      final session = createSession(
+        api: api,
+        agUiClient: agUiClient,
+        logger: logger,
+      );
+      addTearDown(session.dispose);
+
+      final streamingTexts = <String>[];
+      session.stateChanges.listen((state) {
+        if (state case RunningState(:final streaming)) {
+          if (streaming case TextStreaming(:final text)) {
+            streamingTexts.add(text);
+          }
+        }
+      });
+
+      await session.start(userMessage: 'Hi');
+      await session.result;
+
+      expect(streamingTexts, contains('Hello world'));
+    });
+  });
 }

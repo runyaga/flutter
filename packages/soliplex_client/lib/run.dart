@@ -13,5 +13,6 @@ library;
 export 'src/application/error_classifier.dart';
 export 'src/application/run_orchestrator.dart';
 export 'src/application/run_state.dart';
+export 'src/application/streaming_state.dart';
 export 'src/domain/failure_reason.dart';
 export 'src/domain/thread_key.dart';

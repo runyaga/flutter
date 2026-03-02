@@ -681,5 +681,29 @@ void main() {
 
       await expectLater(done.future, completes);
     });
+
+    test('dispose during active run does not throw', () async {
+      stubCreateRun();
+      final controller = StreamController<BaseEvent>();
+      stubRunAgent(stream: controller.stream);
+
+      await orchestrator.startRun(key: _key, userMessage: 'Hi');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(orchestrator.currentState, isA<RunningState>());
+
+      // Dispose while the stream is still open — should not throw.
+      orchestrator.dispose();
+
+      // Emitting after dispose should be silently ignored.
+      controller.addError(Exception('connection closed'));
+      await controller.close();
+    });
+
+    test('double dispose is a no-op', () {
+      orchestrator.dispose();
+      // Second call should not throw.
+      orchestrator.dispose();
+    });
   });
 }
