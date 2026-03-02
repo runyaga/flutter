@@ -73,7 +73,6 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       has_changes: ${{ steps.set-matrix.outputs.has_changes }}
-      app: ${{ steps.filter.outputs.app }}
     steps:
       - uses: actions/checkout@v6
 
@@ -217,40 +216,5 @@ jobs:
               "channel": "#soliplex",
               "username": "flutter-ci",
               "text": ${{ toJson(format(':x: Tests failed for {0} on {1}:\n{2}\n{3}/{4}/actions/runs/{5}', matrix.target.name, github.ref, github.event.head_commit.message, github.server_url, github.repository, github.run_id)) }},
-              "icon_emoji": ":flutter:"
-            }
-
-  build-web:
-    needs: [lint, changes]
-    if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Dart environment
-        uses: ./.github/actions/setup-dart-env
-
-      - name: Build web
-        run: flutter build web --release
-
-      - name: Upload web artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: web-build
-          path: build/web/
-          retention-days: 7
-
-      - name: Notify Slack on failure
-        if: failure() && env.SLACK_NOTIFY_URL != ''
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          webhook: ${{ env.SLACK_NOTIFY_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "channel": "#soliplex",
-              "username": "flutter-ci",
-              "text": ${{ toJson(format(':x: Web build failed on {0}:\n{1}\n{2}/{3}/actions/runs/{4}', github.ref, github.event.head_commit.message, github.server_url, github.repository, github.run_id)) }},
               "icon_emoji": ":flutter:"
             }
