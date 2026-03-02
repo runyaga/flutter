@@ -36,6 +36,12 @@ class _FakeHostApi implements HostApi {
   }
 
   @override
+  bool updateChart(int id, Map<String, Object?> chartConfig) {
+    calls['updateChart'] = [id, chartConfig];
+    return true;
+  }
+
+  @override
   Future<Object?> invoke(
     String name,
     Map<String, Object?> args,

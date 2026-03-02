@@ -112,6 +112,33 @@ print(f"Plotted {len(points)} points")
     ],
   ),
   (
+    'Streaming Chart',
+    'A chart that grows point-by-point with animated transitions.',
+    [
+      _DemoStep(
+        title: 'Step 1: Streaming line chart',
+        narration: 'Creates a chart, then updates it in a loop — '
+            'each iteration adds a point with a smooth animation.',
+        code: '''
+points = [[0, 0]]
+chart_id = await chart_create({
+    "type": "line", "title": "Growing Series",
+    "x_label": "Step", "y_label": "Value", "points": points
+})
+for step in range(1, 16):
+    y = step * 1.5 + (step % 3)
+    points.append([step, y])
+    print(f"Point {step}: y={y}")
+    await chart_update(chart_id, {
+        "type": "line", "title": "Growing Series",
+        "x_label": "Step", "y_label": "Value", "points": points
+    })
+print(f"Done! Final chart has {len(points)} points.")
+''',
+      ),
+    ],
+  ),
+  (
     'Multi-Step Analysis',
     'Create, filter, sort, and chart — a realistic analysis workflow.',
     [
@@ -209,7 +236,7 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
   late final BridgeCache _bridgeCache;
   late final MontyToolExecutor _executor;
   late final DfRegistry _registry;
-  final _charts = <DebugChartConfig>[];
+  final _charts = <int, DebugChartConfig>{};
   final _log = <_LogEntry>[];
   int _selectedDemo = 0;
   int _currentStep = 0;
@@ -221,8 +248,11 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
     super.initState();
     _bridgeCache = ref.read(bridgeCacheProvider);
     final (:hostApi, :dfRegistry) = createFlutterHostBundle(
-      onChartCreated: (_, config) {
-        setState(() => _charts.add(config));
+      onChartCreated: (id, config) {
+        setState(() => _charts[id] = config);
+      },
+      onChartUpdated: (id, config) {
+        setState(() => _charts[id] = config);
       },
     );
     _registry = dfRegistry;
@@ -335,10 +365,13 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
                         height: 220,
                         child: PageView.builder(
                           itemCount: _charts.length,
-                          itemBuilder: (_, i) => Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: DebugChartRenderer(config: _charts[i]),
-                          ),
+                          itemBuilder: (_, i) {
+                            final config = _charts.values.elementAt(i);
+                            return Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: DebugChartRenderer(config: config),
+                            );
+                          },
                         ),
                       ),
                       Center(

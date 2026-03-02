@@ -51,6 +51,12 @@ class _FakeHostApi implements HostApi {
   }
 
   @override
+  bool updateChart(int id, Map<String, Object?> chartConfig) {
+    calls['updateChart'] = [id, chartConfig];
+    return true;
+  }
+
+  @override
   Future<Object?> invoke(String name, Map<String, Object?> args) async {
     calls['invoke'] = [name, args];
     return 'invoked';
@@ -76,12 +82,13 @@ void main() {
       wiring.registerOnto(bridge);
 
       final names = bridge.registered.map((f) => f.schema.name).toSet();
-      // 37 df + 1 chart + 1 platform + 2 introspection = 41
-      expect(bridge.registered, hasLength(41));
+      // 37 df + 2 chart + 1 platform + 2 introspection = 42
+      expect(bridge.registered, hasLength(42));
       expect(names, contains('df_create'));
       expect(names, contains('df_head'));
       expect(names, contains('df_filter'));
       expect(names, contains('chart_create'));
+      expect(names, contains('chart_update'));
       expect(names, contains('host_invoke'));
       expect(names, contains('list_functions'));
       expect(names, contains('help'));
@@ -137,6 +144,19 @@ void main() {
         expect(hostApi.calls, contains('registerChart'));
       });
 
+      test('chart_update delegates to HostApi.updateChart', () async {
+        final result = await byName['chart_update']!.handler({
+          'chart_id': 7,
+          'config': <String, Object?>{'type': 'line'},
+        });
+
+        expect(result, true);
+        expect(hostApi.calls['updateChart'], [
+          7,
+          {'type': 'line'},
+        ]);
+      });
+
       test('host_invoke delegates to HostApi.invoke', () async {
         final result = await byName['host_invoke']!.handler({
           'name': 'native.clipboard',
@@ -163,8 +183,8 @@ void main() {
         expect(names, isNot(contains('ask_llm')));
         expect(
           b.registered,
-          hasLength(41),
-        ); // 37 df + 1 chart + 1 platform + 2 introspection
+          hasLength(42),
+        ); // 37 df + 2 chart + 1 platform + 2 introspection
       });
     });
   });
@@ -199,8 +219,8 @@ void main() {
           'ask_llm',
         ]),
       );
-      // 37 df + 1 chart + 1 platform + 4 agent + 2 introspection = 45
-      expect(bridge.registered, hasLength(45));
+      // 37 df + 2 chart + 1 platform + 4 agent + 2 introspection = 46
+      expect(bridge.registered, hasLength(46));
     });
 
     group('agent handler delegation', () {

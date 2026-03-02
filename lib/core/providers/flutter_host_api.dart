@@ -9,14 +9,18 @@ import 'package:soliplex_frontend/features/debug/debug_chart_config.dart';
 /// so that df_* host functions and [HostApi] methods operate on the same store.
 ///
 /// [onChartCreated] is called when Python code calls `chart_create(config)`.
+/// [onChartUpdated] is called when Python code calls
+/// `chart_update(id, config)`.
 /// Each call returns a NEW pair — never cached.
 ({HostApi hostApi, DfRegistry dfRegistry}) createFlutterHostBundle({
   required void Function(int id, DebugChartConfig config) onChartCreated,
+  void Function(int id, DebugChartConfig config)? onChartUpdated,
 }) {
   final registry = DfRegistry();
   final api = _FlutterHostApi(
     dfRegistry: registry,
     onChartCreated: onChartCreated,
+    onChartUpdated: onChartUpdated,
   );
   return (hostApi: api, dfRegistry: registry);
 }
@@ -30,6 +34,7 @@ class _FlutterHostApi implements HostApi {
   _FlutterHostApi({
     required DfRegistry dfRegistry,
     required this.onChartCreated,
+    this.onChartUpdated,
   }) : _dfRegistry = dfRegistry;
 
   final DfRegistry _dfRegistry;
@@ -37,6 +42,7 @@ class _FlutterHostApi implements HostApi {
   int _nextChartId = 1;
 
   final void Function(int id, DebugChartConfig config) onChartCreated;
+  final void Function(int id, DebugChartConfig config)? onChartUpdated;
 
   @override
   int registerDataFrame(Map<String, List<Object?>> columns) {
@@ -72,6 +78,15 @@ class _FlutterHostApi implements HostApi {
     final config = DebugChartConfig.fromMap(chartConfig);
     onChartCreated(id, config);
     return id;
+  }
+
+  @override
+  bool updateChart(int id, Map<String, Object?> chartConfig) {
+    if (!_charts.containsKey(id)) return false;
+    _charts[id] = chartConfig;
+    final config = DebugChartConfig.fromMap(chartConfig);
+    onChartUpdated?.call(id, config);
+    return true;
   }
 
   @override

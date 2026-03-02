@@ -61,6 +61,35 @@ class HostFunctionWiring {
             return _hostApi.registerChart(Map<String, Object?>.from(raw));
           },
         ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'chart_update',
+            description: 'Update an existing chart with a new configuration.',
+            params: [
+              HostParam(
+                name: 'chart_id',
+                type: HostParamType.integer,
+                description: 'Chart handle returned by chart_create.',
+              ),
+              HostParam(
+                name: 'config',
+                type: HostParamType.map,
+                description: 'New chart configuration.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final chartId = args['chart_id']! as int;
+            final raw = args['config'];
+            if (raw is! Map) {
+              throw ArgumentError.value(raw, 'config', 'Expected a map.');
+            }
+            return _hostApi.updateChart(
+              chartId,
+              Map<String, Object?>.from(raw),
+            );
+          },
+        ),
       ];
 
   List<HostFunction> _platformFunctions() => [

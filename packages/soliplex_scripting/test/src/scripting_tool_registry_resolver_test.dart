@@ -19,6 +19,9 @@ class _StubHostApi implements HostApi {
   int registerChart(Map<String, Object?> chartConfig) => 1;
 
   @override
+  bool updateChart(int id, Map<String, Object?> chartConfig) => true;
+
+  @override
   Future<Object?> invoke(
     String name,
     Map<String, Object?> args,

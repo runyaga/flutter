@@ -27,6 +27,8 @@ class _LineChartView extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
     return LineChart(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       LineChartData(
         lineBarsData: [
           LineChartBarData(
@@ -55,6 +57,8 @@ class _BarChartView extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.tertiary;
     return BarChart(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       BarChartData(
         barGroups: [
           for (var i = 0; i < config.values.length; i++)
@@ -122,6 +126,8 @@ class _ScatterChartView extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.secondary;
     return ScatterChart(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       ScatterChartData(
         scatterSpots: [
           for (final p in config.points)

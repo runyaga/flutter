@@ -1,0 +1,13 @@
+id: "plain"
+name: "Plain Chat"
+description: "Simple helpful assistant"
+agent:
+  model_name: "gpt-oss:20b"
+  provider_type: "ollama"
+  provider_base_url: "http://workshop:11434"
+  system_prompt: |
+    You are helpful.
+allow_mcp: false
+tools:
+  - tool_name: "soliplex.tools.get_current_datetime"
+  - tool_name: "soliplex.tools.get_current_user"

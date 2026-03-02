@@ -175,6 +175,7 @@ class DefaultMontyBridge implements MontyBridge {
     // Registered host function — emit tool call events.
     final fn = _functions[name];
     if (fn != null) {
+      _flushPrintBuffer(printBuffer, controller);
       if (futuresCapable) {
         return _dispatchToolCallAsFuture(fn, pending, controller);
       }

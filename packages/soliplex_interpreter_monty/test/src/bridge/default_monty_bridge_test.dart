@@ -177,6 +177,49 @@ void main() {
       expect(textEnd, hasLength(1));
     });
 
+    test('flushes print buffer before tool call', () async {
+      bridge.register(
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'my_tool',
+            description: 'A tool',
+          ),
+          handler: (args) async => 'ok',
+        ),
+      );
+
+      mock
+        ..enqueueProgress(
+          const MontyPending(
+            functionName: '__console_write__',
+            arguments: ['buffered\n'],
+          ),
+        )
+        ..enqueueProgress(
+          const MontyPending(
+            functionName: 'my_tool',
+            arguments: [],
+            callId: 1,
+          ),
+        )
+        ..enqueueProgress(
+          const MontyResolveFutures(pendingCallIds: [1]),
+        )
+        ..enqueueProgress(
+          const MontyComplete(result: MontyResult(usage: _usage)),
+        );
+
+      final events =
+          await bridge.execute('print("buffered"); my_tool()').toList();
+
+      final textIndex = events.indexWhere((e) => e is BridgeTextContent);
+      final toolIndex = events.indexWhere((e) => e is BridgeToolCallStart);
+
+      expect(textIndex, isNonNegative);
+      expect(toolIndex, isNonNegative);
+      expect(textIndex, lessThan(toolIndex));
+    });
+
     test('no TextMessage events when no print output', () async {
       mock.enqueueProgress(
         const MontyComplete(result: MontyResult(value: 42, usage: _usage)),

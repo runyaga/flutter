@@ -24,6 +24,11 @@ abstract interface class HostApi {
   /// Returns an integer handle for later retrieval.
   int registerChart(Map<String, Object?> chartConfig);
 
+  /// Update an existing chart's configuration.
+  ///
+  /// Returns `true` if the chart was found and updated, `false` otherwise.
+  bool updateChart(int id, Map<String, Object?> chartConfig);
+
   // ── Platform services + extensibility ────────────────────────────
 
   /// Invoke a host operation by namespaced name.
