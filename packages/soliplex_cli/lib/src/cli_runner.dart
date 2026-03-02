@@ -3,10 +3,8 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
-import 'package:soliplex_cli/src/client_factory.dart';
 import 'package:soliplex_cli/src/result_printer.dart';
 import 'package:soliplex_cli/src/tool_definitions.dart';
-import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 
 Future<void> runCli(List<String> args) async {
@@ -38,7 +36,7 @@ Future<void> runCli(List<String> args) async {
   final host = parsed.option('host')!;
   final room = parsed.option('room')!;
 
-  final bundle = createClients(host);
+  final bundle = createClientBundle(host);
   final logManager = LogManager.instance
     ..minimumLevel = LogLevel.debug
     ..addSink(StdoutSink(useColors: true));
@@ -77,7 +75,7 @@ Future<void> runCli(List<String> args) async {
   await _readLoop(ctx);
 
   await runtime.dispose();
-  bundle.close();
+  await bundle.close();
 }
 
 class _CliContext {

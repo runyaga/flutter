@@ -96,6 +96,7 @@ class RunOrchestrator {
 
   RunState _currentState = const IdleState();
   bool _disposed = false;
+  bool _disposing = false;
   CancelToken? _cancelToken;
   StreamSubscription<BaseEvent>? _subscription;
   bool _receivedTerminalEvent = false;
@@ -220,14 +221,21 @@ class RunOrchestrator {
   }
 
   /// Releases all resources. Must be called when done.
+  ///
+  /// Safe to call during an active run — stream errors triggered by
+  /// cancellation are silently absorbed to prevent unhandled exceptions.
   void dispose() {
     if (_disposed) return;
+    _disposing = true;
     _disposed = true;
     _cancelToken?.cancel();
+    _cancelToken = null;
     unawaited(_subscription?.cancel());
     _subscription = null;
-    _cancelToken = null;
-    unawaited(_controller.close());
+    if (!_controller.isClosed) {
+      unawaited(_controller.close());
+    }
+    _disposing = false;
   }
 
   // ---------------------------------------------------------------------------
@@ -429,6 +437,7 @@ class RunOrchestrator {
   void _onStreamDone() {
     // Always clean up the subscription reference when the stream ends.
     _subscription = null;
+    if (_disposing || _disposed) return;
     if (_receivedTerminalEvent) return;
     final running = _currentState;
     if (running is! RunningState) return;
@@ -445,6 +454,7 @@ class RunOrchestrator {
   }
 
   void _onStreamError(Object error, StackTrace stackTrace) {
+    if (_disposing || _disposed) return;
     final running = _currentState;
     if (running is! RunningState) return;
     _cleanup();

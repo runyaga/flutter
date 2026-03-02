@@ -15,7 +15,7 @@ import 'package:soliplex_cli/soliplex_cli.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 
 Future<void> main() async {
-  final bundle = createClients('http://localhost:8000');
+  final bundle = createClientBundle('http://localhost:8000');
   final logManager = LogManager.instance
     ..minimumLevel = LogLevel.info
     ..addSink(StdoutSink(useColors: true));
@@ -49,6 +49,6 @@ Future<void> main() async {
     }
   } finally {
     await runtime.dispose();
-    bundle.close();
+    await bundle.close();
   }
 }

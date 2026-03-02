@@ -3,23 +3,29 @@ import 'package:soliplex_client/soliplex_client.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('createClients', () {
-    test('returns non-null api and agUiClient', () {
-      final bundle = createClients('http://localhost:8000');
+  group('createClientBundle', () {
+    test('returns non-null api and agUiClient', () async {
+      final bundle = createClientBundle('http://localhost:8000');
 
       expect(bundle.api, isA<SoliplexApi>());
       expect(bundle.agUiClient, isA<AgUiClient>());
-      expect(bundle.close, isA<void Function()>());
 
-      bundle.close();
+      await bundle.close();
     });
 
-    test('close can be called multiple times', () {
-      final bundle = createClients('http://localhost:8000');
+    test('close can be called multiple times', () async {
+      final bundle = createClientBundle('http://localhost:8000');
 
-      bundle.close();
+      await bundle.close();
       // Second call should not throw.
-      bundle.close();
+      await bundle.close();
+    });
+
+    test('rejects serverUrl with /api/v1 suffix', () {
+      expect(
+        () => createClientBundle('http://localhost:8000/api/v1'),
+        throwsA(isA<AssertionError>()),
+      );
     });
   });
 }

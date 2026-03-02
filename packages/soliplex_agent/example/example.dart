@@ -9,7 +9,6 @@
 library;
 
 import 'package:soliplex_agent/soliplex_agent.dart';
-import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 
 Future<void> main() async {
@@ -19,20 +18,13 @@ Future<void> main() async {
     ..addSink(StdoutSink(useColors: true));
   final logger = logManager.getLogger('example');
 
-  // Build HTTP transport and API clients.
-  final httpClient = DartHttpClient();
-  final transport = HttpTransport(client: httpClient);
-  final urlBuilder = UrlBuilder('http://localhost:8000');
-  final api = SoliplexApi(transport: transport, urlBuilder: urlBuilder);
-  final agUiClient = AgUiClient(
-    config: AgUiClientConfig(baseUrl: 'http://localhost:8000/api/v1'),
-    httpClient: HttpClientAdapter(client: httpClient),
-  );
+  // Build clients from server URL — createClientBundle handles /api/v1.
+  final bundle = createClientBundle('http://localhost:8000');
 
   // Create the agent runtime.
   final runtime = AgentRuntime(
-    api: api,
-    agUiClient: agUiClient,
+    api: bundle.api,
+    agUiClient: bundle.agUiClient,
     toolRegistryResolver: (_) async => const ToolRegistry(),
     platform: const NativePlatformConstraints(),
     logger: logger,
@@ -60,6 +52,6 @@ Future<void> main() async {
     }
   } finally {
     await runtime.dispose();
-    api.close();
+    await bundle.close();
   }
 }
