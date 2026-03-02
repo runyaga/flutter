@@ -112,28 +112,42 @@ print(f"Plotted {len(points)} points")
     ],
   ),
   (
-    'Streaming Chart',
-    'A chart that grows point-by-point with animated transitions.',
+    'Streaming Gauges',
+    'A live server dashboard — bar gauges adjusting in real time '
+        'via mean-reverting random streams.',
     [
       _DemoStep(
-        title: 'Step 1: Streaming line chart',
-        narration: 'Creates a chart, then updates it in a loop — '
-            'each iteration adds a point with a smooth animation.',
+        title: 'Step 1: Live dashboard',
+        narration: 'Creates a bar chart as gauge display, then streams '
+            '30 ticks of Ornstein-Uhlenbeck random data at ~400ms intervals.',
         code: '''
-points = [[0, 0]]
+seed = [42]
+labels = ["CPU", "MEM", "NET", "DSK", "TMP"]
+mus = [55.0, 40.0, 65.0, 25.0, 50.0]
+vals = [55.0, 40.0, 65.0, 25.0, 50.0]
+
 chart_id = await chart_create({
-    "type": "line", "title": "Growing Series",
-    "x_label": "Step", "y_label": "Value", "points": points
+    "type": "bar", "title": "Server Dashboard (Live)",
+    "labels": labels, "values": vals
 })
-for step in range(1, 16):
-    y = step * 1.5 + (step % 3)
-    points.append([step, y])
-    print(f"Point {step}: y={y}")
+
+for tick in range(30):
+    for i in range(5):
+        seed[0] = (seed[0] * 1103515245 + 12345) % 2147483648
+        n = (seed[0] / 2147483648) * 2 - 1
+        vals[i] = vals[i] + 0.15 * (mus[i] - vals[i]) + 8 * n
+        if vals[i] < 0:
+            vals[i] = 0.0
+        if vals[i] > 100:
+            vals[i] = 100.0
+    r = [round(v, 1) for v in vals]
+    print(f"[{tick + 1:02d}] CPU:{r[0]}% MEM:{r[1]}% NET:{r[2]}% DSK:{r[3]}% TMP:{r[4]}%")
     await chart_update(chart_id, {
-        "type": "line", "title": "Growing Series",
-        "x_label": "Step", "y_label": "Value", "points": points
+        "type": "bar", "title": "Server Dashboard (Live)",
+        "labels": labels, "values": r
     })
-print(f"Done! Final chart has {len(points)} points.")
+    await sleep(400)
+print("Stream ended.")
 ''',
       ),
     ],

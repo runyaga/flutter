@@ -199,8 +199,8 @@ void main() {
         );
 
         await executor.execute(_toolCall('x = 1'));
-        // 37 df + 2 chart + 1 platform + 2 introspection = 42
-        expect(bridge.registered, hasLength(42));
+        // 37 df + 2 chart + 2 platform + 2 introspection = 43
+        expect(bridge.registered, hasLength(43));
       });
 
       test('releases bridge even on error', () async {

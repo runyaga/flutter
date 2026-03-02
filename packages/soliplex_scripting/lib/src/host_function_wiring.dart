@@ -122,6 +122,24 @@ class HostFunctionWiring {
             return _hostApi.invoke(name, Map<String, Object?>.from(rawArgs));
           },
         ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'sleep',
+            description: 'Pause execution for a number of milliseconds.',
+            params: [
+              HostParam(
+                name: 'ms',
+                type: HostParamType.integer,
+                description: 'Duration in milliseconds.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final ms = args['ms']! as int;
+            await Future<void>.delayed(Duration(milliseconds: ms));
+            return null;
+          },
+        ),
       ];
 
   List<HostFunction> _agentFunctions() => [

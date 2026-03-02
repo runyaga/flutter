@@ -82,14 +82,15 @@ void main() {
       wiring.registerOnto(bridge);
 
       final names = bridge.registered.map((f) => f.schema.name).toSet();
-      // 37 df + 2 chart + 1 platform + 2 introspection = 42
-      expect(bridge.registered, hasLength(42));
+      // 37 df + 2 chart + 2 platform + 2 introspection = 43
+      expect(bridge.registered, hasLength(43));
       expect(names, contains('df_create'));
       expect(names, contains('df_head'));
       expect(names, contains('df_filter'));
       expect(names, contains('chart_create'));
       expect(names, contains('chart_update'));
       expect(names, contains('host_invoke'));
+      expect(names, contains('sleep'));
       expect(names, contains('list_functions'));
       expect(names, contains('help'));
     });
@@ -169,6 +170,15 @@ void main() {
           {'action': 'read'},
         ]);
       });
+
+      test('sleep pauses then returns null', () async {
+        final sw = Stopwatch()..start();
+        final result = await byName['sleep']!.handler({'ms': 50});
+        sw.stop();
+
+        expect(result, isNull);
+        expect(sw.elapsedMilliseconds, greaterThanOrEqualTo(40));
+      });
     });
 
     group('agent category absent when agentApi is null', () {
@@ -183,8 +193,8 @@ void main() {
         expect(names, isNot(contains('ask_llm')));
         expect(
           b.registered,
-          hasLength(42),
-        ); // 37 df + 2 chart + 1 platform + 2 introspection
+          hasLength(43),
+        ); // 37 df + 2 chart + 2 platform + 2 introspection
       });
     });
   });
@@ -219,8 +229,8 @@ void main() {
           'ask_llm',
         ]),
       );
-      // 37 df + 2 chart + 1 platform + 4 agent + 2 introspection = 46
-      expect(bridge.registered, hasLength(46));
+      // 37 df + 2 chart + 2 platform + 4 agent + 2 introspection = 47
+      expect(bridge.registered, hasLength(47));
     });
 
     group('agent handler delegation', () {
