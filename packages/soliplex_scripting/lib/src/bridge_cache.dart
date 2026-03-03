@@ -63,7 +63,7 @@ class BridgeCache {
       _evictLru();
     }
 
-    final bridge = _factory?.call() ?? DefaultMontyBridge();
+    final bridge = _factory?.call() ?? DefaultMontyBridge(useFutures: false);
     _bridges[key] = bridge;
     _executing.add(key);
     return bridge;

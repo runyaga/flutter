@@ -44,6 +44,13 @@ class FakeHostApi implements HostApi {
   }
 
   @override
+  bool updateChart(int chartId, Map<String, Object?> chartConfig) {
+    if (!_charts.containsKey(chartId)) return false;
+    _charts[chartId] = Map.unmodifiable(chartConfig);
+    return true;
+  }
+
+  @override
   Future<Object?> invoke(String name, Map<String, Object?> args) async {
     final handler = invokeHandler;
     if (handler == null) {

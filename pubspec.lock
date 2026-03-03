@@ -981,6 +981,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  soliplex_showcase:
+    dependency: "direct main"
+    description:
+      path: "packages/soliplex_showcase"
+      relative: true
+    source: path
+    version: "0.1.0"
   source_map_stack_trace:
     dependency: transitive
     description:

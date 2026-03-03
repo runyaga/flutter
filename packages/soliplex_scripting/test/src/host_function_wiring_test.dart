@@ -51,6 +51,12 @@ class _FakeHostApi implements HostApi {
   }
 
   @override
+  bool updateChart(int chartId, Map<String, Object?> chartConfig) {
+    calls['updateChart'] = [chartId, chartConfig];
+    return true;
+  }
+
+  @override
   Future<Object?> invoke(String name, Map<String, Object?> args) async {
     calls['invoke'] = [name, args];
     return 'invoked';
@@ -76,13 +82,15 @@ void main() {
       wiring.registerOnto(bridge);
 
       final names = bridge.registered.map((f) => f.schema.name).toSet();
-      // 37 df + 1 chart + 1 platform + 2 introspection = 41
-      expect(bridge.registered, hasLength(41));
+      // 37 df + 2 chart + 2 platform + 2 introspection = 43
+      expect(bridge.registered, hasLength(43));
       expect(names, contains('df_create'));
       expect(names, contains('df_head'));
       expect(names, contains('df_filter'));
       expect(names, contains('chart_create'));
+      expect(names, contains('chart_update'));
       expect(names, contains('host_invoke'));
+      expect(names, contains('sleep'));
       expect(names, contains('list_functions'));
       expect(names, contains('help'));
     });
@@ -163,8 +171,8 @@ void main() {
         expect(names, isNot(contains('ask_llm')));
         expect(
           b.registered,
-          hasLength(41),
-        ); // 37 df + 1 chart + 1 platform + 2 introspection
+          hasLength(43),
+        ); // 37 df + 2 chart + 2 platform + 2 introspection
       });
     });
   });
@@ -199,8 +207,8 @@ void main() {
           'ask_llm',
         ]),
       );
-      // 37 df + 1 chart + 1 platform + 4 agent + 2 introspection = 45
-      expect(bridge.registered, hasLength(45));
+      // 37 df + 2 chart + 2 platform + 4 agent + 2 introspection = 47
+      expect(bridge.registered, hasLength(47));
     });
 
     group('agent handler delegation', () {
@@ -222,7 +230,7 @@ void main() {
         expect(result, 10);
         expect(
           agentApi.calls['spawnAgent'],
-          ['weather', 'Is it raining?', null],
+          ['weather', 'Is it raining?', null, null],
         );
       });
 
@@ -253,8 +261,14 @@ void main() {
           'room': 'math',
         });
 
-        expect(result, 'agent output');
-        expect(agentApi.calls['spawnAgent'], ['math', 'What is 2+2?', null]);
+        expect(result, isA<Map<String, Object?>>());
+        final map = result! as Map<String, Object?>;
+        expect(map['text'], 'agent output');
+        expect(map['thread_id'], 'fake-thread-id');
+        expect(
+          agentApi.calls['spawnAgent'],
+          ['math', 'What is 2+2?', null, null],
+        );
         expect(agentApi.calls['getResult'], [10, null]);
       });
 
@@ -265,6 +279,16 @@ void main() {
         });
 
         expect(agentApi.calls['spawnAgent']![0], 'general');
+      });
+
+      test('ask_llm passes thread_id for continuity', () async {
+        await byName['ask_llm']!.handler({
+          'prompt': 'Continue',
+          'room': 'math',
+          'thread_id': 'tid-123',
+        });
+
+        expect(agentApi.calls['spawnAgent']![2], 'tid-123');
       });
 
       test('spawn_agent schema has correct params', () {
@@ -290,9 +314,9 @@ void main() {
         expect(schema.params[0].type, HostParamType.integer);
       });
 
-      test('ask_llm schema has string prompt and optional room', () {
+      test('ask_llm schema has prompt, room, and thread_id', () {
         final schema = byName['ask_llm']!.schema;
-        expect(schema.params, hasLength(2));
+        expect(schema.params, hasLength(3));
         expect(schema.params[0].name, 'prompt');
         expect(schema.params[0].type, HostParamType.string);
         expect(schema.params[0].isRequired, isTrue);
@@ -300,6 +324,9 @@ void main() {
         expect(schema.params[1].type, HostParamType.string);
         expect(schema.params[1].isRequired, isFalse);
         expect(schema.params[1].defaultValue, 'general');
+        expect(schema.params[2].name, 'thread_id');
+        expect(schema.params[2].type, HostParamType.string);
+        expect(schema.params[2].isRequired, isFalse);
       });
     });
   });

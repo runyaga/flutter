@@ -45,7 +45,7 @@ class HostParam {
 
     return switch (type) {
       HostParamType.string => _expectType<String>(value),
-      HostParamType.integer => _expectType<int>(value),
+      HostParamType.integer => _coerceInt(value),
       HostParamType.number => _coerceNumber(value),
       HostParamType.boolean => _expectType<bool>(value),
       HostParamType.list => _expectType<List<Object?>>(value),
@@ -62,9 +62,27 @@ class HostParam {
     );
   }
 
+  /// Accept int, num, or numeric string for integer params.
+  int _coerceInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      final parsed = int.tryParse(value);
+      if (parsed != null) return parsed;
+    }
+    throw FormatException(
+      'Parameter "$name": expected int, got ${value.runtimeType}',
+      value,
+    );
+  }
+
   /// Accept both int and double for number params.
   num _coerceNumber(Object? value) {
     if (value is num) return value;
+    if (value is String) {
+      final parsed = num.tryParse(value);
+      if (parsed != null) return parsed;
+    }
     throw FormatException(
       'Parameter "$name": expected num, got ${value.runtimeType}',
       value,
