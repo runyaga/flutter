@@ -4,11 +4,7 @@
 /// implementation backed by the Monty WASM runtime.
 library;
 
-// ignore_for_file: unused_local_variable
-
-import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
-
-Future<void> main() async {
+void main() {
   // 1. Create a bridge (requires a MontyPlatform implementation).
   // final bridge = DefaultMontyBridge(platform: myMontyPlatform);
 
