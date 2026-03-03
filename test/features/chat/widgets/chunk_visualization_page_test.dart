@@ -155,9 +155,7 @@ void main() {
         expect(find.byIcon(Icons.rotate_right), findsOneWidget);
       });
 
-      testWidgets('shows page number in AppBar for multi-page', (
-        tester,
-      ) async {
+      testWidgets('shows page number in AppBar for multi-page', (tester) async {
         when(
           () => mockApi.getChunkVisualization('room-1', 'chunk-1'),
         ).thenAnswer(
@@ -194,9 +192,7 @@ void main() {
           ),
         );
 
-        await tester.pumpWidget(
-          buildPage(pageNumbers: [53, 54, 55]),
-        );
+        await tester.pumpWidget(buildPage(pageNumbers: [53, 54, 55]));
         await tester.pumpAndSettle();
 
         expect(find.text('53 / 55'), findsOneWidget);

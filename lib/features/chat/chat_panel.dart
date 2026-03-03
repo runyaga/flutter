@@ -116,8 +116,10 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
                   ChatInput(
                     onSend: (text) => _handleSend(context, ref, text),
                     roomId: room?.id,
-                    selectedDocuments:
-                        _getSelectedDocuments(room?.id, currentThreadId),
+                    selectedDocuments: _getSelectedDocuments(
+                      room?.id,
+                      currentThreadId,
+                    ),
                     onDocumentsChanged: (docs) => _updateSelectedDocuments(
                       room?.id,
                       currentThreadId,
@@ -157,7 +159,10 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
   ) {
     if (roomId != null && threadId != null) {
       ref.read(selectedDocumentsNotifierProvider.notifier).setForThread(
-        (roomId: roomId, threadId: threadId),
+        (
+          roomId: roomId,
+          threadId: threadId,
+        ),
         documents,
       );
     } else {
@@ -210,11 +215,11 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       // Seed the history cache with backend-initialized AG-UI state
       if (initialAguiState.isNotEmpty) {
         ref.read(threadHistoryCacheProvider.notifier).updateHistory(
-          (roomId: room.id, threadId: effectiveThread.id),
-          ThreadHistory(
-            messages: const [],
-            aguiState: initialAguiState,
+          (
+            roomId: room.id,
+            threadId: effectiveThread.id,
           ),
+          ThreadHistory(messages: const [], aguiState: initialAguiState),
         );
       }
 
@@ -230,7 +235,10 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
           ' ${effectiveThread.id}: ${_pendingDocuments.length} docs',
         );
         ref.read(selectedDocumentsNotifierProvider.notifier).setForThread(
-          (roomId: room.id, threadId: effectiveThread.id),
+          (
+            roomId: room.id,
+            threadId: effectiveThread.id,
+          ),
           _pendingDocuments,
         );
         _pendingDocuments = {};

@@ -217,8 +217,9 @@ class _SettingsHub extends StatelessWidget {
                       fontSize: 10,
                       color: theme.colorScheme.error,
                     ),
-                    backgroundColor:
-                        theme.colorScheme.error.withValues(alpha: 0.1),
+                    backgroundColor: theme.colorScheme.error.withValues(
+                      alpha: 0.1,
+                    ),
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                   ),
@@ -251,11 +252,7 @@ AppShell _staticShell({
   List<Widget> actions = const [],
 }) {
   return AppShell(
-    config: ShellConfig(
-      title: title,
-      leading: leading,
-      actions: actions,
-    ),
+    config: ShellConfig(title: title, leading: leading, actions: actions),
     body: body,
   );
 }
@@ -509,9 +506,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           name: 'room-info',
           pageBuilder: (context, state) {
             final roomId = state.pathParameters['roomId']!;
-            return NoTransitionPage(
-              child: RoomInfoScreen(roomId: roomId),
-            );
+            return NoTransitionPage(child: RoomInfoScreen(roomId: roomId));
           },
         ),
       if (features.enableQuizzes)
@@ -564,9 +559,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           title: const Text('Debate Arena'),
           leading: const _BackToSettingsButton(),
           body: const DebateArenaScreen(),
-          actions: [
-            if (features.enableSettings) const _SettingsButton(),
-          ],
+          actions: [if (features.enableSettings) const _SettingsButton()],
         ),
       ),
       GoRoute(
@@ -576,9 +569,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           title: const Text('Monty Bridge Showcase'),
           leading: const _BackToSettingsButton(),
           body: const MontyShowcaseScreen(),
-          actions: [
-            if (features.enableSettings) const _SettingsButton(),
-          ],
+          actions: [if (features.enableSettings) const _SettingsButton()],
         ),
       ),
       GoRoute(
@@ -588,9 +579,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           title: const Text('Pipeline Visualizer'),
           leading: const _BackToSettingsButton(),
           body: const PipelineScreen(),
-          actions: [
-            if (features.enableSettings) const _SettingsButton(),
-          ],
+          actions: [if (features.enableSettings) const _SettingsButton()],
         ),
       ),
       if (features.enableSettings)
@@ -611,16 +600,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(
               path: 'network',
               name: 'network-inspector',
-              pageBuilder: (context, state) => const NoTransitionPage(
-                child: NetworkInspectorScreen(),
-              ),
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: NetworkInspectorScreen()),
             ),
             GoRoute(
               path: 'logs',
               name: 'log-viewer',
-              pageBuilder: (context, state) => const NoTransitionPage(
-                child: LogViewerScreen(),
-              ),
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: LogViewerScreen()),
             ),
             GoRoute(
               path: 'telemetry',

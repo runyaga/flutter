@@ -11,10 +11,7 @@ void main() {
     });
 
     test('asserts on empty assetPath', () {
-      expect(
-        () => LogoConfig(assetPath: ''),
-        throwsA(isA<AssertionError>()),
-      );
+      expect(() => LogoConfig(assetPath: ''), throwsA(isA<AssertionError>()));
     });
 
     test('accepts optional package', () {

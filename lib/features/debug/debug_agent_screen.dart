@@ -69,9 +69,7 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
                   child: Text(
                     '\u26A0 TEMPORARY SCAFFOLDING '
                     '\u2014 remove after F1 validation',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
                 TextButton.icon(
@@ -109,9 +107,7 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
 
   // -- Room dropdown ------------------------------------------------------
 
-  Widget _buildRoomDropdown(
-    AsyncValue<List<Room>> roomsAsync,
-  ) {
+  Widget _buildRoomDropdown(AsyncValue<List<Room>> roomsAsync) {
     return roomsAsync.when(
       loading: () => const LinearProgressIndicator(),
       error: (e, _) => Text('Error loading rooms: $e'),
@@ -122,12 +118,7 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
           border: OutlineInputBorder(),
         ),
         items: rooms
-            .map(
-              (r) => DropdownMenuItem(
-                value: r.id,
-                child: Text(r.name),
-              ),
-            )
+            .map((r) => DropdownMenuItem(value: r.id, child: Text(r.name)))
             .toList(),
         onChanged: (value) {
           setState(() {
@@ -176,9 +167,8 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
                         ),
                       )
                       .toList(),
-                  onChanged: (value) => setState(
-                    () => _selectedThreadId = value,
-                  ),
+                  onChanged: (value) =>
+                      setState(() => _selectedThreadId = value),
                 ),
               ),
             ),
@@ -204,9 +194,7 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
               icon: _isCreatingThread
                   ? const SizedBox.square(
                       dimension: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.add),
               label: const Text('New Thread'),
@@ -247,11 +235,9 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create thread: $e'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to create thread: $e')));
       }
     } finally {
       if (mounted) {
@@ -428,30 +414,14 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
           user.name,
           text,
         ),
-      ErrorMessage(:final errorText) => (
-          Icons.error,
-          'system',
-          errorText,
-        ),
+      ErrorMessage(:final errorText) => (Icons.error, 'system', errorText),
       ToolCallMessage(:final toolCalls) => (
           Icons.build,
           'tool',
-          toolCalls
-              .map(
-                (t) => '${t.name} \u2192 ${t.status.name}',
-              )
-              .join(', '),
+          toolCalls.map((t) => '${t.name} \u2192 ${t.status.name}').join(', '),
         ),
-      GenUiMessage(:final widgetName) => (
-          Icons.widgets,
-          'genui',
-          widgetName,
-        ),
-      LoadingMessage() => (
-          Icons.hourglass_empty,
-          'loading',
-          '...',
-        ),
+      GenUiMessage(:final widgetName) => (Icons.widgets, 'genui', widgetName),
+      LoadingMessage() => (Icons.hourglass_empty, 'loading', '...'),
     };
 
     return ListTile(
@@ -501,10 +471,7 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
       children: [
         const Text(
           'Demo Prompts:',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
         ),
         const SizedBox(height: 4),
         Wrap(
@@ -541,9 +508,7 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
         for (var i = 0; i < charts.length; i++) ...[
           SizedBox(
             height: 250,
-            child: DebugChartRenderer(
-              config: charts[i] as DebugChartConfig,
-            ),
+            child: DebugChartRenderer(config: charts[i] as DebugChartConfig),
           ),
           if (i < charts.length - 1) const SizedBox(height: 16),
         ],
@@ -557,10 +522,7 @@ class _DebugAgentScreenState extends ConsumerState<DebugAgentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Event Log:',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        const Text('Event Log:', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Container(
           height: 150,

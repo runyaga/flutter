@@ -70,9 +70,7 @@ void main() {
     testWidgets('renders copy button on code blocks', (tester) async {
       await tester.pumpWidget(
         createTestApp(
-          home: const FlutterMarkdownPlusRenderer(
-            data: '```\nsome code\n```',
-          ),
+          home: const FlutterMarkdownPlusRenderer(data: '```\nsome code\n```'),
         ),
       );
       await tester.pumpAndSettle();
@@ -98,9 +96,7 @@ void main() {
     testWidgets('does not show language label for plaintext', (tester) async {
       await tester.pumpWidget(
         createTestApp(
-          home: const FlutterMarkdownPlusRenderer(
-            data: '```\nsome code\n```',
-          ),
+          home: const FlutterMarkdownPlusRenderer(data: '```\nsome code\n```'),
         ),
       );
       await tester.pumpAndSettle();
@@ -138,9 +134,7 @@ void main() {
     testWidgets('shows snackbar after copying', (tester) async {
       await tester.pumpWidget(
         createTestApp(
-          home: const FlutterMarkdownPlusRenderer(
-            data: '```\ncode\n```',
-          ),
+          home: const FlutterMarkdownPlusRenderer(data: '```\ncode\n```'),
         ),
       );
       await tester.pumpAndSettle();

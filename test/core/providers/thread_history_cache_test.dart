@@ -55,9 +55,7 @@ void main() {
       test('fetches from API and caches on cache miss', () async {
         // Arrange
         final apiHistory = ThreadHistory(
-          messages: [
-            TestData.createMessage(id: 'msg-1', text: 'From API'),
-          ],
+          messages: [TestData.createMessage(id: 'msg-1', text: 'From API')],
           aguiState: const {'haiku.rag.chat': <String, dynamic>{}},
         );
 
@@ -93,9 +91,7 @@ void main() {
       test('subsequent calls use cache after initial fetch', () async {
         // Arrange
         final apiHistory = ThreadHistory(
-          messages: [
-            TestData.createMessage(id: 'msg-1', text: 'From API'),
-          ],
+          messages: [TestData.createMessage(id: 'msg-1', text: 'From API')],
         );
 
         when(
@@ -110,12 +106,20 @@ void main() {
         final cache = container.read(threadHistoryCacheProvider.notifier);
 
         // Act: First call - fetches from API
-        await cache
-            .getHistory(const (roomId: 'room-abc', threadId: 'thread-123'));
+        await cache.getHistory(
+          const (
+            roomId: 'room-abc',
+            threadId: 'thread-123',
+          ),
+        );
 
         // Act: Second call - should use cache
-        await cache
-            .getHistory(const (roomId: 'room-abc', threadId: 'thread-123'));
+        await cache.getHistory(
+          const (
+            roomId: 'room-abc',
+            threadId: 'thread-123',
+          ),
+        );
 
         // Assert: API only called once
         verify(
@@ -126,9 +130,7 @@ void main() {
       test('concurrent fetches share single API request', () async {
         // Arrange: Slow API response
         final apiHistory = ThreadHistory(
-          messages: [
-            TestData.createMessage(id: 'msg-1', text: 'From API'),
-          ],
+          messages: [TestData.createMessage(id: 'msg-1', text: 'From API')],
         );
 
         when(
@@ -147,10 +149,18 @@ void main() {
         final cache = container.read(threadHistoryCacheProvider.notifier);
 
         // Act: Start two concurrent fetches
-        final future1 = cache
-            .getHistory(const (roomId: 'room-abc', threadId: 'thread-123'));
-        final future2 = cache
-            .getHistory(const (roomId: 'room-abc', threadId: 'thread-123'));
+        final future1 = cache.getHistory(
+          const (
+            roomId: 'room-abc',
+            threadId: 'thread-123',
+          ),
+        );
+        final future2 = cache.getHistory(
+          const (
+            roomId: 'room-abc',
+            threadId: 'thread-123',
+          ),
+        );
 
         // Both should complete with same result
         final results = await Future.wait([future1, future2]);
@@ -180,9 +190,12 @@ void main() {
 
         // Act & Assert: Error is wrapped with HistoryFetchException
         await expectLater(
-          container
-              .read(threadHistoryCacheProvider.notifier)
-              .getHistory(const (roomId: 'room-abc', threadId: 'thread-123')),
+          container.read(threadHistoryCacheProvider.notifier).getHistory(
+            const (
+              roomId: 'room-abc',
+              threadId: 'thread-123',
+            ),
+          ),
           throwsA(
             allOf([
               isA<HistoryFetchException>(),
@@ -230,8 +243,12 @@ void main() {
         );
 
         // Second call retries and succeeds
-        final history = await cache
-            .getHistory(const (roomId: 'room-abc', threadId: 'thread-123'));
+        final history = await cache.getHistory(
+          const (
+            roomId: 'room-abc',
+            threadId: 'thread-123',
+          ),
+        );
         expect(history.messages, hasLength(1));
         expect(history.messages[0].id, 'msg-1');
 
@@ -241,64 +258,72 @@ void main() {
         ).called(2);
       });
 
-      test('same threadId in different rooms produces separate cache entries',
-          () async {
-        // Arrange: Two rooms return different histories for the same threadId
-        when(
-          () => mockApi.getThreadHistory('room-a', 'shared-thread'),
-        ).thenAnswer(
-          (_) async => ThreadHistory(
-            messages: [
-              TestData.createMessage(id: 'msg-a', text: 'Room A history'),
-            ],
-          ),
-        );
-        when(
-          () => mockApi.getThreadHistory('room-b', 'shared-thread'),
-        ).thenAnswer(
-          (_) async => ThreadHistory(
-            messages: [
-              TestData.createMessage(id: 'msg-b', text: 'Room B history'),
-            ],
-          ),
-        );
+      test(
+        'same threadId in different rooms produces separate cache entries',
+        () async {
+          // Arrange: Two rooms return different histories for the same threadId
+          when(
+            () => mockApi.getThreadHistory('room-a', 'shared-thread'),
+          ).thenAnswer(
+            (_) async => ThreadHistory(
+              messages: [
+                TestData.createMessage(id: 'msg-a', text: 'Room A history'),
+              ],
+            ),
+          );
+          when(
+            () => mockApi.getThreadHistory('room-b', 'shared-thread'),
+          ).thenAnswer(
+            (_) async => ThreadHistory(
+              messages: [
+                TestData.createMessage(id: 'msg-b', text: 'Room B history'),
+              ],
+            ),
+          );
 
-        final container = ProviderContainer(
-          overrides: [apiProvider.overrideWithValue(mockApi)],
-        );
-        addTearDown(container.dispose);
+          final container = ProviderContainer(
+            overrides: [apiProvider.overrideWithValue(mockApi)],
+          );
+          addTearDown(container.dispose);
 
-        final cache = container.read(threadHistoryCacheProvider.notifier);
+          final cache = container.read(threadHistoryCacheProvider.notifier);
 
-        // Act: Fetch same threadId from two different rooms
-        final historyA = await cache
-            .getHistory(const (roomId: 'room-a', threadId: 'shared-thread'));
-        final historyB = await cache
-            .getHistory(const (roomId: 'room-b', threadId: 'shared-thread'));
+          // Act: Fetch same threadId from two different rooms
+          final historyA = await cache.getHistory(
+            const (
+              roomId: 'room-a',
+              threadId: 'shared-thread',
+            ),
+          );
+          final historyB = await cache.getHistory(
+            const (
+              roomId: 'room-b',
+              threadId: 'shared-thread',
+            ),
+          );
 
-        // Assert: They return different histories (not a cached collision)
-        expect(historyA.messages[0].id, 'msg-a');
-        expect(historyB.messages[0].id, 'msg-b');
+          // Assert: They return different histories (not a cached collision)
+          expect(historyA.messages[0].id, 'msg-a');
+          expect(historyB.messages[0].id, 'msg-b');
 
-        // Both API calls should have been made
-        verify(() => mockApi.getThreadHistory('room-a', 'shared-thread'))
-            .called(1);
-        verify(() => mockApi.getThreadHistory('room-b', 'shared-thread'))
-            .called(1);
-      });
+          // Both API calls should have been made
+          verify(
+            () => mockApi.getThreadHistory('room-a', 'shared-thread'),
+          ).called(1);
+          verify(
+            () => mockApi.getThreadHistory('room-b', 'shared-thread'),
+          ).called(1);
+        },
+      );
 
       test('different threads have separate cache entries', () async {
         // Arrange
-        when(
-          () => mockApi.getThreadHistory('room-abc', 'thread-1'),
-        ).thenAnswer(
+        when(() => mockApi.getThreadHistory('room-abc', 'thread-1')).thenAnswer(
           (_) async => ThreadHistory(
             messages: [TestData.createMessage(id: 'msg-t1', text: 'Thread 1')],
           ),
         );
-        when(
-          () => mockApi.getThreadHistory('room-abc', 'thread-2'),
-        ).thenAnswer(
+        when(() => mockApi.getThreadHistory('room-abc', 'thread-2')).thenAnswer(
           (_) async => ThreadHistory(
             messages: [TestData.createMessage(id: 'msg-t2', text: 'Thread 2')],
           ),
@@ -312,10 +337,18 @@ void main() {
         final cache = container.read(threadHistoryCacheProvider.notifier);
 
         // Act
-        final history1 = await cache
-            .getHistory(const (roomId: 'room-abc', threadId: 'thread-1'));
-        final history2 = await cache
-            .getHistory(const (roomId: 'room-abc', threadId: 'thread-2'));
+        final history1 = await cache.getHistory(
+          const (
+            roomId: 'room-abc',
+            threadId: 'thread-1',
+          ),
+        );
+        final history2 = await cache.getHistory(
+          const (
+            roomId: 'room-abc',
+            threadId: 'thread-2',
+          ),
+        );
 
         // Assert
         expect(history1.messages[0].id, 'msg-t1');
@@ -358,10 +391,7 @@ void main() {
         final cacheState = container.read(threadHistoryCacheProvider);
         expect(cacheState[key]!.messages, hasLength(1));
         expect(cacheState[key]!.messages[0].id, 'msg-new');
-        expect(
-          cacheState[key]!.aguiState,
-          containsPair('key', 'value'),
-        );
+        expect(cacheState[key]!.aguiState, containsPair('key', 'value'));
       });
 
       test('overwrites existing cache entry', () {
@@ -506,9 +536,7 @@ void main() {
 
       test('does not affect other thread entries', () async {
         // Arrange
-        when(
-          () => mockApi.getThreadHistory('room-abc', 'thread-1'),
-        ).thenAnswer(
+        when(() => mockApi.getThreadHistory('room-abc', 'thread-1')).thenAnswer(
           (_) async => ThreadHistory(
             messages: [
               TestData.createMessage(id: 'refreshed-t1', text: 'Refreshed'),
@@ -541,9 +569,7 @@ void main() {
         // Act: Refresh thread-1
         await container
             .read(threadHistoryCacheProvider.notifier)
-            .refreshHistory(
-          const (roomId: 'room-abc', threadId: 'thread-1'),
-        );
+            .refreshHistory(const (roomId: 'room-abc', threadId: 'thread-1'));
 
         // Assert: thread-2 unchanged
         const key1 = (roomId: 'room-abc', threadId: 'thread-1');

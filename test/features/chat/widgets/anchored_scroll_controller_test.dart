@@ -47,50 +47,46 @@ void main() {
       },
     );
 
-    testWidgets(
-      'no inflation when anchorOffset is null',
-      (tester) async {
-        await tester.pumpWidget(
-          _TestScaffold(controller: controller, childHeight: 1000),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('no inflation when anchorOffset is null', (tester) async {
+      await tester.pumpWidget(
+        _TestScaffold(controller: controller, childHeight: 1000),
+      );
+      await tester.pumpAndSettle();
 
-        final maxBefore = controller.position.maxScrollExtent;
+      final maxBefore = controller.position.maxScrollExtent;
 
-        // Shrink content without setting anchor.
-        await tester.pumpWidget(
-          _TestScaffold(controller: controller, childHeight: 400),
-        );
-        await tester.pump();
+      // Shrink content without setting anchor.
+      await tester.pumpWidget(
+        _TestScaffold(controller: controller, childHeight: 400),
+      );
+      await tester.pump();
 
-        // maxScrollExtent should reflect actual content (no inflation).
-        expect(controller.position.maxScrollExtent, lessThan(maxBefore));
-        expect(
-          controller.realMaxScrollExtent,
-          equals(controller.position.maxScrollExtent),
-        );
-      },
-    );
+      // maxScrollExtent should reflect actual content (no inflation).
+      expect(controller.position.maxScrollExtent, lessThan(maxBefore));
+      expect(
+        controller.realMaxScrollExtent,
+        equals(controller.position.maxScrollExtent),
+      );
+    });
 
-    testWidgets(
-      'no inflation when content is larger than anchor',
-      (tester) async {
-        await tester.pumpWidget(
-          _TestScaffold(controller: controller, childHeight: 1000),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('no inflation when content is larger than anchor', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _TestScaffold(controller: controller, childHeight: 1000),
+      );
+      await tester.pumpAndSettle();
 
-        controller.anchorOffset = 100;
-        await tester.pump();
+      controller.anchorOffset = 100;
+      await tester.pump();
 
-        // Content is large, maxScrollExtent already above anchor.
-        expect(controller.position.maxScrollExtent, greaterThan(100));
-        expect(
-          controller.realMaxScrollExtent,
-          equals(controller.position.maxScrollExtent),
-        );
-      },
-    );
+      // Content is large, maxScrollExtent already above anchor.
+      expect(controller.position.maxScrollExtent, greaterThan(100));
+      expect(
+        controller.realMaxScrollExtent,
+        equals(controller.position.maxScrollExtent),
+      );
+    });
 
     testWidgets(
       'realMaxScrollExtent tracks uninflated value during inflation',

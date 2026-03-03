@@ -65,10 +65,7 @@ void main() {
   }) {
     return [
       const RunStartedEvent(threadId: 'thread-1', runId: 'run-1'),
-      ToolCallStartEvent(
-        toolCallId: toolCallId,
-        toolCallName: toolName,
-      ),
+      ToolCallStartEvent(toolCallId: toolCallId, toolCallName: toolName),
       ToolCallArgsEvent(toolCallId: toolCallId, delta: args),
       ToolCallEndEvent(toolCallId: toolCallId),
       const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
@@ -143,83 +140,22 @@ void main() {
         expect(fakeAgUiClient.runAgentCallCount, 2);
 
         // Verify continuation run included tool call message.
-        expect(
-          completed.messages.whereType<ToolCallMessage>(),
-          hasLength(1),
-        );
-      });
-
-      test('two tool calls in same run → both executed → continuation',
-          () async {
-        final executionOrder = <String>[];
-        final toolRegistry = buildRegistry({
-          'search': (_) async {
-            executionOrder.add('search');
-            return 'search result';
-          },
-          'fetch': (_) async {
-            executionOrder.add('fetch');
-            return 'fetch result';
-          },
-        });
-
-        var runCallCount = 0;
-        fakeAgUiClient.onRunAgent = (endpoint, input) {
-          runCallCount++;
-          if (runCallCount == 1) {
-            return buildMockEventStream([
-              const RunStartedEvent(
-                threadId: 'thread-1',
-                runId: 'run-1',
-              ),
-              const ToolCallStartEvent(
-                toolCallId: 'tc-1',
-                toolCallName: 'search',
-              ),
-              const ToolCallArgsEvent(toolCallId: 'tc-1', delta: '{}'),
-              const ToolCallEndEvent(toolCallId: 'tc-1'),
-              const ToolCallStartEvent(
-                toolCallId: 'tc-2',
-                toolCallName: 'fetch',
-              ),
-              const ToolCallArgsEvent(toolCallId: 'tc-2', delta: '{}'),
-              const ToolCallEndEvent(toolCallId: 'tc-2'),
-              const RunFinishedEvent(
-                threadId: 'thread-1',
-                runId: 'run-1',
-              ),
-            ]);
-          }
-          return buildMockEventStream(textResponseEvents());
-        };
-
-        stubCreateRun();
-
-        final container = createContainer(toolRegistry: toolRegistry);
-        addTearDown(container.dispose);
-
-        await container.read(activeRunNotifierProvider.notifier).startRun(
-          key: (roomId: 'room-1', threadId: 'thread-1'),
-          userMessage: 'Search and fetch',
-        );
-
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-
-        // Both tools executed (in parallel).
-        expect(executionOrder, containsAll(['search', 'fetch']));
-
-        final state = container.read(activeRunNotifierProvider);
-        expect(state, isA<CompletedState>());
-        expect((state as CompletedState).result, isA<Success>());
-        expect(fakeAgUiClient.runAgentCallCount, 2);
+        expect(completed.messages.whereType<ToolCallMessage>(), hasLength(1));
       });
 
       test(
-        'multi-hop: Run 1 → tools → Run 2 → tools → Run 3 → text',
+        'two tool calls in same run → both executed → continuation',
         () async {
+          final executionOrder = <String>[];
           final toolRegistry = buildRegistry({
-            'step1': (_) async => 'step1 result',
-            'step2': (_) async => 'step2 result',
+            'search': (_) async {
+              executionOrder.add('search');
+              return 'search result';
+            },
+            'fetch': (_) async {
+              executionOrder.add('fetch');
+              return 'fetch result';
+            },
           });
 
           var runCallCount = 0;
@@ -227,43 +163,23 @@ void main() {
             runCallCount++;
             if (runCallCount == 1) {
               return buildMockEventStream([
-                const RunStartedEvent(
-                  threadId: 'thread-1',
-                  runId: 'run-1',
-                ),
+                const RunStartedEvent(threadId: 'thread-1', runId: 'run-1'),
                 const ToolCallStartEvent(
                   toolCallId: 'tc-1',
-                  toolCallName: 'step1',
+                  toolCallName: 'search',
                 ),
                 const ToolCallArgsEvent(toolCallId: 'tc-1', delta: '{}'),
                 const ToolCallEndEvent(toolCallId: 'tc-1'),
-                const RunFinishedEvent(
-                  threadId: 'thread-1',
-                  runId: 'run-1',
-                ),
-              ]);
-            }
-            if (runCallCount == 2) {
-              return buildMockEventStream([
-                const RunStartedEvent(
-                  threadId: 'thread-1',
-                  runId: 'run-2',
-                ),
                 const ToolCallStartEvent(
                   toolCallId: 'tc-2',
-                  toolCallName: 'step2',
+                  toolCallName: 'fetch',
                 ),
                 const ToolCallArgsEvent(toolCallId: 'tc-2', delta: '{}'),
                 const ToolCallEndEvent(toolCallId: 'tc-2'),
-                const RunFinishedEvent(
-                  threadId: 'thread-1',
-                  runId: 'run-2',
-                ),
+                const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
               ]);
             }
-            return buildMockEventStream(
-              textResponseEvents(messageId: 'msg-3'),
-            );
+            return buildMockEventStream(textResponseEvents());
           };
 
           stubCreateRun();
@@ -273,25 +189,79 @@ void main() {
 
           await container.read(activeRunNotifierProvider.notifier).startRun(
             key: (roomId: 'room-1', threadId: 'thread-1'),
-            userMessage: 'Multi-hop',
+            userMessage: 'Search and fetch',
           );
 
-          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+
+          // Both tools executed (in parallel).
+          expect(executionOrder, containsAll(['search', 'fetch']));
 
           final state = container.read(activeRunNotifierProvider);
           expect(state, isA<CompletedState>());
           expect((state as CompletedState).result, isA<Success>());
-
-          // 3 runAgent calls: initial + 2 continuations.
-          expect(fakeAgUiClient.runAgentCallCount, 3);
-
-          // Should have 2 ToolCallMessage entries.
-          expect(
-            state.messages.whereType<ToolCallMessage>(),
-            hasLength(2),
-          );
+          expect(fakeAgUiClient.runAgentCallCount, 2);
         },
       );
+
+      test('multi-hop: Run 1 → tools → Run 2 → tools → Run 3 → text', () async {
+        final toolRegistry = buildRegistry({
+          'step1': (_) async => 'step1 result',
+          'step2': (_) async => 'step2 result',
+        });
+
+        var runCallCount = 0;
+        fakeAgUiClient.onRunAgent = (endpoint, input) {
+          runCallCount++;
+          if (runCallCount == 1) {
+            return buildMockEventStream([
+              const RunStartedEvent(threadId: 'thread-1', runId: 'run-1'),
+              const ToolCallStartEvent(
+                toolCallId: 'tc-1',
+                toolCallName: 'step1',
+              ),
+              const ToolCallArgsEvent(toolCallId: 'tc-1', delta: '{}'),
+              const ToolCallEndEvent(toolCallId: 'tc-1'),
+              const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
+            ]);
+          }
+          if (runCallCount == 2) {
+            return buildMockEventStream([
+              const RunStartedEvent(threadId: 'thread-1', runId: 'run-2'),
+              const ToolCallStartEvent(
+                toolCallId: 'tc-2',
+                toolCallName: 'step2',
+              ),
+              const ToolCallArgsEvent(toolCallId: 'tc-2', delta: '{}'),
+              const ToolCallEndEvent(toolCallId: 'tc-2'),
+              const RunFinishedEvent(threadId: 'thread-1', runId: 'run-2'),
+            ]);
+          }
+          return buildMockEventStream(textResponseEvents(messageId: 'msg-3'));
+        };
+
+        stubCreateRun();
+
+        final container = createContainer(toolRegistry: toolRegistry);
+        addTearDown(container.dispose);
+
+        await container.read(activeRunNotifierProvider.notifier).startRun(
+          key: (roomId: 'room-1', threadId: 'thread-1'),
+          userMessage: 'Multi-hop',
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+
+        final state = container.read(activeRunNotifierProvider);
+        expect(state, isA<CompletedState>());
+        expect((state as CompletedState).result, isA<Success>());
+
+        // 3 runAgent calls: initial + 2 continuations.
+        expect(fakeAgUiClient.runAgentCallCount, 3);
+
+        // Should have 2 ToolCallMessage entries.
+        expect(state.messages.whereType<ToolCallMessage>(), hasLength(2));
+      });
     });
 
     group('failure paths', () {
@@ -305,20 +275,14 @@ void main() {
           runCallCount++;
           if (runCallCount == 1) {
             return buildMockEventStream([
-              const RunStartedEvent(
-                threadId: 'thread-1',
-                runId: 'run-1',
-              ),
+              const RunStartedEvent(threadId: 'thread-1', runId: 'run-1'),
               const ToolCallStartEvent(
                 toolCallId: 'tc-1',
                 toolCallName: 'bad_tool',
               ),
               const ToolCallArgsEvent(toolCallId: 'tc-1', delta: '{}'),
               const ToolCallEndEvent(toolCallId: 'tc-1'),
-              const RunFinishedEvent(
-                threadId: 'thread-1',
-                runId: 'run-1',
-              ),
+              const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
             ]);
           }
           return buildMockEventStream(textResponseEvents());
@@ -349,9 +313,7 @@ void main() {
       });
 
       test('createRun fails → CompletedState(FailedResult)', () async {
-        final toolRegistry = buildRegistry({
-          'search': (_) async => 'result',
-        });
+        final toolRegistry = buildRegistry({'search': (_) async => 'result'});
 
         fakeAgUiClient.onRunAgent = (endpoint, input) {
           return buildMockEventStream([
@@ -402,9 +364,7 @@ void main() {
       });
 
       test('abort clears pending toolCalls from conversation', () async {
-        final toolRegistry = buildRegistry({
-          'search': (_) async => 'result',
-        });
+        final toolRegistry = buildRegistry({'search': (_) async => 'result'});
 
         fakeAgUiClient.onRunAgent = (endpoint, input) {
           return buildMockEventStream([
@@ -457,70 +417,67 @@ void main() {
     });
 
     group('cancellation', () {
-      test('cancel during tool execution → CompletedState(CancelledResult)',
-          () async {
-        final toolStarted = Completer<void>();
-        final toolRegistry = buildRegistry({
-          'slow_tool': (_) async {
-            toolStarted.complete();
-            // Wait long enough for cancel to arrive.
-            await Future<void>.delayed(const Duration(seconds: 5));
-            return 'should not reach';
-          },
-        });
+      test(
+        'cancel during tool execution → CompletedState(CancelledResult)',
+        () async {
+          final toolStarted = Completer<void>();
+          final toolRegistry = buildRegistry({
+            'slow_tool': (_) async {
+              toolStarted.complete();
+              // Wait long enough for cancel to arrive.
+              await Future<void>.delayed(const Duration(seconds: 5));
+              return 'should not reach';
+            },
+          });
 
-        fakeAgUiClient.onRunAgent = (endpoint, input) {
-          return buildMockEventStream([
-            const RunStartedEvent(threadId: 'thread-1', runId: 'run-1'),
-            const ToolCallStartEvent(
-              toolCallId: 'tc-1',
-              toolCallName: 'slow_tool',
-            ),
-            const ToolCallArgsEvent(toolCallId: 'tc-1', delta: '{}'),
-            const ToolCallEndEvent(toolCallId: 'tc-1'),
-            const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
-          ]);
-        };
+          fakeAgUiClient.onRunAgent = (endpoint, input) {
+            return buildMockEventStream([
+              const RunStartedEvent(threadId: 'thread-1', runId: 'run-1'),
+              const ToolCallStartEvent(
+                toolCallId: 'tc-1',
+                toolCallName: 'slow_tool',
+              ),
+              const ToolCallArgsEvent(toolCallId: 'tc-1', delta: '{}'),
+              const ToolCallEndEvent(toolCallId: 'tc-1'),
+              const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
+            ]);
+          };
 
-        stubCreateRun();
+          stubCreateRun();
 
-        final container = createContainer(toolRegistry: toolRegistry);
-        addTearDown(container.dispose);
+          final container = createContainer(toolRegistry: toolRegistry);
+          addTearDown(container.dispose);
 
-        await container.read(activeRunNotifierProvider.notifier).startRun(
-          key: (roomId: 'room-1', threadId: 'thread-1'),
-          userMessage: 'Start slow tool',
-        );
+          await container.read(activeRunNotifierProvider.notifier).startRun(
+            key: (roomId: 'room-1', threadId: 'thread-1'),
+            userMessage: 'Start slow tool',
+          );
 
-        // Wait for the tool to start executing.
-        await toolStarted.future;
+          // Wait for the tool to start executing.
+          await toolStarted.future;
 
-        // Cancel the run.
-        await container.read(activeRunNotifierProvider.notifier).cancelRun();
+          // Cancel the run.
+          await container.read(activeRunNotifierProvider.notifier).cancelRun();
 
-        final state = container.read(activeRunNotifierProvider);
-        expect(state, isA<CompletedState>());
-        expect((state as CompletedState).result, isA<CancelledResult>());
+          final state = container.read(activeRunNotifierProvider);
+          expect(state, isA<CompletedState>());
+          expect((state as CompletedState).result, isA<CancelledResult>());
 
-        // Only 1 runAgent call (no continuation).
-        expect(fakeAgUiClient.runAgentCallCount, 1);
-      });
+          // Only 1 runAgent call (no continuation).
+          expect(fakeAgUiClient.runAgentCallCount, 1);
+        },
+      );
     });
 
     group('circuit breaker', () {
       test('max depth exceeded → CompletedState(FailedResult)', () async {
-        final toolRegistry = buildRegistry({
-          'loop': (_) async => 'looping',
-        });
+        final toolRegistry = buildRegistry({'loop': (_) async => 'looping'});
 
         // Every run returns a tool call — infinite loop attempt.
         fakeAgUiClient.onRunAgent = (endpoint, input) {
           return buildMockEventStream([
             const RunStartedEvent(threadId: 'thread-1', runId: 'run-x'),
-            const ToolCallStartEvent(
-              toolCallId: 'tc-1',
-              toolCallName: 'loop',
-            ),
+            const ToolCallStartEvent(toolCallId: 'tc-1', toolCallName: 'loop'),
             const ToolCallArgsEvent(toolCallId: 'tc-1', delta: '{}'),
             const ToolCallEndEvent(toolCallId: 'tc-1'),
             const RunFinishedEvent(threadId: 'thread-1', runId: 'run-x'),
@@ -618,46 +575,48 @@ void main() {
         expect(state.isRunning, isTrue);
       });
 
-      test('transitions through ExecutingToolsState during tool execution',
-          () async {
-        final toolStarted = Completer<void>();
-        final toolCompleter = Completer<String>();
-        final toolRegistry = buildRegistry({
-          'search': (_) async {
-            toolStarted.complete();
-            return toolCompleter.future;
-          },
-        });
+      test(
+        'transitions through ExecutingToolsState during tool execution',
+        () async {
+          final toolStarted = Completer<void>();
+          final toolCompleter = Completer<String>();
+          final toolRegistry = buildRegistry({
+            'search': (_) async {
+              toolStarted.complete();
+              return toolCompleter.future;
+            },
+          });
 
-        fakeAgUiClient.onRunAgent = (endpoint, input) {
-          return buildMockEventStream(toolCallEvents());
-        };
+          fakeAgUiClient.onRunAgent = (endpoint, input) {
+            return buildMockEventStream(toolCallEvents());
+          };
 
-        stubCreateRun();
+          stubCreateRun();
 
-        final container = createContainer(toolRegistry: toolRegistry);
-        addTearDown(container.dispose);
+          final container = createContainer(toolRegistry: toolRegistry);
+          addTearDown(container.dispose);
 
-        await container.read(activeRunNotifierProvider.notifier).startRun(
-          key: (roomId: 'room-1', threadId: 'thread-1'),
-          userMessage: 'Check executing state',
-        );
+          await container.read(activeRunNotifierProvider.notifier).startRun(
+            key: (roomId: 'room-1', threadId: 'thread-1'),
+            userMessage: 'Check executing state',
+          );
 
-        // Wait for tool to start.
-        await toolStarted.future;
+          // Wait for tool to start.
+          await toolStarted.future;
 
-        // Should be in ExecutingToolsState.
-        final state = container.read(activeRunNotifierProvider);
-        expect(state, isA<ExecutingToolsState>());
-        expect(state.isRunning, isTrue);
+          // Should be in ExecutingToolsState.
+          final state = container.read(activeRunNotifierProvider);
+          expect(state, isA<ExecutingToolsState>());
+          expect(state.isRunning, isTrue);
 
-        final executingState = state as ExecutingToolsState;
-        expect(executingState.pendingTools, hasLength(1));
-        expect(executingState.pendingTools.first.name, 'search');
+          final executingState = state as ExecutingToolsState;
+          expect(executingState.pendingTools, hasLength(1));
+          expect(executingState.pendingTools.first.name, 'search');
 
-        // Complete the tool and let continuation finish.
-        toolCompleter.complete('result');
-      });
+          // Complete the tool and let continuation finish.
+          toolCompleter.complete('result');
+        },
+      );
 
       test(
         'isStreamingProvider returns true during ExecutingToolsState',
@@ -695,31 +654,33 @@ void main() {
         },
       );
 
-      test('no tools → completes normally without ExecutingToolsState',
-          () async {
-        fakeAgUiClient.onRunAgent = (endpoint, input) {
-          return buildMockEventStream(textResponseEvents());
-        };
+      test(
+        'no tools → completes normally without ExecutingToolsState',
+        () async {
+          fakeAgUiClient.onRunAgent = (endpoint, input) {
+            return buildMockEventStream(textResponseEvents());
+          };
 
-        stubCreateRun();
+          stubCreateRun();
 
-        final container = createContainer();
-        addTearDown(container.dispose);
+          final container = createContainer();
+          addTearDown(container.dispose);
 
-        await container.read(activeRunNotifierProvider.notifier).startRun(
-          key: (roomId: 'room-1', threadId: 'thread-1'),
-          userMessage: 'Just text',
-        );
+          await container.read(activeRunNotifierProvider.notifier).startRun(
+            key: (roomId: 'room-1', threadId: 'thread-1'),
+            userMessage: 'Just text',
+          );
 
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+          await Future<void>.delayed(const Duration(milliseconds: 50));
 
-        final state = container.read(activeRunNotifierProvider);
-        expect(state, isA<CompletedState>());
-        expect((state as CompletedState).result, isA<Success>());
+          final state = container.read(activeRunNotifierProvider);
+          expect(state, isA<CompletedState>());
+          expect((state as CompletedState).result, isA<Success>());
 
-        // Only 1 runAgent call — no continuation.
-        expect(fakeAgUiClient.runAgentCallCount, 1);
-      });
+          // Only 1 runAgent call — no continuation.
+          expect(fakeAgUiClient.runAgentCallCount, 1);
+        },
+      );
     });
   });
 }

@@ -29,9 +29,7 @@ class FlutterMarkdownPlusRenderer extends MarkdownRenderer {
 
     return MarkdownBody(
       data: _sanitize(data),
-      styleSheet: markdownTheme?.toMarkdownStyleSheet(
-        codeFontStyle: monoStyle,
-      ),
+      styleSheet: markdownTheme?.toMarkdownStyleSheet(codeFontStyle: monoStyle),
       onTapLink: onLinkTap == null
           ? null
           : (_, href, title) {
@@ -60,11 +58,8 @@ class FlutterMarkdownPlusRenderer extends MarkdownRenderer {
         child: Image.network(
           uri.toString(),
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const Icon(
-            Icons.broken_image,
-            size: 48,
-            color: Colors.grey,
-          ),
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.broken_image, size: 48, color: Colors.grey),
         ),
       ),
     );

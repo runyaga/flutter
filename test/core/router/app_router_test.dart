@@ -634,10 +634,7 @@ void main() {
           shellConfigProvider.overrideWithValue(
             const SoliplexConfig(
               logo: LogoConfig.soliplex,
-              routes: RouteConfig(
-                showHomeRoute: false,
-                initialRoute: '/rooms',
-              ),
+              routes: RouteConfig(showHomeRoute: false, initialRoute: '/rooms'),
             ),
           ),
           authProvider.overrideWith(
@@ -929,10 +926,7 @@ void main() {
           shellConfigProvider.overrideWithValue(
             const SoliplexConfig(
               logo: LogoConfig.soliplex,
-              routes: RouteConfig(
-                showHomeRoute: false,
-                initialRoute: '/rooms',
-              ),
+              routes: RouteConfig(showHomeRoute: false, initialRoute: '/rooms'),
             ),
           ),
           authProvider.overrideWith(
@@ -971,10 +965,7 @@ void main() {
           shellConfigProvider.overrideWithValue(
             const SoliplexConfig(
               logo: LogoConfig.soliplex,
-              routes: RouteConfig(
-                showHomeRoute: false,
-                initialRoute: '/rooms',
-              ),
+              routes: RouteConfig(showHomeRoute: false, initialRoute: '/rooms'),
             ),
           ),
           authProvider.overrideWith(
@@ -1180,10 +1171,7 @@ void main() {
           shellConfigProvider.overrideWithValue(
             const SoliplexConfig(
               logo: LogoConfig.soliplex,
-              routes: RouteConfig(
-                showHomeRoute: false,
-                initialRoute: '/rooms',
-              ),
+              routes: RouteConfig(showHomeRoute: false, initialRoute: '/rooms'),
             ),
           ),
           authProvider.overrideWith(

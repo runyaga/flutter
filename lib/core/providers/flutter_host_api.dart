@@ -60,9 +60,7 @@ class _FlutterHostApi implements HostApi {
     final df = _dfRegistry.get(handle);
     if (df.rows.isEmpty) return {};
     final cols = df.columns;
-    return {
-      for (final col in cols) col: df.columnValues(col),
-    };
+    return {for (final col in cols) col: df.columnValues(col)};
   }
 
   @override

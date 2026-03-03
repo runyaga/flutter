@@ -113,8 +113,9 @@ final preloadedPrefsProvider = Provider<SharedPreferences>((ref) {
 });
 
 /// Provider for log configuration.
-final logConfigProvider =
-    NotifierProvider<LogConfigNotifier, LogConfig>(LogConfigNotifier.new);
+final logConfigProvider = NotifierProvider<LogConfigNotifier, LogConfig>(
+  LogConfigNotifier.new,
+);
 
 // ============================================================================
 // Sink Instance Providers
@@ -244,11 +245,7 @@ final logConfigControllerProvider = Provider<void>((ref) {
   // Listen to config changes, backend sink resolution, active run, and
   // network connectivity.
   ref
-    ..listen(
-      logConfigProvider,
-      applyConfig,
-      fireImmediately: true,
-    )
+    ..listen(logConfigProvider, applyConfig, fireImmediately: true)
     ..listen(
       backendLogSinkProvider,
       (_, next) {
@@ -276,43 +273,35 @@ final logConfigControllerProvider = Provider<void>((ref) {
       fireImmediately: true,
     )
     // Track active run context and flush on completion.
-    ..listen<ActiveRunState>(
-      activeRunNotifierProvider,
-      (previous, next) {
-        final sink = cachedBackendSink;
-        if (sink == null) return;
-        switch (next) {
-          case RunningState(:final threadId, :final runId):
-            sink
-              ..threadId = threadId
-              ..runId = runId;
-          case ExecutingToolsState(:final conversation):
-            // Keep threadId context during tool execution (still "running").
-            sink
-              ..threadId = conversation.threadId
-              ..runId = null;
-          default:
-            sink
-              ..threadId = null
-              ..runId = null;
-        }
-        if (previous != null && previous.isRunning && next is CompletedState) {
-          unawaited(sink.flush(force: true));
-        }
-      },
-    )
-    ..listen(
-      connectivityProvider,
-      (previous, next) {
-        if (previous == null || !previous.hasValue) return;
-        next.whenData((results) {
-          Loggers.telemetry.info(
-            'network_changed',
-            attributes: {
-              'connectivity': results.map((r) => r.name).join(', '),
-            },
-          );
-        });
-      },
-    );
+    ..listen<ActiveRunState>(activeRunNotifierProvider, (previous, next) {
+      final sink = cachedBackendSink;
+      if (sink == null) return;
+      switch (next) {
+        case RunningState(:final threadId, :final runId):
+          sink
+            ..threadId = threadId
+            ..runId = runId;
+        case ExecutingToolsState(:final conversation):
+          // Keep threadId context during tool execution (still "running").
+          sink
+            ..threadId = conversation.threadId
+            ..runId = null;
+        default:
+          sink
+            ..threadId = null
+            ..runId = null;
+      }
+      if (previous != null && previous.isRunning && next is CompletedState) {
+        unawaited(sink.flush(force: true));
+      }
+    })
+    ..listen(connectivityProvider, (previous, next) {
+      if (previous == null || !previous.hasValue) return;
+      next.whenData((results) {
+        Loggers.telemetry.info(
+          'network_changed',
+          attributes: {'connectivity': results.map((r) => r.name).join(', ')},
+        );
+      });
+    });
 });

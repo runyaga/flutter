@@ -51,10 +51,7 @@ void main() {
 
       // No-auth mode: shows "No Authentication" section.
       expect(find.text('No Authentication'), findsOneWidget);
-      expect(
-        find.text('Backend does not require login'),
-        findsOneWidget,
-      );
+      expect(find.text('Backend does not require login'), findsOneWidget);
       expect(find.text('Disconnect'), findsOneWidget);
 
       // White-box: config provider loaded.

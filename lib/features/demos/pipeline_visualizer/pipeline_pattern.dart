@@ -67,9 +67,7 @@ class PipelinePattern {
 
     while (remaining.isNotEmpty) {
       final ready = remaining.values
-          .where(
-            (n) => n.dependsOn.every(completed.contains),
-          )
+          .where((n) => n.dependsOn.every(completed.contains))
           .toList();
       if (ready.isEmpty) {
         throw StateError('Cycle detected in DAG');
@@ -154,12 +152,7 @@ const mapReduce = PipelinePattern(
       id: 'reducer',
       label: 'Reducer',
       roomId: 'demo-synthesizer',
-      dependsOn: [
-        'mapper-1',
-        'mapper-2',
-        'mapper-3',
-        'mapper-4',
-      ],
+      dependsOn: ['mapper-1', 'mapper-2', 'mapper-3', 'mapper-4'],
     ),
   ],
   edges: [
@@ -211,11 +204,7 @@ const adversarialDebate = PipelinePattern(
       'FAA sovereignty, and cascading failure modes when '
       'swarm coordination breaks down mid-fire',
   nodes: [
-    DagNode(
-      id: 'advocate',
-      label: 'Advocate',
-      roomId: 'debate-advocate',
-    ),
+    DagNode(id: 'advocate', label: 'Advocate', roomId: 'debate-advocate'),
     DagNode(
       id: 'critic',
       label: 'Critic',

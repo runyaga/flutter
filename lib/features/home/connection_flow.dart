@@ -111,10 +111,7 @@ sealed class ConnectionProbeResult {
 /// Backend was reached successfully.
 @immutable
 class ConnectionSuccess extends ConnectionProbeResult {
-  const ConnectionSuccess({
-    required this.url,
-    required this.providers,
-  });
+  const ConnectionSuccess({required this.url, required this.providers});
 
   /// The resolved URL (with scheme) that successfully connected.
   final Uri url;

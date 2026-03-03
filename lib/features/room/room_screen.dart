@@ -99,9 +99,12 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
           :final threadId,
         ) when threads.any((t) => t.id == threadId)) {
       Loggers.room.debug('Thread selection: last viewed $threadId');
-      ref
-          .read(unreadRunsProvider.notifier)
-          .markRead((roomId: widget.roomId, threadId: threadId));
+      ref.read(unreadRunsProvider.notifier).markRead(
+        (
+          roomId: widget.roomId,
+          threadId: threadId,
+        ),
+      );
       ref.read(threadSelectionProvider.notifier).set(ThreadSelected(threadId));
       return;
     }
@@ -115,9 +118,12 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
 
   /// Selects a thread and persists as last viewed.
   void _selectThread(String threadId) {
-    ref
-        .read(unreadRunsProvider.notifier)
-        .markRead((roomId: widget.roomId, threadId: threadId));
+    ref.read(unreadRunsProvider.notifier).markRead(
+      (
+        roomId: widget.roomId,
+        threadId: threadId,
+      ),
+    );
     selectAndPersistThread(ref: ref, roomId: widget.roomId, threadId: threadId);
   }
 
@@ -278,9 +284,8 @@ class _RoomScreenState extends ConsumerState<RoomScreen> {
 
   Future<void> _showRoomPicker(List<Room> rooms) async {
     final currentRoom = ref.read(currentRoomProvider);
-    final sortedRooms = [...rooms]..sort(
-        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-      );
+    final sortedRooms = [...rooms]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
     final selectedId = await showDialog<String>(
       context: context,

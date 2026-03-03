@@ -297,9 +297,9 @@ class MockDocumentsNotifier extends DocumentsNotifier {
 
 /// Creates an override for documentsProvider with immediate data.
 Override documentsProviderOverride(String roomId, [List<RagDocument>? docs]) {
-  return documentsProvider(roomId).overrideWith(
-    () => MockDocumentsNotifier(roomId, docs ?? const []),
-  );
+  return documentsProvider(
+    roomId,
+  ).overrideWith(() => MockDocumentsNotifier(roomId, docs ?? const []));
 }
 
 /// Mock notifier that returns an error state for documents.

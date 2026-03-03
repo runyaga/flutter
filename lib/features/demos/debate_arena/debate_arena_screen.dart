@@ -177,10 +177,7 @@ class _StageIndicator extends StatelessWidget {
                   ? theme.colorScheme.primary
                   : theme.colorScheme.outlineVariant,
             ),
-          _StageChip(
-            label: stages[i].$2,
-            status: _chipStatus(stages[i].$1),
-          ),
+          _StageChip(label: stages[i].$2, status: _chipStatus(stages[i].$1)),
         ],
       ],
     );
@@ -250,7 +247,10 @@ class _StageChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            IconTheme(data: IconThemeData(color: fgColor), child: icon),
+            IconTheme(
+              data: IconThemeData(color: fgColor),
+              child: icon,
+            ),
             const SizedBox(width: 4),
           ],
           Text(label, style: TextStyle(color: fgColor, fontSize: 12)),
@@ -421,10 +421,7 @@ class _VerdictPanel extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.gavel,
-                  color: theme.colorScheme.onTertiaryContainer,
-                ),
+                Icon(Icons.gavel, color: theme.colorScheme.onTertiaryContainer),
                 const SizedBox(width: SoliplexSpacing.s2),
                 Text(
                   'JUDGE VERDICT',
@@ -438,9 +435,7 @@ class _VerdictPanel extends StatelessWidget {
             const SizedBox(height: SoliplexSpacing.s3),
             SelectableText(
               verdict,
-              style: TextStyle(
-                color: theme.colorScheme.onTertiaryContainer,
-              ),
+              style: TextStyle(color: theme.colorScheme.onTertiaryContainer),
             ),
           ],
         ),

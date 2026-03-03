@@ -299,10 +299,7 @@ void main() {
         when(() => mockApi.getDocuments('room-1')).thenAnswer((_) async {
           callCount++;
           if (callCount == 1) {
-            throw const AuthException(
-              statusCode: 401,
-              message: 'Unauthorized',
-            );
+            throw const AuthException(statusCode: 401, message: 'Unauthorized');
           }
           return documents;
         });

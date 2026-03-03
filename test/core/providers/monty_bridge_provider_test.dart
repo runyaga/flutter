@@ -21,10 +21,7 @@ class FakeToolCallInfo extends Fake implements ToolCallInfo {}
 class _TestBridgeCacheNotifier extends ThreadBridgeCacheNotifier {
   final Map<({String roomId, String threadId}), MontyBridge> _mockBridges = {};
 
-  void seedBridge(
-    ({String roomId, String threadId}) key,
-    MontyBridge bridge,
-  ) {
+  void seedBridge(({String roomId, String threadId}) key, MontyBridge bridge) {
     _mockBridges[key] = bridge;
   }
 
@@ -90,8 +87,9 @@ void main() {
       );
       final container = ProviderContainer(
         overrides: [
-          toolRegistryProvider
-              .overrideWithValue(const ToolRegistry().register(tool)),
+          toolRegistryProvider.overrideWithValue(
+            const ToolRegistry().register(tool),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -105,9 +103,7 @@ void main() {
       // execute_python is registered by AgentRunNotifier, not
       // toolRegistryProvider — which is just a base registry.
       final container = ProviderContainer(
-        overrides: [
-          currentRoomProvider.overrideWithValue(_roomWithTools),
-        ],
+        overrides: [currentRoomProvider.overrideWithValue(_roomWithTools)],
       );
       addTearDown(container.dispose);
 
@@ -198,14 +194,11 @@ void main() {
     });
 
     test('bridge throws StateError when already executing', () {
-      when(() => mockBridge.execute(any())).thenThrow(
-        StateError('Cannot call start() while execution is active'),
-      );
+      when(
+        () => mockBridge.execute(any()),
+      ).thenThrow(StateError('Cannot call start() while execution is active'));
 
-      expect(
-        () => mockBridge.execute('print(1)'),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => mockBridge.execute('print(1)'), throwsA(isA<StateError>()));
     });
   });
 
@@ -226,9 +219,7 @@ void main() {
       final registry = const ToolRegistry().register(spyTool);
 
       final container = ProviderContainer(
-        overrides: [
-          toolRegistryProvider.overrideWithValue(registry),
-        ],
+        overrides: [toolRegistryProvider.overrideWithValue(registry)],
       );
       addTearDown(container.dispose);
 

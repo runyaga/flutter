@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Current network connectivity state.
 ///
 /// Emits the initial connectivity result, then streams changes.
-final connectivityProvider =
-    StreamProvider<List<ConnectivityResult>>((ref) async* {
+final connectivityProvider = StreamProvider<List<ConnectivityResult>>((
+  ref,
+) async* {
   ref.keepAlive();
   final connectivity = Connectivity();
 

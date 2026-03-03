@@ -414,10 +414,7 @@ MarkdownThemeExtension _markdownThemeExtension(
     ),
     blockquoteDecoration: BoxDecoration(
       border: Border(
-        left: BorderSide(
-          color: colorScheme.outlineVariant,
-          width: 3,
-        ),
+        left: BorderSide(color: colorScheme.outlineVariant, width: 3),
       ),
     ),
   );

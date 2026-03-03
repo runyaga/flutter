@@ -7,9 +7,7 @@ import '../../../helpers/test_helpers.dart';
 void main() {
   group('ThreadListItem', () {
     group('unread indicator', () {
-      testWidgets('shows unread dot when hasUnreadRun is true', (
-        tester,
-      ) async {
+      testWidgets('shows unread dot when hasUnreadRun is true', (tester) async {
         await tester.pumpWidget(
           createTestApp(
             home: ThreadListItem(

@@ -204,17 +204,13 @@ class _InfoRow extends StatelessWidget {
               label,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color:
-                    theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.7,
+                ),
               ),
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ),
+          Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
         ],
       ),
     );
@@ -244,10 +240,7 @@ class _AgentCard extends StatelessWidget {
                 _SystemPromptViewer(prompt: systemPrompt),
             ],
           FactoryRoomAgent(:final extraConfig) when extraConfig.isNotEmpty => [
-              _InfoRow(
-                label: 'Extra Config',
-                value: extraConfig.toString(),
-              ),
+              _InfoRow(label: 'Extra Config', value: extraConfig.toString()),
             ],
           _ => <Widget>[],
         },
@@ -302,31 +295,20 @@ class _SystemPromptViewerState extends State<_SystemPromptViewer> {
               ),
               const Spacer(),
               IconButton(
-                icon: Icon(
-                  _copied ? Icons.check : Icons.copy,
-                  size: 18,
-                ),
+                icon: Icon(_copied ? Icons.check : Icons.copy, size: 18),
                 onPressed: _copied
                     ? null
                     : () {
-                        Clipboard.setData(
-                          ClipboardData(text: widget.prompt),
-                        );
+                        Clipboard.setData(ClipboardData(text: widget.prompt));
                         setState(() => _copied = true);
                         _copyResetTimer?.cancel();
-                        _copyResetTimer = Timer(
-                          const Duration(seconds: 2),
-                          () {
-                            if (mounted) setState(() => _copied = false);
-                          },
-                        );
+                        _copyResetTimer = Timer(const Duration(seconds: 2), () {
+                          if (mounted) setState(() => _copied = false);
+                        });
                       },
                 tooltip: 'Copy system prompt',
                 iconSize: 18,
-                constraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 32,
-                ),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
             ],
           ),
@@ -339,10 +321,7 @@ class _SystemPromptViewerState extends State<_SystemPromptViewer> {
               const containerPadding = 16.0; // 8 left + 8 right
               final overflows = !_expanded &&
                   (TextPainter(
-                    text: TextSpan(
-                      text: widget.prompt,
-                      style: promptStyle,
-                    ),
+                    text: TextSpan(text: widget.prompt, style: promptStyle),
                     maxLines: _collapsedMaxLines,
                     textDirection: TextDirection.ltr,
                     textScaler: MediaQuery.textScalerOf(context),
@@ -402,10 +381,7 @@ class _FeaturesCard extends StatelessWidget {
           label: 'Attachments',
           value: room.enableAttachments ? 'Enabled' : 'Disabled',
         ),
-        _InfoRow(
-          label: 'Allow MCP',
-          value: room.allowMcp ? 'Yes' : 'No',
-        ),
+        _InfoRow(label: 'Allow MCP', value: room.allowMcp ? 'Yes' : 'No'),
         if (room.allowMcp) _McpTokenRow(roomId: roomId),
         if (room.aguiFeatureNames.isNotEmpty)
           _InfoRow(
@@ -606,10 +582,7 @@ class _ExpandableListCardState<T> extends State<_ExpandableListCard<T>> {
 }
 
 class _DocumentsCard extends StatefulWidget {
-  const _DocumentsCard({
-    required this.documentsAsync,
-    required this.onRetry,
-  });
+  const _DocumentsCard({required this.documentsAsync, required this.onRetry});
 
   final AsyncValue<List<RagDocument>> documentsAsync;
   final VoidCallback onRetry;
@@ -729,27 +702,17 @@ class _DocumentsCardState extends State<_DocumentsCard> {
                   style: TextStyle(color: theme.colorScheme.error),
                 ),
               ),
-              TextButton(
-                onPressed: widget.onRetry,
-                child: const Text('Retry'),
-              ),
+              TextButton(onPressed: widget.onRetry, child: const Text('Retry')),
             ],
           ),
         ],
       ),
     );
 
-    return _SectionCard(
-      title: title,
-      children: children,
-    );
+    return _SectionCard(title: title, children: children);
   }
 
-  Widget _buildDocTile(
-    RagDocument doc,
-    bool expanded,
-    ThemeData theme,
-  ) {
+  Widget _buildDocTile(RagDocument doc, bool expanded, ThemeData theme) {
     return GestureDetector(
       onTap: () => setState(() {
         if (expanded) {
@@ -849,10 +812,7 @@ class _DocumentsCardState extends State<_DocumentsCard> {
                         children: [
                           Text(label, style: labelStyle),
                           const SizedBox(height: 2),
-                          SelectableText(
-                            value,
-                            style: valueStyle,
-                          ),
+                          SelectableText(value, style: valueStyle),
                         ],
                       ),
                     ),
@@ -896,10 +856,7 @@ class _DocumentsCardState extends State<_DocumentsCard> {
 }
 
 class _MetadataDialog extends StatelessWidget {
-  const _MetadataDialog({
-    required this.title,
-    required this.metadata,
-  });
+  const _MetadataDialog({required this.title, required this.metadata});
 
   final String title;
   final Map<String, dynamic> metadata;
@@ -911,11 +868,7 @@ class _MetadataDialog extends StatelessWidget {
     final entries = metadata.entries.toList();
 
     return AlertDialog(
-      title: Text(
-        title,
-        overflow: TextOverflow.ellipsis,
-        maxLines: 1,
-      ),
+      title: Text(title, overflow: TextOverflow.ellipsis, maxLines: 1),
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(

@@ -304,9 +304,7 @@ void main() {
 
         expect(
           trackingNotifier.markReadCalls,
-          contains(
-            const (roomId: 'room-1', threadId: 'thread-1'),
-          ),
+          contains(const (roomId: 'room-1', threadId: 'thread-1')),
         );
       });
     });

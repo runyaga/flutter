@@ -154,9 +154,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 48),
                     Flexible(
                       child: SingleChildScrollView(
-                        child: FlutterMarkdownPlusRenderer(
-                          data: notice.body,
-                        ),
+                        child: FlutterMarkdownPlusRenderer(data: notice.body),
                       ),
                     ),
                     const SizedBox(height: 48),

@@ -131,8 +131,9 @@ void main() {
         expect(tiles.last.record.message, 'Old message');
       });
 
-      testWidgets('newest record stays first after live update',
-          (tester) async {
+      testWidgets('newest record stays first after live update', (
+        tester,
+      ) async {
         final sink = MemorySink()
           ..write(
             _makeRecord(
@@ -311,8 +312,9 @@ void main() {
         expect(find.text('Chat msg'), findsOneWidget);
       });
 
-      testWidgets('re-selecting excluded logger shows it again',
-          (tester) async {
+      testWidgets('re-selecting excluded logger shows it again', (
+        tester,
+      ) async {
         final sink = MemorySink()
           ..write(_makeRecord(loggerName: 'Auth', message: 'Auth msg'))
           ..write(_makeRecord(loggerName: 'Chat', message: 'Chat msg'));
@@ -411,8 +413,9 @@ void main() {
         expect(find.text('Live update'), findsOneWidget);
       });
 
-      testWidgets('filtered record does not appear after flush',
-          (tester) async {
+      testWidgets('filtered record does not appear after flush', (
+        tester,
+      ) async {
         final sink = MemorySink();
         await tester.pumpWidget(_buildScreen(sink: sink));
 
@@ -427,8 +430,9 @@ void main() {
         expect(find.text('Filtered'), findsNothing);
       });
 
-      testWidgets('burst of records batched into single rebuild',
-          (tester) async {
+      testWidgets('burst of records batched into single rebuild', (
+        tester,
+      ) async {
         final sink = MemorySink();
         await tester.pumpWidget(_buildScreen(sink: sink));
 
@@ -506,8 +510,9 @@ void main() {
     });
 
     group('Combined filters', () {
-      testWidgets('level + logger exclusion + search filters together',
-          (tester) async {
+      testWidgets('level + logger exclusion + search filters together', (
+        tester,
+      ) async {
         final sink = MemorySink()
           ..write(
             _makeRecord(
@@ -523,9 +528,7 @@ void main() {
               message: 'Chat failed',
             ),
           )
-          ..write(
-            _makeRecord(loggerName: 'Auth', message: 'Auth success'),
-          )
+          ..write(_makeRecord(loggerName: 'Auth', message: 'Auth success'))
           ..write(
             _makeRecord(
               level: LogLevel.error,

@@ -59,8 +59,9 @@ void main() {
       expect(find.text('2 sources'), findsOneWidget);
     });
 
-    testWidgets('expands to show citation rows when header tapped',
-        (tester) async {
+    testWidgets('expands to show citation rows when header tapped', (
+      tester,
+    ) async {
       final sourceRefs = [
         _createSourceReference(documentTitle: 'Document A'),
         _createSourceReference(documentTitle: 'Document B'),
@@ -92,8 +93,9 @@ void main() {
       expect(find.text('Document B'), findsOneWidget);
     });
 
-    testWidgets('returns empty widget when sourceReferences list is empty',
-        (tester) async {
+    testWidgets('returns empty widget when sourceReferences list is empty', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         createTestApp(
           home: const CitationsSection(
@@ -261,8 +263,9 @@ void main() {
       expect(find.text('Chapter 1 > Section 2 > Subsection'), findsOneWidget);
     });
 
-    testWidgets('multiple citations can be expanded independently',
-        (tester) async {
+    testWidgets('multiple citations can be expanded independently', (
+      tester,
+    ) async {
       final sourceRefs = [
         _createSourceReference(
           chunkId: 'c1',
@@ -391,8 +394,9 @@ void main() {
       expect(find.text('Chapter 1'), findsNothing);
     });
 
-    testWidgets('individual citation expand state persists in provider',
-        (tester) async {
+    testWidgets('individual citation expand state persists in provider', (
+      tester,
+    ) async {
       final sourceRefs = [
         _createSourceReference(
           documentTitle: 'Document A',
@@ -473,10 +477,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Content should be rendered via markdown renderer, not plain Text
-      expect(
-        find.byType(FlutterMarkdownPlusRenderer),
-        findsOneWidget,
-      );
+      expect(find.byType(FlutterMarkdownPlusRenderer), findsOneWidget);
     });
   });
 
@@ -508,8 +509,9 @@ void main() {
       expect(find.byIcon(Icons.visibility_outlined), findsOneWidget);
     });
 
-    testWidgets('does not show visibility button for non-PDF citations',
-        (tester) async {
+    testWidgets('does not show visibility button for non-PDF citations', (
+      tester,
+    ) async {
       final sourceRefs = [
         _createSourceReference(documentUri: 'https://example.com/doc.html'),
       ];
@@ -537,8 +539,9 @@ void main() {
       expect(find.byIcon(Icons.visibility_outlined), findsNothing);
     });
 
-    testWidgets('does not show visibility button when no room selected',
-        (tester) async {
+    testWidgets('does not show visibility button when no room selected', (
+      tester,
+    ) async {
       // Default _createCitation uses .pdf extension
       final sourceRefs = [_createSourceReference()];
 

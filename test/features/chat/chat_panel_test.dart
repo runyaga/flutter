@@ -387,9 +387,7 @@ void main() {
         final mockApi = _TrackingSoliplexApi(threadToCreate: newThread);
         when(
           () => mockApi.createThread('test-room'),
-        ).thenAnswer(
-          (_) async => (newThread, const <String, dynamic>{}),
-        );
+        ).thenAnswer((_) async => (newThread, const <String, dynamic>{}));
 
         late _TrackingThreadSelectionNotifier selectionNotifier;
         late _TrackingActiveRunNotifier runNotifier;
@@ -456,9 +454,7 @@ void main() {
         final mockApi = _TrackingSoliplexApi(threadToCreate: newThread);
         when(
           () => mockApi.createThread('test-room'),
-        ).thenAnswer(
-          (_) async => (newThread, const <String, dynamic>{}),
-        );
+        ).thenAnswer((_) async => (newThread, const <String, dynamic>{}));
 
         late _TrackingThreadSelectionNotifier selectionNotifier;
         late _TrackingActiveRunNotifier runNotifier;
@@ -582,9 +578,7 @@ void main() {
         final mockApi = _TrackingSoliplexApi(threadToCreate: newThread);
         when(
           () => mockApi.createThread('test-room'),
-        ).thenAnswer(
-          (_) async => (newThread, initialState),
-        );
+        ).thenAnswer((_) async => (newThread, initialState));
 
         late ProviderContainer container;
 
@@ -863,8 +857,9 @@ void main() {
               overrides: [
                 currentRoomIdProviderOverride(mockRoom.id),
                 currentRoomProvider.overrideWith((ref) => mockRoom),
-                threadsProvider(mockRoom.id)
-                    .overrideWith((ref) async => [thread1, thread2]),
+                threadsProvider(
+                  mockRoom.id,
+                ).overrideWith((ref) async => [thread1, thread2]),
                 threadSelectionProvider.overrideWith(() {
                   return selectionNotifier = _TrackingThreadSelectionNotifier(
                     initialSelection: ThreadSelected(thread1.id),
@@ -976,8 +971,9 @@ void main() {
             container: ProviderContainer(
               overrides: [
                 currentRoomIdProvider.overrideWith(() {
-                  return roomIdNotifier =
-                      MockCurrentRoomIdNotifier(initialRoomId: room1.id);
+                  return roomIdNotifier = MockCurrentRoomIdNotifier(
+                    initialRoomId: room1.id,
+                  );
                 }),
                 currentRoomProvider.overrideWith((ref) {
                   final roomId = ref.watch(currentRoomIdProvider);

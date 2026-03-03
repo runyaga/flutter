@@ -5,9 +5,7 @@ import 'package:soliplex_frontend/features/debug/debug_chart_config.dart';
 void main() {
   group('createFlutterHostBundle', () {
     test('returns paired HostApi and DfRegistry', () {
-      final bundle = createFlutterHostBundle(
-        onChartCreated: (_, __) {},
-      );
+      final bundle = createFlutterHostBundle(onChartCreated: (_, __) {});
 
       expect(bundle.hostApi, isNotNull);
       expect(bundle.dfRegistry, isNotNull);
@@ -25,9 +23,7 @@ void main() {
   group('FlutterHostApi', () {
     group('registerDataFrame / getDataFrame', () {
       test('round-trips column data', () {
-        final bundle = createFlutterHostBundle(
-          onChartCreated: (_, __) {},
-        );
+        final bundle = createFlutterHostBundle(onChartCreated: (_, __) {});
         final api = bundle.hostApi;
 
         final handle = api.registerDataFrame({
@@ -44,17 +40,13 @@ void main() {
       });
 
       test('returns null for unknown handle', () {
-        final bundle = createFlutterHostBundle(
-          onChartCreated: (_, __) {},
-        );
+        final bundle = createFlutterHostBundle(onChartCreated: (_, __) {});
 
         expect(bundle.hostApi.getDataFrame(9999), isNull);
       });
 
       test('handles empty DataFrame', () {
-        final bundle = createFlutterHostBundle(
-          onChartCreated: (_, __) {},
-        );
+        final bundle = createFlutterHostBundle(onChartCreated: (_, __) {});
         final api = bundle.hostApi;
 
         final handle = api.registerDataFrame({});
@@ -91,9 +83,7 @@ void main() {
       });
 
       test('returns incrementing chart IDs', () {
-        final bundle = createFlutterHostBundle(
-          onChartCreated: (_, __) {},
-        );
+        final bundle = createFlutterHostBundle(onChartCreated: (_, __) {});
         final api = bundle.hostApi;
 
         final id1 = api.registerChart({
@@ -110,9 +100,7 @@ void main() {
       });
 
       test('throws FormatException for invalid chart config', () {
-        final bundle = createFlutterHostBundle(
-          onChartCreated: (_, __) {},
-        );
+        final bundle = createFlutterHostBundle(onChartCreated: (_, __) {});
 
         expect(
           () => bundle.hostApi.registerChart({'no_type': true}),
@@ -123,9 +111,7 @@ void main() {
 
     group('invoke', () {
       test('throws UnimplementedError for unknown operations', () async {
-        final bundle = createFlutterHostBundle(
-          onChartCreated: (_, __) {},
-        );
+        final bundle = createFlutterHostBundle(onChartCreated: (_, __) {});
 
         await expectLater(
           bundle.hostApi.invoke('unknown_op', {}),
@@ -158,9 +144,11 @@ void main() {
         );
 
         a.hostApi.registerChart({'type': 'line'});
-        b.hostApi.registerChart(
-          {'type': 'bar', 'labels': <String>[], 'values': <num>[]},
-        );
+        b.hostApi.registerChart({
+          'type': 'bar',
+          'labels': <String>[],
+          'values': <num>[],
+        });
 
         // Both start from 1 — independent counters.
         expect(charts, hasLength(2));

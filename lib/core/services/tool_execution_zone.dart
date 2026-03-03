@@ -18,9 +18,6 @@ ThreadKey? get activeThreadKey => Zone.current[_threadKeySymbol] as ThreadKey?;
 ///
 /// Tool executors called within [body] can read the key via
 /// [activeThreadKey] to look up per-thread resources (e.g. bridge cache).
-Future<T> runInToolExecutionZone<T>(
-  ThreadKey key,
-  Future<T> Function() body,
-) {
+Future<T> runInToolExecutionZone<T>(ThreadKey key, Future<T> Function() body) {
   return runZoned(body, zoneValues: {_threadKeySymbol: key});
 }

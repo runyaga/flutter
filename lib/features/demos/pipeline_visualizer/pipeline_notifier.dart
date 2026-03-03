@@ -218,9 +218,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
         // Spawn all nodes in this layer.
         final sessions = <String, AgentSession>{};
         for (final node in layer) {
-          _log.debug(
-            '  Spawning ${node.id} (room=${node.roomId})',
-          );
+          _log.debug('  Spawning ${node.id} (room=${node.roomId})');
           sessions[node.id] = await runtime.spawn(
             roomId: node.roomId,
             prompt: nodePrompts[node.id]!,
@@ -232,27 +230,17 @@ class PipelineNotifier extends Notifier<PipelineState> {
         if (sessions.length == 1) {
           final entry = sessions.entries.first;
           final sw = Stopwatch()..start();
-          final result = await entry.value.awaitResult(
-            timeout: _timeout,
-          );
+          final result = await entry.value.awaitResult(timeout: _timeout);
           sw.stop();
           _processResult(entry.key, result, sw.elapsed, outputs);
         } else {
           final keys = sessions.keys.toList();
           final sessionList = sessions.values.toList();
           final sw = Stopwatch()..start();
-          final results = await runtime.waitAll(
-            sessionList,
-            timeout: _timeout,
-          );
+          final results = await runtime.waitAll(sessionList, timeout: _timeout);
           sw.stop();
           for (var i = 0; i < keys.length; i++) {
-            _processResult(
-              keys[i],
-              results[i],
-              sw.elapsed,
-              outputs,
-            );
+            _processResult(keys[i], results[i], sw.elapsed, outputs);
           }
         }
       }
@@ -261,9 +249,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
         status: PipelineStatus.completed,
         completedAt: DateTime.now(),
       );
-      _log.info(
-        'Pipeline complete in ${state.elapsed?.inSeconds}s',
-      );
+      _log.info('Pipeline complete in ${state.elapsed?.inSeconds}s');
     } on Object catch (e, st) {
       _log.error('Pipeline failed', error: e, stackTrace: st);
       final cleanedStates = Map<String, NodeState>.from(state.nodeStates);
@@ -309,9 +295,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
           output: output,
           elapsed: elapsed,
         );
-        _log.info(
-          '  $nodeId completed (${output.length} chars)',
-        );
+        _log.info('  $nodeId completed (${output.length} chars)');
       case AgentFailure(:final error):
         updatedStates[nodeId] = updatedStates[nodeId]!.copyWith(
           status: NodeStatus.failed,
@@ -343,9 +327,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
   ) {
     if (node.dependsOn.isEmpty) return userPrompt;
     final upstream = node.dependsOn
-        .map(
-          (id) => '=== $id ===\n${outputs[id] ?? "(pending)"}',
-        )
+        .map((id) => '=== $id ===\n${outputs[id] ?? "(pending)"}')
         .join('\n\n');
     return 'Given these inputs:\n\n$upstream\n\n$userPrompt';
   }

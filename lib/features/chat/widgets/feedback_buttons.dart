@@ -95,14 +95,11 @@ class _FeedbackButtonsState extends State<FeedbackButtons>
       _direction = direction;
     });
     _controller.reverse(from: 1);
-    _countdownTimer = Timer(
-      Duration(seconds: widget.countdownSeconds),
-      () {
-        if (mounted && _phase == _FeedbackPhase.countdown) {
-          _submit(null);
-        }
-      },
-    );
+    _countdownTimer = Timer(Duration(seconds: widget.countdownSeconds), () {
+      if (mounted && _phase == _FeedbackPhase.countdown) {
+        _submit(null);
+      }
+    });
   }
 
   Future<void> _onTellUsWhyTap() async {
@@ -209,11 +206,7 @@ class _FeedbackThumbButton extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(4),
-          child: Icon(
-            icon,
-            size: _iconSize,
-            color: color,
-          ),
+          child: Icon(icon, size: _iconSize, color: color),
         ),
       ),
     );

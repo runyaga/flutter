@@ -30,17 +30,12 @@ class _LineChartView extends StatelessWidget {
       LineChartData(
         lineBarsData: [
           LineChartBarData(
-            spots: [
-              for (final p in config.points) FlSpot(p.x, p.y),
-            ],
+            spots: [for (final p in config.points) FlSpot(p.x, p.y)],
             isCurved: true,
             color: color,
           ),
         ],
-        titlesData: _titlesData(
-          config.xLabel,
-          config.yLabel,
-        ),
+        titlesData: _titlesData(config.xLabel, config.yLabel),
         borderData: FlBorderData(show: true),
       ),
     );
@@ -61,11 +56,7 @@ class _BarChartView extends StatelessWidget {
             BarChartGroupData(
               x: i,
               barRods: [
-                BarChartRodData(
-                  toY: config.values[i],
-                  color: color,
-                  width: 16,
-                ),
+                BarChartRodData(toY: config.values[i], color: color, width: 16),
               ],
             ),
         ],
@@ -86,9 +77,7 @@ class _BarChartView extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     config.labels[i],
-                    style: const TextStyle(
-                      fontSize: 10,
-                    ),
+                    style: const TextStyle(fontSize: 10),
                   ),
                 );
               },
@@ -99,10 +88,7 @@ class _BarChartView extends StatelessWidget {
               config.yLabel,
               style: const TextStyle(fontSize: 11),
             ),
-            sideTitles: const SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-            ),
+            sideTitles: const SideTitles(showTitles: true, reservedSize: 40),
           ),
           topTitles: const AxisTitles(),
           rightTitles: const AxisTitles(),
@@ -128,16 +114,10 @@ class _ScatterChartView extends StatelessWidget {
             ScatterSpot(
               p.x,
               p.y,
-              dotPainter: FlDotCirclePainter(
-                color: color,
-                radius: 10,
-              ),
+              dotPainter: FlDotCirclePainter(color: color, radius: 10),
             ),
         ],
-        titlesData: _titlesData(
-          config.xLabel,
-          config.yLabel,
-        ),
+        titlesData: _titlesData(config.xLabel, config.yLabel),
         gridData: const FlGridData(),
         borderData: FlBorderData(show: true),
       ),
@@ -147,24 +127,12 @@ class _ScatterChartView extends StatelessWidget {
 
 FlTitlesData _titlesData(String xLabel, String yLabel) => FlTitlesData(
       bottomTitles: AxisTitles(
-        axisNameWidget: Text(
-          xLabel,
-          style: const TextStyle(fontSize: 11),
-        ),
-        sideTitles: const SideTitles(
-          showTitles: true,
-          reservedSize: 28,
-        ),
+        axisNameWidget: Text(xLabel, style: const TextStyle(fontSize: 11)),
+        sideTitles: const SideTitles(showTitles: true, reservedSize: 28),
       ),
       leftTitles: AxisTitles(
-        axisNameWidget: Text(
-          yLabel,
-          style: const TextStyle(fontSize: 11),
-        ),
-        sideTitles: const SideTitles(
-          showTitles: true,
-          reservedSize: 40,
-        ),
+        axisNameWidget: Text(yLabel, style: const TextStyle(fontSize: 11)),
+        sideTitles: const SideTitles(showTitles: true, reservedSize: 40),
       ),
       topTitles: const AxisTitles(),
       rightTitles: const AxisTitles(),

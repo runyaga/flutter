@@ -62,9 +62,7 @@ void main() {
     });
 
     test('loads saved console logging state from preferences', () async {
-      SharedPreferences.setMockInitialValues({
-        'console_logging': false,
-      });
+      SharedPreferences.setMockInitialValues({'console_logging': false});
       prefs = await SharedPreferences.getInstance();
 
       final container = createContainer(prefs);
@@ -156,10 +154,7 @@ void main() {
       addTearDown(container.dispose);
 
       // Riverpod wraps the StateError in a ProviderException.
-      expect(
-        () => container.read(logConfigProvider),
-        throwsA(anything),
-      );
+      expect(() => container.read(logConfigProvider), throwsA(anything));
     });
   });
 
@@ -250,9 +245,7 @@ void main() {
     });
 
     test('disables sink when config has console logging disabled', () async {
-      SharedPreferences.setMockInitialValues({
-        'console_logging': false,
-      });
+      SharedPreferences.setMockInitialValues({'console_logging': false});
       prefs = await SharedPreferences.getInstance();
 
       final container = createContainer(prefs);

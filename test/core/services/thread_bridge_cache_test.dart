@@ -37,9 +37,7 @@ void main() {
     test('starts with empty state', () {
       final container = ProviderContainer(
         overrides: [
-          threadBridgeCacheProvider.overrideWith(
-            _TestBridgeCacheNotifier.new,
-          ),
+          threadBridgeCacheProvider.overrideWith(_TestBridgeCacheNotifier.new),
         ],
       );
       addTearDown(container.dispose);
@@ -52,9 +50,7 @@ void main() {
     test('getOrCreate returns same bridge for same key', () {
       final notifier = _TestBridgeCacheNotifier();
       final container = ProviderContainer(
-        overrides: [
-          threadBridgeCacheProvider.overrideWith(() => notifier),
-        ],
+        overrides: [threadBridgeCacheProvider.overrideWith(() => notifier)],
       );
       addTearDown(container.dispose);
 
@@ -69,9 +65,7 @@ void main() {
     test('getOrCreate creates different bridges for different keys', () {
       final notifier = _TestBridgeCacheNotifier();
       final container = ProviderContainer(
-        overrides: [
-          threadBridgeCacheProvider.overrideWith(() => notifier),
-        ],
+        overrides: [threadBridgeCacheProvider.overrideWith(() => notifier)],
       );
       addTearDown(container.dispose);
 
@@ -86,9 +80,7 @@ void main() {
     test('removeThread removes and disposes bridge', () {
       final notifier = _TestBridgeCacheNotifier();
       final container = ProviderContainer(
-        overrides: [
-          threadBridgeCacheProvider.overrideWith(() => notifier),
-        ],
+        overrides: [threadBridgeCacheProvider.overrideWith(() => notifier)],
       );
       addTearDown(container.dispose);
 
@@ -106,9 +98,7 @@ void main() {
     test('removeThread is no-op for unknown key', () {
       final container = ProviderContainer(
         overrides: [
-          threadBridgeCacheProvider.overrideWith(
-            _TestBridgeCacheNotifier.new,
-          ),
+          threadBridgeCacheProvider.overrideWith(_TestBridgeCacheNotifier.new),
         ],
       );
       addTearDown(container.dispose);
@@ -122,9 +112,7 @@ void main() {
     test('container disposal disposes all bridges', () {
       final notifier = _TestBridgeCacheNotifier();
       final container = ProviderContainer(
-        overrides: [
-          threadBridgeCacheProvider.overrideWith(() => notifier),
-        ],
+        overrides: [threadBridgeCacheProvider.overrideWith(() => notifier)],
       );
 
       container.read(threadBridgeCacheProvider.notifier)

@@ -35,9 +35,7 @@ void main() {
 
     setUp(() {
       container = ProviderContainer(
-        overrides: [
-          agUiClientProvider.overrideWithValue(mockAgUiClient),
-        ],
+        overrides: [agUiClientProvider.overrideWithValue(mockAgUiClient)],
       );
     });
 
@@ -513,14 +511,8 @@ void main() {
       // Both runs should be registered
       final registry =
           container.read(activeRunNotifierProvider.notifier).registry;
-      expect(
-        registry.hasRun((roomId: 'room-1', threadId: 'thread-1')),
-        isTrue,
-      );
-      expect(
-        registry.hasRun((roomId: 'room-1', threadId: 'thread-2')),
-        isTrue,
-      );
+      expect(registry.hasRun((roomId: 'room-1', threadId: 'thread-1')), isTrue);
+      expect(registry.hasRun((roomId: 'room-1', threadId: 'thread-2')), isTrue);
       expect(registry.runCount, 2);
     });
   });
@@ -685,12 +677,13 @@ void main() {
       // But the run continues in the background via registry
       final registry =
           container.read(activeRunNotifierProvider.notifier).registry;
-      expect(
-        registry.hasRun((roomId: 'room-1', threadId: 'thread-a')),
-        isTrue,
-      );
-      final handle =
-          registry.getHandle((roomId: 'room-1', threadId: 'thread-a'))!;
+      expect(registry.hasRun((roomId: 'room-1', threadId: 'thread-a')), isTrue);
+      final handle = registry.getHandle(
+        (
+          roomId: 'room-1',
+          threadId: 'thread-a',
+        ),
+      )!;
       expect(handle.state, isA<RunningState>());
     });
 
@@ -887,10 +880,7 @@ void main() {
       final cacheAfter = container.read(threadHistoryCacheProvider);
       expect(cacheAfter[key], isNotNull);
       expect(cacheAfter[key]!.messages, hasLength(1));
-      expect(
-        (cacheAfter[key]!.messages.first as TextMessage).text,
-        'Hello',
-      );
+      expect((cacheAfter[key]!.messages.first as TextMessage).text, 'Hello');
     });
 
     test('updates cache when RUN_ERROR event is received', () async {
@@ -1533,7 +1523,10 @@ void main() {
         ),
       ];
       container.read(threadHistoryCacheProvider.notifier).updateHistory(
-        const (roomId: 'room-1', threadId: 'thread-1'),
+        const (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
         ThreadHistory(messages: historicalMessages),
       );
 
@@ -1642,7 +1635,10 @@ void main() {
       };
 
       container.read(threadHistoryCacheProvider.notifier).updateHistory(
-        const (roomId: 'room-1', threadId: 'thread-1'),
+        const (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
         ThreadHistory(messages: const [], aguiState: cachedAguiState),
       );
 
@@ -1735,13 +1731,14 @@ void main() {
 
       final registry =
           container.read(activeRunNotifierProvider.notifier).registry;
-      expect(
-        registry.hasRun((roomId: 'room-1', threadId: 'thread-1')),
-        isTrue,
-      );
+      expect(registry.hasRun((roomId: 'room-1', threadId: 'thread-1')), isTrue);
 
-      final handle =
-          registry.getHandle((roomId: 'room-1', threadId: 'thread-1'));
+      final handle = registry.getHandle(
+        (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
+      );
       expect(handle, isNotNull);
       expect(handle!.state, isA<RunningState>());
     });
@@ -1763,8 +1760,12 @@ void main() {
 
       final registry =
           container.read(activeRunNotifierProvider.notifier).registry;
-      final handle =
-          registry.getHandle((roomId: 'room-1', threadId: 'thread-1'))!;
+      final handle = registry.getHandle(
+        (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
+      )!;
 
       eventStreamController.add(
         const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
@@ -1791,8 +1792,12 @@ void main() {
 
       final registry =
           container.read(activeRunNotifierProvider.notifier).registry;
-      final handle =
-          registry.getHandle((roomId: 'room-1', threadId: 'thread-1'))!;
+      final handle = registry.getHandle(
+        (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
+      )!;
 
       await container.read(activeRunNotifierProvider.notifier).cancelRun();
 
@@ -1818,16 +1823,17 @@ void main() {
 
       final registry =
           container.read(activeRunNotifierProvider.notifier).registry;
-      final handle =
-          registry.getHandle((roomId: 'room-1', threadId: 'thread-1'))!;
+      final handle = registry.getHandle(
+        (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
+      )!;
 
       eventStreamController
         ..add(const TextMessageStartEvent(messageId: 'msg-1'))
         ..add(
-          const TextMessageContentEvent(
-            messageId: 'msg-1',
-            delta: 'Response',
-          ),
+          const TextMessageContentEvent(messageId: 'msg-1', delta: 'Response'),
         );
       await Future<void>.delayed(Duration.zero);
 
@@ -1854,8 +1860,12 @@ void main() {
 
       final registry =
           container.read(activeRunNotifierProvider.notifier).registry;
-      final handle =
-          registry.getHandle((roomId: 'room-1', threadId: 'thread-1'))!;
+      final handle = registry.getHandle(
+        (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
+      )!;
 
       eventStreamController.addError(Exception('Network error'));
       await Future<void>.delayed(Duration.zero);
@@ -1920,8 +1930,12 @@ void main() {
 
       final registry =
           container.read(activeRunNotifierProvider.notifier).registry;
-      final handle =
-          registry.getHandle((roomId: 'room-1', threadId: 'thread-1'))!;
+      final handle = registry.getHandle(
+        (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
+      )!;
 
       // Complete the run
       eventStreamController.add(
@@ -1960,8 +1974,12 @@ void main() {
 
       final registry =
           container.read(activeRunNotifierProvider.notifier).registry;
-      final handle =
-          registry.getHandle((roomId: 'room-1', threadId: 'thread-1'))!;
+      final handle = registry.getHandle(
+        (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
+      )!;
 
       // Close stream without sending RUN_FINISHED
       await eventStreamController.close();
@@ -2049,60 +2067,66 @@ void main() {
       streamB.close();
     });
 
-    test('background run events update handle but not notifier state',
-        () async {
-      final container = ProviderContainer(
-        overrides: [
-          apiProvider.overrideWithValue(mockApi),
-          agUiClientProvider.overrideWithValue(mockAgUiClient),
-        ],
-      );
+    test(
+      'background run events update handle but not notifier state',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            apiProvider.overrideWithValue(mockApi),
+            agUiClientProvider.overrideWithValue(mockAgUiClient),
+          ],
+        );
 
-      addTearDown(container.dispose);
+        addTearDown(container.dispose);
 
-      final notifier = container.read(activeRunNotifierProvider.notifier);
+        final notifier = container.read(activeRunNotifierProvider.notifier);
 
-      // Start run A
-      await notifier.startRun(
-        key: (roomId: 'room-1', threadId: 'thread-a'),
-        userMessage: 'Message A',
-      );
+        // Start run A
+        await notifier.startRun(
+          key: (roomId: 'room-1', threadId: 'thread-a'),
+          userMessage: 'Message A',
+        );
 
-      // Start run B (becomes current)
-      await notifier.startRun(
-        key: (roomId: 'room-1', threadId: 'thread-b'),
-        userMessage: 'Message B',
-      );
+        // Start run B (becomes current)
+        await notifier.startRun(
+          key: (roomId: 'room-1', threadId: 'thread-b'),
+          userMessage: 'Message B',
+        );
 
-      // Notifier should show thread B
-      final stateAfterB = container.read(activeRunNotifierProvider);
-      expect(stateAfterB, isA<RunningState>());
-      expect((stateAfterB as RunningState).threadId, 'thread-b');
+        // Notifier should show thread B
+        final stateAfterB = container.read(activeRunNotifierProvider);
+        expect(stateAfterB, isA<RunningState>());
+        expect((stateAfterB as RunningState).threadId, 'thread-b');
 
-      // Send events on thread A's stream (background run)
-      streamA
-        ..add(const TextMessageStartEvent(messageId: 'msg-a'))
-        ..add(
-          const TextMessageContentEvent(
-            messageId: 'msg-a',
-            delta: 'Hello from A',
+        // Send events on thread A's stream (background run)
+        streamA
+          ..add(const TextMessageStartEvent(messageId: 'msg-a'))
+          ..add(
+            const TextMessageContentEvent(
+              messageId: 'msg-a',
+              delta: 'Hello from A',
+            ),
+          )
+          ..add(const TextMessageEndEvent(messageId: 'msg-a'));
+        await Future<void>.delayed(Duration.zero);
+
+        // Handle A should have the new message
+        final handleA = notifier.registry.getHandle(
+          (
+            roomId: 'room-1',
+            threadId: 'thread-a',
           ),
-        )
-        ..add(const TextMessageEndEvent(messageId: 'msg-a'));
-      await Future<void>.delayed(Duration.zero);
+        )!;
+        expect(handleA.state, isA<RunningState>());
+        expect(handleA.state.messages, hasLength(2));
 
-      // Handle A should have the new message
-      final handleA = notifier.registry
-          .getHandle((roomId: 'room-1', threadId: 'thread-a'))!;
-      expect(handleA.state, isA<RunningState>());
-      expect(handleA.state.messages, hasLength(2));
-
-      // Notifier state should still show thread B (unaffected)
-      final notifierState = container.read(activeRunNotifierProvider);
-      expect(notifierState, isA<RunningState>());
-      expect((notifierState as RunningState).threadId, 'thread-b');
-      expect(notifierState.messages, hasLength(1));
-    });
+        // Notifier state should still show thread B (unaffected)
+        final notifierState = container.read(activeRunNotifierProvider);
+        expect(notifierState, isA<RunningState>());
+        expect((notifierState as RunningState).threadId, 'thread-b');
+        expect(notifierState.messages, hasLength(1));
+      },
+    );
 
     test('cancelling current run does not affect background run', () async {
       final container = ProviderContainer(
@@ -2136,8 +2160,12 @@ void main() {
       );
 
       // Thread A's handle should still be running
-      final handleA = notifier.registry
-          .getHandle((roomId: 'room-1', threadId: 'thread-a'))!;
+      final handleA = notifier.registry.getHandle(
+        (
+          roomId: 'room-1',
+          threadId: 'thread-a',
+        ),
+      )!;
       expect(handleA.state, isA<RunningState>());
     });
 
@@ -2164,9 +2192,7 @@ void main() {
       );
 
       // Complete run A in background
-      streamA.add(
-        const RunFinishedEvent(threadId: 'thread-a', runId: 'run-1'),
-      );
+      streamA.add(const RunFinishedEvent(threadId: 'thread-a', runId: 'run-1'));
       await Future<void>.delayed(Duration.zero);
 
       // Cache for thread-a should be updated
@@ -2219,93 +2245,84 @@ void main() {
       streamA.close();
     });
 
-    test('switching thread resets state to idle when target has no run',
-        () async {
-      final container = ProviderContainer(
-        overrides: [
-          apiProvider.overrideWithValue(mockApi),
-          agUiClientProvider.overrideWithValue(mockAgUiClient),
-          currentRoomIdProviderOverride('room-1'),
-          threadSelectionProviderOverride(
-            const ThreadSelected('thread-a'),
-          ),
-        ],
-      );
+    test(
+      'switching thread resets state to idle when target has no run',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            apiProvider.overrideWithValue(mockApi),
+            agUiClientProvider.overrideWithValue(mockAgUiClient),
+            currentRoomIdProviderOverride('room-1'),
+            threadSelectionProviderOverride(const ThreadSelected('thread-a')),
+          ],
+        );
 
-      addTearDown(container.dispose);
+        addTearDown(container.dispose);
 
-      // Start a run in thread-a
-      await container.read(activeRunNotifierProvider.notifier).startRun(
-        key: (roomId: 'room-1', threadId: 'thread-a'),
-        userMessage: 'Hello',
-      );
+        // Start a run in thread-a
+        await container.read(activeRunNotifierProvider.notifier).startRun(
+          key: (roomId: 'room-1', threadId: 'thread-a'),
+          userMessage: 'Hello',
+        );
 
-      expect(
-        container.read(activeRunNotifierProvider),
-        isA<RunningState>(),
-      );
+        expect(container.read(activeRunNotifierProvider), isA<RunningState>());
 
-      // User navigates to thread-b (no active run there)
-      container
-          .read(threadSelectionProvider.notifier)
-          .set(const ThreadSelected('thread-b'));
+        // User navigates to thread-b (no active run there)
+        container
+            .read(threadSelectionProvider.notifier)
+            .set(const ThreadSelected('thread-b'));
 
-      // Allow listener to fire
-      await Future<void>.delayed(Duration.zero);
+        // Allow listener to fire
+        await Future<void>.delayed(Duration.zero);
 
-      // Notifier should show idle for thread-b
-      final state = container.read(activeRunNotifierProvider);
-      expect(state, isA<IdleState>());
-    });
+        // Notifier should show idle for thread-b
+        final state = container.read(activeRunNotifierProvider);
+        expect(state, isA<IdleState>());
+      },
+    );
 
-    test('switching back to thread with active run restores its state',
-        () async {
-      final container = ProviderContainer(
-        overrides: [
-          apiProvider.overrideWithValue(mockApi),
-          agUiClientProvider.overrideWithValue(mockAgUiClient),
-          currentRoomIdProviderOverride('room-1'),
-          threadSelectionProviderOverride(
-            const ThreadSelected('thread-a'),
-          ),
-        ],
-      );
+    test(
+      'switching back to thread with active run restores its state',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            apiProvider.overrideWithValue(mockApi),
+            agUiClientProvider.overrideWithValue(mockAgUiClient),
+            currentRoomIdProviderOverride('room-1'),
+            threadSelectionProviderOverride(const ThreadSelected('thread-a')),
+          ],
+        );
 
-      addTearDown(container.dispose);
+        addTearDown(container.dispose);
 
-      // Start a run in thread-a
-      await container.read(activeRunNotifierProvider.notifier).startRun(
-        key: (roomId: 'room-1', threadId: 'thread-a'),
-        userMessage: 'Hello',
-      );
+        // Start a run in thread-a
+        await container.read(activeRunNotifierProvider.notifier).startRun(
+          key: (roomId: 'room-1', threadId: 'thread-a'),
+          userMessage: 'Hello',
+        );
 
-      expect(
-        container.read(activeRunNotifierProvider),
-        isA<RunningState>(),
-      );
+        expect(container.read(activeRunNotifierProvider), isA<RunningState>());
 
-      // Navigate away to thread-b
-      container
-          .read(threadSelectionProvider.notifier)
-          .set(const ThreadSelected('thread-b'));
-      await Future<void>.delayed(Duration.zero);
+        // Navigate away to thread-b
+        container
+            .read(threadSelectionProvider.notifier)
+            .set(const ThreadSelected('thread-b'));
+        await Future<void>.delayed(Duration.zero);
 
-      expect(
-        container.read(activeRunNotifierProvider),
-        isA<IdleState>(),
-      );
+        expect(container.read(activeRunNotifierProvider), isA<IdleState>());
 
-      // Navigate back to thread-a
-      container
-          .read(threadSelectionProvider.notifier)
-          .set(const ThreadSelected('thread-a'));
-      await Future<void>.delayed(Duration.zero);
+        // Navigate back to thread-a
+        container
+            .read(threadSelectionProvider.notifier)
+            .set(const ThreadSelected('thread-a'));
+        await Future<void>.delayed(Duration.zero);
 
-      // Should restore thread-a's running state from registry
-      final restored = container.read(activeRunNotifierProvider);
-      expect(restored, isA<RunningState>());
-      expect((restored as RunningState).threadId, 'thread-a');
-    });
+        // Should restore thread-a's running state from registry
+        final restored = container.read(activeRunNotifierProvider);
+        expect(restored, isA<RunningState>());
+        expect((restored as RunningState).threadId, 'thread-a');
+      },
+    );
 
     test('switching room resets state to idle', () async {
       final container = ProviderContainer(
@@ -2313,9 +2330,7 @@ void main() {
           apiProvider.overrideWithValue(mockApi),
           agUiClientProvider.overrideWithValue(mockAgUiClient),
           currentRoomIdProviderOverride('room-1'),
-          threadSelectionProviderOverride(
-            const ThreadSelected('thread-a'),
-          ),
+          threadSelectionProviderOverride(const ThreadSelected('thread-a')),
         ],
       );
 
@@ -2327,10 +2342,7 @@ void main() {
         userMessage: 'Hello',
       );
 
-      expect(
-        container.read(activeRunNotifierProvider),
-        isA<RunningState>(),
-      );
+      expect(container.read(activeRunNotifierProvider), isA<RunningState>());
 
       // User navigates to room-2
       container.read(currentRoomIdProvider.notifier).set('room-2');
@@ -2352,9 +2364,7 @@ void main() {
           apiProvider.overrideWithValue(mockApi),
           agUiClientProvider.overrideWithValue(mockAgUiClient),
           currentRoomIdProviderOverride('room-1'),
-          threadSelectionProviderOverride(
-            const ThreadSelected('thread-a'),
-          ),
+          threadSelectionProviderOverride(const ThreadSelected('thread-a')),
         ],
       );
 
@@ -2372,10 +2382,7 @@ void main() {
           .set(const ThreadSelected('thread-b'));
       await Future<void>.delayed(Duration.zero);
 
-      expect(
-        container.read(activeRunNotifierProvider),
-        isA<IdleState>(),
-      );
+      expect(container.read(activeRunNotifierProvider), isA<IdleState>());
 
       // Background events arrive for thread-a (full message lifecycle)
       streamA
@@ -2390,10 +2397,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // State should remain idle (not leak thread-a's messages)
-      expect(
-        container.read(activeRunNotifierProvider),
-        isA<IdleState>(),
-      );
+      expect(container.read(activeRunNotifierProvider), isA<IdleState>());
 
       // But the handle in the registry should have the messages
       final handle = container
@@ -2410,9 +2414,7 @@ void main() {
           apiProvider.overrideWithValue(mockApi),
           agUiClientProvider.overrideWithValue(mockAgUiClient),
           currentRoomIdProviderOverride('room-1'),
-          threadSelectionProviderOverride(
-            const ThreadSelected('thread-a'),
-          ),
+          threadSelectionProviderOverride(const ThreadSelected('thread-a')),
         ],
       );
 
@@ -2441,9 +2443,7 @@ void main() {
           apiProvider.overrideWithValue(mockApi),
           agUiClientProvider.overrideWithValue(mockAgUiClient),
           currentRoomIdProviderOverride('room-1'),
-          threadSelectionProviderOverride(
-            const ThreadSelected('thread-a'),
-          ),
+          threadSelectionProviderOverride(const ThreadSelected('thread-a')),
         ],
       );
 
@@ -2455,10 +2455,7 @@ void main() {
         userMessage: 'Hello',
       );
 
-      expect(
-        container.read(activeRunNotifierProvider),
-        isA<RunningState>(),
-      );
+      expect(container.read(activeRunNotifierProvider), isA<RunningState>());
 
       // Switch to room-2/thread-x (no run there)
       container.read(currentRoomIdProvider.notifier).set('room-2');
@@ -2467,10 +2464,7 @@ void main() {
           .set(const ThreadSelected('thread-x'));
       await Future<void>.delayed(Duration.zero);
 
-      expect(
-        container.read(activeRunNotifierProvider),
-        isA<IdleState>(),
-      );
+      expect(container.read(activeRunNotifierProvider), isA<IdleState>());
 
       // Return to room-1/thread-a
       container.read(currentRoomIdProvider.notifier).set('room-1');
@@ -2518,9 +2512,7 @@ void main() {
           apiProvider.overrideWithValue(mockApi),
           agUiClientProvider.overrideWithValue(mockAgUiClient),
           currentRoomIdProviderOverride('room-1'),
-          threadSelectionProviderOverride(
-            const ThreadSelected('thread-a'),
-          ),
+          threadSelectionProviderOverride(const ThreadSelected('thread-a')),
         ],
       );
 
@@ -2686,35 +2678,37 @@ void main() {
       expect(completed.result, isA<CancelledResult>());
     });
 
-    test('RUN_FINISHED event emits RunCompleted via _processEventForRun',
-        () async {
-      final container = ProviderContainer(
-        overrides: [
-          apiProvider.overrideWithValue(mockApi),
-          agUiClientProvider.overrideWithValue(mockAgUiClient),
-        ],
-      );
+    test(
+      'RUN_FINISHED event emits RunCompleted via _processEventForRun',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            apiProvider.overrideWithValue(mockApi),
+            agUiClientProvider.overrideWithValue(mockAgUiClient),
+          ],
+        );
 
-      addTearDown(container.dispose);
+        addTearDown(container.dispose);
 
-      final notifier = container.read(activeRunNotifierProvider.notifier);
-      final events = <RunLifecycleEvent>[];
-      notifier.registry.lifecycleEvents.listen(events.add);
+        final notifier = container.read(activeRunNotifierProvider.notifier);
+        final events = <RunLifecycleEvent>[];
+        notifier.registry.lifecycleEvents.listen(events.add);
 
-      await notifier.startRun(
-        key: (roomId: 'room-1', threadId: 'thread-1'),
-        userMessage: 'Hello',
-      );
+        await notifier.startRun(
+          key: (roomId: 'room-1', threadId: 'thread-1'),
+          userMessage: 'Hello',
+        );
 
-      eventStreamController.add(
-        const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
-      );
-      await Future<void>.delayed(Duration.zero);
+        eventStreamController.add(
+          const RunFinishedEvent(threadId: 'thread-1', runId: 'run-1'),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      expect(events, hasLength(2));
-      expect(events.last, isA<RunCompleted>());
-      final completed = events.last as RunCompleted;
-      expect(completed.result, isA<Success>());
-    });
+        expect(events, hasLength(2));
+        expect(events.last, isA<RunCompleted>());
+        final completed = events.last as RunCompleted;
+        expect(completed.result, isA<Success>());
+      },
+    );
   });
 }

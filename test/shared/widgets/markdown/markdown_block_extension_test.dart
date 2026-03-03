@@ -35,29 +35,22 @@ void main() {
       final noteExtension = MarkdownBlockExtension(
         pattern: RegExp(r'^\[\[note:\s*(.+)\]\]$'),
         tag: 'note',
-        builder: (content, attributes) => Text(
-          'NOTE: $content',
-          key: const Key('note-widget'),
-        ),
+        builder: (content, attributes) =>
+            Text('NOTE: $content', key: const Key('note-widget')),
       );
 
       final warnExtension = MarkdownBlockExtension(
         pattern: RegExp(r'^\[\[warn:\s*(.+)\]\]$'),
         tag: 'warn',
-        builder: (content, attributes) => Text(
-          'WARN: $content',
-          key: const Key('warn-widget'),
-        ),
+        builder: (content, attributes) =>
+            Text('WARN: $content', key: const Key('warn-widget')),
       );
 
       await tester.pumpWidget(
         createTestApp(
           home: FlutterMarkdownPlusRenderer(
             data: '[[note: Info here]]\n\n[[warn: Be careful]]',
-            blockExtensions: {
-              'note': noteExtension,
-              'warn': warnExtension,
-            },
+            blockExtensions: {'note': noteExtension, 'warn': warnExtension},
           ),
         ),
       );
@@ -127,30 +120,23 @@ void main() {
       final singleLine = MarkdownBlockExtension(
         pattern: RegExp(r'^\[\[note:\s*(.+)\]\]$'),
         tag: 'note',
-        builder: (content, attributes) => Text(
-          'NOTE: $content',
-          key: const Key('note-widget'),
-        ),
+        builder: (content, attributes) =>
+            Text('NOTE: $content', key: const Key('note-widget')),
       );
 
       final multiLine = MarkdownBlockExtension(
         pattern: RegExp(r'^```special\s*$'),
         endPattern: RegExp(r'^```\s*$'),
         tag: 'special',
-        builder: (content, attributes) => Text(
-          'SPECIAL: $content',
-          key: const Key('special-widget'),
-        ),
+        builder: (content, attributes) =>
+            Text('SPECIAL: $content', key: const Key('special-widget')),
       );
 
       await tester.pumpWidget(
         createTestApp(
           home: FlutterMarkdownPlusRenderer(
             data: '[[note: Hello]]\n\n```special\nfoo\nbar\n```',
-            blockExtensions: {
-              'note': singleLine,
-              'special': multiLine,
-            },
+            blockExtensions: {'note': singleLine, 'special': multiLine},
           ),
         ),
       );
@@ -164,10 +150,8 @@ void main() {
       final extension = MarkdownBlockExtension(
         pattern: RegExp(r'^\[\[note:\s*(.+)\]\]$'),
         tag: 'note',
-        builder: (content, attributes) => Text(
-          'NOTE: $content',
-          key: const Key('note-widget'),
-        ),
+        builder: (content, attributes) =>
+            Text('NOTE: $content', key: const Key('note-widget')),
       );
 
       await tester.pumpWidget(

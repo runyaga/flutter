@@ -108,9 +108,7 @@ class DebateNotifier extends Notifier<DebateState> {
           roomId: roomId,
           threadId: 'agent-${agentCounter++}',
         );
-        final hostBundle = createFlutterHostBundle(
-          onChartCreated: (_, __) {},
-        );
+        final hostBundle = createFlutterHostBundle(onChartCreated: (_, __) {});
         final wiring = HostFunctionWiring(
           hostApi: hostBundle.hostApi,
           dfRegistry: hostBundle.dfRegistry,
@@ -237,10 +235,12 @@ class DebateNotifier extends Notifier<DebateState> {
   String _extractOutput(AgentResult result, String stageName) {
     return switch (result) {
       AgentSuccess(:final output) => output,
-      AgentFailure(:final error) =>
-        throw Exception('$stageName failed: $error'),
-      AgentTimedOut(:final elapsed) =>
-        throw Exception('$stageName timed out after ${elapsed.inSeconds}s'),
+      AgentFailure(:final error) => throw Exception(
+          '$stageName failed: $error',
+        ),
+      AgentTimedOut(:final elapsed) => throw Exception(
+          '$stageName timed out after ${elapsed.inSeconds}s',
+        ),
     };
   }
 }
@@ -249,5 +249,6 @@ class DebateNotifier extends Notifier<DebateState> {
 // Provider
 // ---------------------------------------------------------------------------
 
-final debateProvider =
-    NotifierProvider<DebateNotifier, DebateState>(DebateNotifier.new);
+final debateProvider = NotifierProvider<DebateNotifier, DebateState>(
+  DebateNotifier.new,
+);

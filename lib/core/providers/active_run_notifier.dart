@@ -42,8 +42,9 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
   bool _processingDeferred = false;
 
   /// Registry tracking active runs across rooms and threads.
-  late final RunRegistry _registry =
-      RunRegistry(onRunCompleted: _buildCacheUpdater());
+  late final RunRegistry _registry = RunRegistry(
+    onRunCompleted: _buildCacheUpdater(),
+  );
 
   /// Current run handle — the run whose state the notifier exposes to UI.
   RunHandle? _currentHandle;
@@ -121,18 +122,14 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
     Map<String, dynamic>? initialState,
   }) async {
     if (_isStarting) {
-      throw StateError(
-        'Cannot start run: startRun already in progress.',
-      );
+      throw StateError('Cannot start run: startRun already in progress.');
     }
 
     final roomId = key.roomId;
     final threadId = key.threadId;
 
     _isStarting = true;
-    Loggers.activeRun.debug(
-      'startRun called: room=$roomId, thread=$threadId',
-    );
+    Loggers.activeRun.debug('startRun called: room=$roomId, thread=$threadId');
     String? runId;
     RunningState? pendingState;
 
@@ -238,9 +235,7 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
         initialState: runningState,
       );
 
-      Loggers.activeRun.debug(
-        'Stream subscription established for run $runId',
-      );
+      Loggers.activeRun.debug('Stream subscription established for run $runId');
 
       // This run becomes the "current" run — notifier state follows it
       _currentHandle = handle;
@@ -260,9 +255,7 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
       Loggers.activeRun.info('Run cancelled', error: e, stackTrace: st);
       final conv = pendingState?.conversation ?? state.conversation;
       final completed = CompletedState(
-        conversation: conv.withStatus(
-          domain.Cancelled(reason: e.message),
-        ),
+        conversation: conv.withStatus(domain.Cancelled(reason: e.message)),
         result: CancelledResult(reason: e.message),
       );
       state = completed;
@@ -277,9 +270,7 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
       final conv = pendingState?.conversation ?? state.conversation;
       final errorMsg = e.toString();
       final completed = CompletedState(
-        conversation: conv.withStatus(
-          domain.Failed(error: errorMsg),
-        ),
+        conversation: conv.withStatus(domain.Failed(error: errorMsg)),
         result: FailedResult(errorMessage: errorMsg, stackTrace: stackTrace),
       );
       state = completed;
@@ -364,10 +355,7 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
           );
 
       // Start run in target thread
-      await startRun(
-        key: message.targetKey,
-        userMessage: message.message,
-      );
+      await startRun(key: message.targetKey, userMessage: message.message);
     } catch (e, st) {
       Loggers.activeRun.error(
         'Failed to process deferred message',
@@ -437,11 +425,7 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
     Object error,
     StackTrace stackTrace,
   ) {
-    Loggers.activeRun.error(
-      'Run failed',
-      error: error,
-      stackTrace: stackTrace,
-    );
+    Loggers.activeRun.error('Run failed', error: error, stackTrace: stackTrace);
 
     final handleState = handle.state;
     if (handleState is RunningState) {
@@ -531,9 +515,7 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
       );
       _abortToCompleted(
         handle,
-        const FailedResult(
-          errorMessage: 'Tool execution depth limit exceeded',
-        ),
+        const FailedResult(errorMessage: 'Tool execution depth limit exceeded'),
       );
       return;
     }

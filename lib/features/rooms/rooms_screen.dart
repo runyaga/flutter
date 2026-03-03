@@ -107,11 +107,7 @@ class _RoomsScreenState extends ConsumerState<RoomsScreen> {
                           'Room selected:'
                           ' ${room.id} (${room.name})',
                         );
-                        ref
-                            .read(
-                              currentRoomIdProvider.notifier,
-                            )
-                            .set(room.id);
+                        ref.read(currentRoomIdProvider.notifier).set(room.id);
                         context.push('/rooms/${room.id}');
                       }
 
@@ -157,9 +153,8 @@ class _RoomsScreenState extends ConsumerState<RoomsScreen> {
                         },
                       );
                     },
-                    loading: () => const LoadingIndicator(
-                      message: 'Loading rooms...',
-                    ),
+                    loading: () =>
+                        const LoadingIndicator(message: 'Loading rooms...'),
                     error: (error, stack) => ErrorDisplay(
                       error: error,
                       stackTrace: stack,

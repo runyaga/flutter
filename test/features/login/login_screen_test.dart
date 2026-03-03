@@ -374,9 +374,7 @@ void main() {
         createTestApp(
           home: const LoginScreen(),
           overrides: [
-            oidcIssuersProvider.overrideWith(
-              (ref) async => [_createIssuer()],
-            ),
+            oidcIssuersProvider.overrideWith((ref) async => [_createIssuer()]),
           ],
         ),
       );

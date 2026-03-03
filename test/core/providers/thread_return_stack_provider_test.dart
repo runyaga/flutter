@@ -31,15 +31,9 @@ void main() {
 
     test('pop returns entries in LIFO order', () {
       final notifier = container.read(threadReturnStackProvider.notifier)
-        ..push(
-          const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-a'),
-        )
-        ..push(
-          const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-b'),
-        )
-        ..push(
-          const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-c'),
-        );
+        ..push(const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-a'))
+        ..push(const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-b'))
+        ..push(const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-c'));
 
       expect(notifier.pop()!.threadId, 'thread-c');
       expect(notifier.pop()!.threadId, 'thread-b');
@@ -53,12 +47,8 @@ void main() {
 
     test('peek returns top entry without removing it', () {
       container.read(threadReturnStackProvider.notifier)
-        ..push(
-          const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-a'),
-        )
-        ..push(
-          const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-b'),
-        );
+        ..push(const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-a'))
+        ..push(const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-b'));
 
       final peeked = container.read(threadReturnStackProvider.notifier).peek();
       expect(peeked!.threadId, 'thread-b');
@@ -75,12 +65,8 @@ void main() {
 
     test('clear empties the stack', () {
       container.read(threadReturnStackProvider.notifier)
-        ..push(
-          const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-a'),
-        )
-        ..push(
-          const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-b'),
-        )
+        ..push(const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-a'))
+        ..push(const ThreadReturnEntry(roomId: 'room-1', threadId: 'thread-b'))
         ..clear();
 
       final stack = container.read(threadReturnStackProvider);

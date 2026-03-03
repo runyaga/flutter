@@ -16,21 +16,23 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('build returns config URL via platformDefaultBackendUrl on native',
-        () {
-      final container = ProviderContainer(
-        overrides: [
-          shellConfigProvider.overrideWithValue(testSoliplexConfig),
-        ],
-      );
-      addTearDown(container.dispose);
+    test(
+      'build returns config URL via platformDefaultBackendUrl on native',
+      () {
+        final container = ProviderContainer(
+          overrides: [
+            shellConfigProvider.overrideWithValue(testSoliplexConfig),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      final config = container.read(configProvider);
+        final config = container.read(configProvider);
 
-      // Tests run on native, so platformDefaultBackendUrl returns the
-      // config URL (which defaults to 'http://localhost:8000').
-      expect(config.baseUrl, 'http://localhost:8000');
-    });
+        // Tests run on native, so platformDefaultBackendUrl returns the
+        // config URL (which defaults to 'http://localhost:8000').
+        expect(config.baseUrl, 'http://localhost:8000');
+      },
+    );
 
     test('build returns shellConfigProvider URL when overridden', () {
       final container = ProviderContainer(
@@ -72,9 +74,7 @@ void main() {
 
     test('setBaseUrl persists URL to SharedPreferences', () async {
       final container = ProviderContainer(
-        overrides: [
-          shellConfigProvider.overrideWithValue(testSoliplexConfig),
-        ],
+        overrides: [shellConfigProvider.overrideWithValue(testSoliplexConfig)],
       );
       addTearDown(container.dispose);
 
@@ -88,9 +88,7 @@ void main() {
 
     test('setBaseUrl updates state', () async {
       final container = ProviderContainer(
-        overrides: [
-          shellConfigProvider.overrideWithValue(testSoliplexConfig),
-        ],
+        overrides: [shellConfigProvider.overrideWithValue(testSoliplexConfig)],
       );
       addTearDown(container.dispose);
 
@@ -104,9 +102,7 @@ void main() {
 
     test('setBaseUrl trims whitespace', () async {
       final container = ProviderContainer(
-        overrides: [
-          shellConfigProvider.overrideWithValue(testSoliplexConfig),
-        ],
+        overrides: [shellConfigProvider.overrideWithValue(testSoliplexConfig)],
       );
       addTearDown(container.dispose);
 
@@ -120,9 +116,7 @@ void main() {
 
     test('setBaseUrl ignores empty URL', () async {
       final container = ProviderContainer(
-        overrides: [
-          shellConfigProvider.overrideWithValue(testSoliplexConfig),
-        ],
+        overrides: [shellConfigProvider.overrideWithValue(testSoliplexConfig)],
       );
       addTearDown(container.dispose);
 
@@ -136,9 +130,7 @@ void main() {
 
     test('setBaseUrl ignores same URL', () async {
       final container = ProviderContainer(
-        overrides: [
-          shellConfigProvider.overrideWithValue(testSoliplexConfig),
-        ],
+        overrides: [shellConfigProvider.overrideWithValue(testSoliplexConfig)],
       );
       addTearDown(container.dispose);
 
@@ -158,9 +150,7 @@ void main() {
 
     test('set directly updates state', () {
       final container = ProviderContainer(
-        overrides: [
-          shellConfigProvider.overrideWithValue(testSoliplexConfig),
-        ],
+        overrides: [shellConfigProvider.overrideWithValue(testSoliplexConfig)],
       );
       addTearDown(container.dispose);
 

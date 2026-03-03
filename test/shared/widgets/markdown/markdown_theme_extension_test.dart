@@ -44,9 +44,7 @@ void main() {
         h1: TextStyle(fontSize: 32),
       );
 
-      final modified = original.copyWith(
-        body: const TextStyle(fontSize: 18),
-      );
+      final modified = original.copyWith(body: const TextStyle(fontSize: 18));
 
       expect(modified.body, const TextStyle(fontSize: 18));
       expect(modified.code, original.code);
@@ -55,12 +53,8 @@ void main() {
     });
 
     test('lerp interpolates TextStyle fields', () {
-      const a = MarkdownThemeExtension(
-        body: TextStyle(fontSize: 14),
-      );
-      const b = MarkdownThemeExtension(
-        body: TextStyle(fontSize: 18),
-      );
+      const a = MarkdownThemeExtension(body: TextStyle(fontSize: 14));
+      const b = MarkdownThemeExtension(body: TextStyle(fontSize: 18));
 
       final result = a.lerp(b, 0.5);
 
@@ -76,9 +70,7 @@ void main() {
         fontFamilyFallback: ['monospace'],
       );
 
-      final styleSheet = ext.toMarkdownStyleSheet(
-        codeFontStyle: monoFont,
-      );
+      final styleSheet = ext.toMarkdownStyleSheet(codeFontStyle: monoFont);
 
       expect(styleSheet.code?.fontFamily, 'SF Mono');
       expect(styleSheet.code?.backgroundColor, Colors.grey);
@@ -96,9 +88,7 @@ void main() {
     });
 
     test('lerp returns this when other is null', () {
-      const ext = MarkdownThemeExtension(
-        body: TextStyle(fontSize: 14),
-      );
+      const ext = MarkdownThemeExtension(body: TextStyle(fontSize: 14));
 
       final result = ext.lerp(null, 0.5);
 

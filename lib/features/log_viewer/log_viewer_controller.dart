@@ -172,8 +172,6 @@ class LogViewerController {
   }
 
   void _rebuildLoggerNames() {
-    _availableLoggers = {
-      for (final record in _sink.records) record.loggerName,
-    };
+    _availableLoggers = {for (final record in _sink.records) record.loggerName};
   }
 }

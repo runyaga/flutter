@@ -229,10 +229,7 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
     _executor = MontyToolExecutor(
       threadKey: _threadKey,
       bridgeCache: _bridgeCache,
-      hostWiring: HostFunctionWiring(
-        hostApi: hostApi,
-        dfRegistry: dfRegistry,
-      ),
+      hostWiring: HostFunctionWiring(hostApi: hostApi, dfRegistry: dfRegistry),
     );
   }
 
@@ -415,11 +412,7 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 else if (isDone && !(result?.isError ?? false))
-                  const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 18,
-                  )
+                  const Icon(Icons.check_circle, color: Colors.green, size: 18)
                 else if (isDone && (result?.isError ?? false))
                   const Icon(Icons.error, color: Colors.orange, size: 18)
                 else

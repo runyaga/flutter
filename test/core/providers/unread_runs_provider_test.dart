@@ -22,15 +22,16 @@ void main() {
 
     group('markUnread', () {
       test('adds thread to unread set for room', () {
-        container
-            .read(unreadRunsProvider.notifier)
-            .markUnread(const (roomId: 'room-1', threadId: 'thread-1'));
+        container.read(unreadRunsProvider.notifier).markUnread(
+          const (
+            roomId: 'room-1',
+            threadId: 'thread-1',
+          ),
+        );
 
         final state = container.read(unreadRunsProvider);
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-1', threadId: 'thread-1'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-1', threadId: 'thread-1')),
           isTrue,
         );
       });
@@ -51,15 +52,11 @@ void main() {
 
         final state = container.read(unreadRunsProvider);
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-1', threadId: 'thread-1'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-1', threadId: 'thread-1')),
           isTrue,
         );
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-2', threadId: 'thread-2'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-2', threadId: 'thread-2')),
           isTrue,
         );
       });
@@ -83,15 +80,11 @@ void main() {
 
         final state = container.read(unreadRunsProvider);
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-1', threadId: 'thread-1'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-1', threadId: 'thread-1')),
           isFalse,
         );
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-1', threadId: 'thread-2'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-1', threadId: 'thread-2')),
           isTrue,
         );
       });
@@ -106,9 +99,12 @@ void main() {
       });
 
       test('is no-op for non-existent room', () {
-        container
-            .read(unreadRunsProvider.notifier)
-            .markRead(const (roomId: 'room-1', threadId: 'thread-1'));
+        container.read(unreadRunsProvider.notifier).markRead(
+          const (
+            roomId: 'room-1',
+            threadId: 'thread-1',
+          ),
+        );
 
         expect(container.read(unreadRunsProvider).isEmpty, isTrue);
       });
@@ -120,9 +116,7 @@ void main() {
 
         final state = container.read(unreadRunsProvider);
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-1', threadId: 'thread-1'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-1', threadId: 'thread-1')),
           isTrue,
         );
       });
@@ -136,9 +130,7 @@ void main() {
         final state = container.read(unreadRunsProvider);
         expect(state.unreadCountForRoom('room-1'), 0);
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-2', threadId: 'thread-2'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-2', threadId: 'thread-2')),
           isTrue,
         );
       });
@@ -146,15 +138,16 @@ void main() {
 
     group('isThreadUnread', () {
       test('returns true for unread thread', () {
-        container
-            .read(unreadRunsProvider.notifier)
-            .markUnread(const (roomId: 'room-1', threadId: 'thread-1'));
+        container.read(unreadRunsProvider.notifier).markUnread(
+          const (
+            roomId: 'room-1',
+            threadId: 'thread-1',
+          ),
+        );
 
         final state = container.read(unreadRunsProvider);
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-1', threadId: 'thread-1'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-1', threadId: 'thread-1')),
           isTrue,
         );
       });
@@ -166,9 +159,7 @@ void main() {
 
         final state = container.read(unreadRunsProvider);
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-1', threadId: 'thread-1'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-1', threadId: 'thread-1')),
           isFalse,
         );
       });
@@ -176,23 +167,22 @@ void main() {
       test('returns false for unknown room', () {
         final state = container.read(unreadRunsProvider);
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-1', threadId: 'thread-1'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-1', threadId: 'thread-1')),
           isFalse,
         );
       });
 
       test('returns false for unknown thread in known room', () {
-        container
-            .read(unreadRunsProvider.notifier)
-            .markUnread(const (roomId: 'room-1', threadId: 'thread-1'));
+        container.read(unreadRunsProvider.notifier).markUnread(
+          const (
+            roomId: 'room-1',
+            threadId: 'thread-1',
+          ),
+        );
 
         final state = container.read(unreadRunsProvider);
         expect(
-          state.isThreadUnread(
-            const (roomId: 'room-1', threadId: 'thread-2'),
-          ),
+          state.isThreadUnread(const (roomId: 'room-1', threadId: 'thread-2')),
           isFalse,
         );
       });

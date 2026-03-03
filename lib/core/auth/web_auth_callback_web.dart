@@ -9,10 +9,12 @@ import 'package:web/web.dart' as web;
 /// Used by [CallbackParamsCapture.captureNow] in main() before ProviderScope.
 CallbackParams captureCallbackParamsNow() {
   Loggers.auth.debug('Web auth: Capturing URL params at startup');
-  Loggers.auth
-      .debug('Web auth: window.location.href = ${web.window.location.href}');
-  Loggers.auth
-      .debug('Web auth: window.location.hash = ${web.window.location.hash}');
+  Loggers.auth.debug(
+    'Web auth: window.location.href = ${web.window.location.href}',
+  );
+  Loggers.auth.debug(
+    'Web auth: window.location.hash = ${web.window.location.hash}',
+  );
   final params = _extractParamsFromUrl();
   Loggers.auth.debug('Web auth: Captured params: $params');
   return params;

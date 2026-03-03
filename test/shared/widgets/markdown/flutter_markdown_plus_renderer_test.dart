@@ -18,9 +18,7 @@ void main() {
     testWidgets('renders markdown text', (tester) async {
       await tester.pumpWidget(
         createTestApp(
-          home: const FlutterMarkdownPlusRenderer(
-            data: 'Hello **world**',
-          ),
+          home: const FlutterMarkdownPlusRenderer(data: 'Hello **world**'),
         ),
       );
 
@@ -30,9 +28,7 @@ void main() {
     testWidgets('passes data to MarkdownBody', (tester) async {
       await tester.pumpWidget(
         createTestApp(
-          home: const FlutterMarkdownPlusRenderer(
-            data: 'Simple text',
-          ),
+          home: const FlutterMarkdownPlusRenderer(data: 'Simple text'),
         ),
       );
 
@@ -42,9 +38,7 @@ void main() {
       expect(markdownBody.data, 'Simple text');
     });
 
-    testWidgets('renders code blocks with syntax highlighting', (
-      tester,
-    ) async {
+    testWidgets('renders code blocks with syntax highlighting', (tester) async {
       await tester.pumpWidget(
         createTestApp(
           home: const FlutterMarkdownPlusRenderer(
@@ -60,9 +54,7 @@ void main() {
     testWidgets('sanitizes <br> tags to newlines', (tester) async {
       await tester.pumpWidget(
         createTestApp(
-          home: const FlutterMarkdownPlusRenderer(
-            data: 'line one<br>line two',
-          ),
+          home: const FlutterMarkdownPlusRenderer(data: 'line one<br>line two'),
         ),
       );
 
@@ -101,9 +93,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         createTestApp(
-          home: const FlutterMarkdownPlusRenderer(
-            data: 'no html here',
-          ),
+          home: const FlutterMarkdownPlusRenderer(data: 'no html here'),
         ),
       );
 
@@ -111,9 +101,7 @@ void main() {
       expect(body.data, 'no html here');
     });
 
-    testWidgets('wires onLinkTap to MarkdownBody.onTapLink', (
-      tester,
-    ) async {
+    testWidgets('wires onLinkTap to MarkdownBody.onTapLink', (tester) async {
       String? tappedHref;
       String? tappedTitle;
 
@@ -174,20 +162,22 @@ void main() {
       expect(tappedHref, isNull);
     });
 
-    testWidgets('sets imageBuilder on MarkdownBody when onImageTap is provided',
-        (tester) async {
-      await tester.pumpWidget(
-        createTestApp(
-          home: FlutterMarkdownPlusRenderer(
-            data: '![alt](https://example.com/img.png)',
-            onImageTap: (_, __) {},
+    testWidgets(
+      'sets imageBuilder on MarkdownBody when onImageTap is provided',
+      (tester) async {
+        await tester.pumpWidget(
+          createTestApp(
+            home: FlutterMarkdownPlusRenderer(
+              data: '![alt](https://example.com/img.png)',
+              onImageTap: (_, __) {},
+            ),
           ),
-        ),
-      );
+        );
 
-      final body = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
-      expect(body.imageBuilder, isNotNull);
-    });
+        final body = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+        expect(body.imageBuilder, isNotNull);
+      },
+    );
 
     testWidgets('does not set imageBuilder when onImageTap is null', (
       tester,
@@ -267,9 +257,7 @@ void main() {
       expect(tappedAlt, 'photo');
     });
 
-    testWidgets('uses styles from MarkdownThemeExtension', (
-      tester,
-    ) async {
+    testWidgets('uses styles from MarkdownThemeExtension', (tester) async {
       final theme = testThemeData.copyWith(
         extensions: [
           ...testThemeData.extensions.values,
@@ -288,9 +276,7 @@ void main() {
         ),
       );
 
-      final body = tester.widget<MarkdownBody>(
-        find.byType(MarkdownBody),
-      );
+      final body = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
       expect(body.styleSheet?.code?.backgroundColor, Colors.red);
     });
   });

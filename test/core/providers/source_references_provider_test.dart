@@ -14,9 +14,7 @@ void main() {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      final refs = container.read(
-        sourceReferencesForUserMessageProvider(null),
-      );
+      final refs = container.read(sourceReferencesForUserMessageProvider(null));
 
       expect(refs, isEmpty);
     });
@@ -42,10 +40,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           activeRunNotifierOverride(
-            CompletedState(
-              conversation: conversation,
-              result: const Success(),
-            ),
+            CompletedState(conversation: conversation, result: const Success()),
           ),
         ],
       );
@@ -89,7 +84,10 @@ void main() {
 
       // Pre-populate cache
       container.read(threadHistoryCacheProvider.notifier).updateHistory(
-        const (roomId: 'room-1', threadId: 'thread-1'),
+        const (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
         cachedHistory,
       );
 
@@ -115,7 +113,10 @@ void main() {
 
       // Pre-populate cache with empty messageStates
       container.read(threadHistoryCacheProvider.notifier).updateHistory(
-        const (roomId: 'room-1', threadId: 'thread-1'),
+        const (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
         ThreadHistory(messages: const []),
       );
 
@@ -195,7 +196,10 @@ void main() {
 
       // Pre-populate cache
       container.read(threadHistoryCacheProvider.notifier).updateHistory(
-        const (roomId: 'room-1', threadId: 'thread-1'),
+        const (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
         cachedHistory,
       );
 

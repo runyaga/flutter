@@ -11,10 +11,8 @@ class LogoConfig {
   /// [package] specifies which package contains the asset:
   /// - `null` (default): Load from the current app's assets
   /// - Package name string: Load from the specified package's assets
-  const LogoConfig({
-    required this.assetPath,
-    this.package,
-  }) : assert(assetPath.length > 0, 'assetPath cannot be empty');
+  const LogoConfig({required this.assetPath, this.package})
+      : assert(assetPath.length > 0, 'assetPath cannot be empty');
 
   /// Default Soliplex logo from the library's bundled assets.
   ///

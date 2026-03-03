@@ -35,8 +35,9 @@ void main() {
 
     test('handles UUID without hyphens', () {
       // Same UUID, no hyphens — should produce same alias as with hyphens.
-      final withHyphens =
-          generateDeviceAlias('033a3429-bbf4-4ba7-93ee-815a871c535a');
+      final withHyphens = generateDeviceAlias(
+        '033a3429-bbf4-4ba7-93ee-815a871c535a',
+      );
       final without = generateDeviceAlias('033a3429bbf44ba793ee815a871c535a');
       expect(withHyphens, without);
     });

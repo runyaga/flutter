@@ -87,8 +87,9 @@ class WebAuthFlow implements AuthFlow {
     required String clientId,
   }) async {
     if (endSessionEndpoint == null) {
-      Loggers.auth
-          .debug('Web auth: No end_session_endpoint, local logout only');
+      Loggers.auth.debug(
+        'Web auth: No end_session_endpoint, local logout only',
+      );
       return;
     }
 

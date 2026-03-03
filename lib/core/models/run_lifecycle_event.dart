@@ -35,10 +35,7 @@ class RunContinued extends RunLifecycleEvent {
 /// Emitted when a run reaches a terminal state (success, failure, or cancel).
 @immutable
 class RunCompleted extends RunLifecycleEvent {
-  const RunCompleted({
-    required super.key,
-    required this.result,
-  });
+  const RunCompleted({required super.key, required this.result});
 
   /// The completion result — [Success], [FailedResult], or [CancelledResult].
   final CompletionResult result;

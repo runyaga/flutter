@@ -35,30 +35,45 @@ void main() {
 
     test('getForThread returns documents for specific thread', () {
       final doc = TestData.createDocument(id: 'doc-1', title: 'Doc 1');
-      final notifier = container
-          .read(selectedDocumentsNotifierProvider.notifier)
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc});
+      final notifier = container.read(
+        selectedDocumentsNotifierProvider.notifier,
+      )..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc});
 
-      final result =
-          notifier.getForThread(const (roomId: 'room-1', threadId: 'thread-1'));
+      final result = notifier.getForThread(
+        const (
+          roomId: 'room-1',
+          threadId: 'thread-1',
+        ),
+      );
       expect(result, equals({doc}));
     });
 
     test('getForThread returns empty set for unknown thread', () {
-      final notifier =
-          container.read(selectedDocumentsNotifierProvider.notifier);
-      final result = notifier
-          .getForThread(const (roomId: 'room-1', threadId: 'unknown-thread'));
+      final notifier = container.read(
+        selectedDocumentsNotifierProvider.notifier,
+      );
+      final result = notifier.getForThread(
+        const (
+          roomId: 'room-1',
+          threadId: 'unknown-thread',
+        ),
+      );
       expect(result, isEmpty);
     });
 
     test('different threads have independent selections', () {
       final doc1 = TestData.createDocument(id: 'doc-1', title: 'Doc 1');
       final doc2 = TestData.createDocument(id: 'doc-2', title: 'Doc 2');
-      final notifier = container
-          .read(selectedDocumentsNotifierProvider.notifier)
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc1})
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-2'), {doc2});
+      final notifier =
+          container.read(selectedDocumentsNotifierProvider.notifier)
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-1'),
+              {doc1},
+            )
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-2'),
+              {doc2},
+            );
 
       expect(
         notifier.getForThread(const (roomId: 'room-1', threadId: 'thread-1')),
@@ -73,10 +88,16 @@ void main() {
     test('different rooms have independent selections', () {
       final doc1 = TestData.createDocument(id: 'doc-1', title: 'Doc 1');
       final doc2 = TestData.createDocument(id: 'doc-2', title: 'Doc 2');
-      final notifier = container
-          .read(selectedDocumentsNotifierProvider.notifier)
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc1})
-        ..setForThread(const (roomId: 'room-2', threadId: 'thread-1'), {doc2});
+      final notifier =
+          container.read(selectedDocumentsNotifierProvider.notifier)
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-1'),
+              {doc1},
+            )
+            ..setForThread(
+              const (roomId: 'room-2', threadId: 'thread-1'),
+              {doc2},
+            );
 
       expect(
         notifier.getForThread(const (roomId: 'room-1', threadId: 'thread-1')),
@@ -91,10 +112,16 @@ void main() {
     test('setForThread replaces existing selection', () {
       final doc1 = TestData.createDocument(id: 'doc-1', title: 'Doc 1');
       final doc2 = TestData.createDocument(id: 'doc-2', title: 'Doc 2');
-      final notifier = container
-          .read(selectedDocumentsNotifierProvider.notifier)
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc1})
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc2});
+      final notifier =
+          container.read(selectedDocumentsNotifierProvider.notifier)
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-1'),
+              {doc1},
+            )
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-1'),
+              {doc2},
+            );
 
       expect(
         notifier.getForThread(const (roomId: 'room-1', threadId: 'thread-1')),
@@ -104,10 +131,13 @@ void main() {
 
     test('clearForThread removes selection for specific thread', () {
       final doc = TestData.createDocument(id: 'doc-1', title: 'Doc 1');
-      final notifier = container
-          .read(selectedDocumentsNotifierProvider.notifier)
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc})
-        ..clearForThread(const (roomId: 'room-1', threadId: 'thread-1'));
+      final notifier =
+          container.read(selectedDocumentsNotifierProvider.notifier)
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-1'),
+              {doc},
+            )
+            ..clearForThread(const (roomId: 'room-1', threadId: 'thread-1'));
 
       expect(
         notifier.getForThread(const (roomId: 'room-1', threadId: 'thread-1')),
@@ -118,11 +148,17 @@ void main() {
     test('clearForThread does not affect other threads', () {
       final doc1 = TestData.createDocument(id: 'doc-1', title: 'Doc 1');
       final doc2 = TestData.createDocument(id: 'doc-2', title: 'Doc 2');
-      final notifier = container
-          .read(selectedDocumentsNotifierProvider.notifier)
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc1})
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-2'), {doc2})
-        ..clearForThread(const (roomId: 'room-1', threadId: 'thread-1'));
+      final notifier =
+          container.read(selectedDocumentsNotifierProvider.notifier)
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-1'),
+              {doc1},
+            )
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-2'),
+              {doc2},
+            )
+            ..clearForThread(const (roomId: 'room-1', threadId: 'thread-1'));
 
       expect(
         notifier.getForThread(const (roomId: 'room-1', threadId: 'thread-1')),
@@ -137,11 +173,17 @@ void main() {
     test('clearForRoom removes all selections for room', () {
       final doc1 = TestData.createDocument(id: 'doc-1', title: 'Doc 1');
       final doc2 = TestData.createDocument(id: 'doc-2', title: 'Doc 2');
-      final notifier = container
-          .read(selectedDocumentsNotifierProvider.notifier)
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc1})
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-2'), {doc2})
-        ..clearForRoom('room-1');
+      final notifier =
+          container.read(selectedDocumentsNotifierProvider.notifier)
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-1'),
+              {doc1},
+            )
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-2'),
+              {doc2},
+            )
+            ..clearForRoom('room-1');
 
       expect(
         notifier.getForThread(const (roomId: 'room-1', threadId: 'thread-1')),
@@ -156,11 +198,17 @@ void main() {
     test('clearForRoom does not affect other rooms', () {
       final doc1 = TestData.createDocument(id: 'doc-1', title: 'Doc 1');
       final doc2 = TestData.createDocument(id: 'doc-2', title: 'Doc 2');
-      final notifier = container
-          .read(selectedDocumentsNotifierProvider.notifier)
-        ..setForThread(const (roomId: 'room-1', threadId: 'thread-1'), {doc1})
-        ..setForThread(const (roomId: 'room-2', threadId: 'thread-1'), {doc2})
-        ..clearForRoom('room-1');
+      final notifier =
+          container.read(selectedDocumentsNotifierProvider.notifier)
+            ..setForThread(
+              const (roomId: 'room-1', threadId: 'thread-1'),
+              {doc1},
+            )
+            ..setForThread(
+              const (roomId: 'room-2', threadId: 'thread-1'),
+              {doc2},
+            )
+            ..clearForRoom('room-1');
 
       expect(
         notifier.getForThread(const (roomId: 'room-1', threadId: 'thread-1')),

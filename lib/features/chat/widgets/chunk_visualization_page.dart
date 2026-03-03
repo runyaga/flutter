@@ -89,7 +89,10 @@ class _ChunkVisualizationPageState
   Widget build(BuildContext context) {
     final asyncValue = ref.watch(
       chunkVisualizationProvider(
-        (roomId: widget.roomId, chunkId: widget.chunkId),
+        (
+          roomId: widget.roomId,
+          chunkId: widget.chunkId,
+        ),
       ),
     );
 
@@ -120,8 +123,9 @@ class _ChunkVisualizationPageState
         actions: [
           if (hasData && visualization!.imageCount > 1)
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: SoliplexSpacing.s2),
+              padding: const EdgeInsets.symmetric(
+                horizontal: SoliplexSpacing.s2,
+              ),
               child: Center(
                 child: Text(
                   _pageLabel(_currentPage, visualization.imageCount),
@@ -185,7 +189,10 @@ class _ChunkVisualizationPageState
           FilledButton.icon(
             onPressed: () => ref.invalidate(
               chunkVisualizationProvider(
-                (roomId: widget.roomId, chunkId: widget.chunkId),
+                (
+                  roomId: widget.roomId,
+                  chunkId: widget.chunkId,
+                ),
               ),
             ),
             icon: const Icon(Icons.refresh),
@@ -406,10 +413,7 @@ class _DotIndicator extends StatelessWidget {
           (i) => GestureDetector(
             onTap: () => onPageTap(i),
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 4,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               child: Container(
                 width: 10,
                 height: 10,
@@ -417,8 +421,9 @@ class _DotIndicator extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: i == current
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant
-                          .withValues(alpha: 0.3),
+                      : theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.3,
+                        ),
                 ),
               ),
             ),

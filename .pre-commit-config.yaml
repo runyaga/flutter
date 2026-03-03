@@ -25,8 +25,8 @@ repos:
         language: system
         pass_filenames: false
       - id: dcm-analyze
-        name: dcm analyze
-        entry: bash -c 'unset GIT_DIR GIT_WORK_TREE && dcm analyze lib/'
+        name: dcm analyze (optional)
+        entry: bash -c 'if command -v dcm &>/dev/null; then unset GIT_DIR GIT_WORK_TREE && dcm analyze lib/; else echo "dcm not installed — skipping (install from https://dcm.dev)"; fi'
         language: system
         pass_filenames: false
       - id: dart-analyze-packages

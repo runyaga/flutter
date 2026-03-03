@@ -112,11 +112,7 @@ class _TileContent extends StatelessWidget {
 }
 
 class _DetailSection extends StatelessWidget {
-  const _DetailSection({
-    required this.label,
-    required this.text,
-    this.style,
-  });
+  const _DetailSection({required this.label, required this.text, this.style});
 
   final String label;
   final String text;

@@ -52,8 +52,9 @@ final deviceAliasProvider = Provider<String>((ref) {
 /// Resource attributes gathered from device and package info.
 ///
 /// Resolved once asynchronously; cached for the lifetime of the container.
-final resourceAttributesProvider =
-    FutureProvider<Map<String, Object>>((ref) async {
+final resourceAttributesProvider = FutureProvider<Map<String, Object>>((
+  ref,
+) async {
   ref.keepAlive();
 
   final deviceAlias = ref.read(deviceAliasProvider);
@@ -103,10 +104,9 @@ final backendLogSinkProvider = FutureProvider<BackendLogSink?>((ref) async {
   final endpoint = '${appConfig.baseUrl}${config.backendEndpoint}';
 
   // Resolve async dependencies.
-  final resourceAttrs =
-      await ref.read(resourceAttributesProvider.future).catchError(
-            (_) => <String, Object>{},
-          );
+  final resourceAttrs = await ref
+      .read(resourceAttributesProvider.future)
+      .catchError((_) => <String, Object>{});
 
   // DiskQueue uses conditional imports: on web the factory returns an
   // in-memory implementation that ignores directoryPath. The kIsWeb guard

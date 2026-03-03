@@ -301,10 +301,7 @@ void main() {
         await tester.tap(find.text('Connect'));
         await tester.pump();
 
-        expect(
-          find.text('Only http and https are supported'),
-          findsOneWidget,
-        );
+        expect(find.text('Only http and https are supported'), findsOneWidget);
       });
 
       testWidgets('rejects URL with spaces', (tester) async {
@@ -448,10 +445,7 @@ void main() {
 
       testWidgets('shows generic error for unknown exceptions', (tester) async {
         final mockTransport = MockHttpTransport();
-        _stubTransport(
-          mockTransport,
-          error: Exception('Unknown error'),
-        );
+        _stubTransport(mockTransport, error: Exception('Unknown error'));
 
         await tester.pumpWidget(
           createTestApp(
@@ -640,10 +634,7 @@ void main() {
 
         // Should show insecurity warning dialog
         expect(find.text('Insecure Connection'), findsOneWidget);
-        expect(
-          find.textContaining('not encrypted'),
-          findsOneWidget,
-        );
+        expect(find.textContaining('not encrypted'), findsOneWidget);
       });
 
       testWidgets('proceeds when user accepts insecure connection', (

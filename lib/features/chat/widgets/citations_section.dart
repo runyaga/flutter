@@ -98,10 +98,9 @@ class CitationsSection extends ConsumerWidget {
     required bool expanded,
   }) {
     return InkWell(
-      onTap: () =>
-          ref.read(citationsExpandedProvider(threadId).notifier).toggle(
-                messageId,
-              ),
+      onTap: () => ref
+          .read(citationsExpandedProvider(threadId).notifier)
+          .toggle(messageId),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: SoliplexSpacing.s2),
         child: Row(
@@ -352,10 +351,7 @@ class _CitationMarkdown extends StatelessWidget {
           if (mdTheme != null) mdTheme.copyWith(body: smallBody),
         },
       ),
-      child: FlutterMarkdownPlusRenderer(
-        data: data,
-        onLinkTap: _openLink,
-      ),
+      child: FlutterMarkdownPlusRenderer(data: data, onLinkTap: _openLink),
     );
   }
 

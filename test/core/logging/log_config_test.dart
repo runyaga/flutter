@@ -154,16 +154,18 @@ void main() {
 
       test('different backendLoggingEnabled are not equal', () {
         const config1 = LogConfig.defaultConfig;
-        final config2 =
-            LogConfig.defaultConfig.copyWith(backendLoggingEnabled: true);
+        final config2 = LogConfig.defaultConfig.copyWith(
+          backendLoggingEnabled: true,
+        );
 
         expect(config1, isNot(equals(config2)));
       });
 
       test('different backendEndpoint are not equal', () {
         const config1 = LogConfig.defaultConfig;
-        final config2 =
-            LogConfig.defaultConfig.copyWith(backendEndpoint: '/other');
+        final config2 = LogConfig.defaultConfig.copyWith(
+          backendEndpoint: '/other',
+        );
 
         expect(config1, isNot(equals(config2)));
       });

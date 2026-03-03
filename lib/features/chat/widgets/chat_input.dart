@@ -124,8 +124,11 @@ class _ChatInputState extends ConsumerState<ChatInput> {
     try {
       await ref.read(activeRunNotifierProvider.notifier).cancelRun();
     } catch (e, stackTrace) {
-      Loggers.chat
-          .error('Failed to cancel run', error: e, stackTrace: stackTrace);
+      Loggers.chat.error(
+        'Failed to cancel run',
+        error: e,
+        stackTrace: stackTrace,
+      );
       if (mounted) {
         ScaffoldMessenger.of(
           context,

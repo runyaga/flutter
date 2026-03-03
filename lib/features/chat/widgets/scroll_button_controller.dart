@@ -21,9 +21,7 @@ class ScrollButtonController {
   /// pending timers if the user has scrolled back to the bottom.
   void updateScrollPosition({required bool isAtBottom}) {
     if (_isAtBottom != isAtBottom) {
-      Loggers.chat.debug(
-        'BTN_AT_BOTTOM: $_isAtBottom -> $isAtBottom',
-      );
+      Loggers.chat.debug('BTN_AT_BOTTOM: $_isAtBottom -> $isAtBottom');
     }
     _isAtBottom = isAtBottom;
     if (isAtBottom) hide();
@@ -34,13 +32,9 @@ class ScrollButtonController {
   void scheduleAppearance() {
     if (_isAtBottom) return;
     _cancel();
-    Loggers.chat.debug(
-      'BTN_SCHEDULE: _isAtBottom=$_isAtBottom (at call time)',
-    );
+    Loggers.chat.debug('BTN_SCHEDULE: _isAtBottom=$_isAtBottom (at call time)');
     _showTimer = Timer(const Duration(milliseconds: 300), () {
-      Loggers.chat.debug(
-        'BTN_TIMER: _isAtBottom=$_isAtBottom (300ms later)',
-      );
+      Loggers.chat.debug('BTN_TIMER: _isAtBottom=$_isAtBottom (300ms later)');
       if (!_isAtBottom) {
         Loggers.chat.debug('BTN_SHOW: button made visible');
         _isVisible.value = true;

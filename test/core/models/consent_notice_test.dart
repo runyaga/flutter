@@ -3,14 +3,16 @@ import 'package:soliplex_frontend/core/models/consent_notice.dart';
 
 void main() {
   group('ConsentNotice', () {
-    test('constructor requires title and body, defaults acknowledgmentLabel',
-        () {
-      const notice = ConsentNotice(title: 'Notice', body: 'Body text');
+    test(
+      'constructor requires title and body, defaults acknowledgmentLabel',
+      () {
+        const notice = ConsentNotice(title: 'Notice', body: 'Body text');
 
-      expect(notice.title, 'Notice');
-      expect(notice.body, 'Body text');
-      expect(notice.acknowledgmentLabel, 'OK');
-    });
+        expect(notice.title, 'Notice');
+        expect(notice.body, 'Body text');
+        expect(notice.acknowledgmentLabel, 'OK');
+      },
+    );
 
     test('custom acknowledgmentLabel is preserved', () {
       const notice = ConsentNotice(

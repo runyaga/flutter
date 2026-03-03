@@ -102,8 +102,10 @@ class ChatMessageWidget extends StatelessWidget {
                 constraints: BoxConstraints(
                   maxWidth: min(600, MediaQuery.of(context).size.width * 0.8),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: isUser
                       ? theme.colorScheme.primaryContainer
@@ -116,10 +118,8 @@ class ChatMessageWidget extends StatelessWidget {
                     if (isUser)
                       TextSelectionTheme(
                         data: TextSelectionThemeData(
-                          selectionColor:
-                              theme.colorScheme.onPrimaryContainer.withAlpha(
-                            (0.4 * 255).toInt(),
-                          ),
+                          selectionColor: theme.colorScheme.onPrimaryContainer
+                              .withAlpha((0.4 * 255).toInt()),
                           selectionHandleColor:
                               theme.colorScheme.onPrimaryContainer,
                         ),
@@ -140,11 +140,7 @@ class ChatMessageWidget extends StatelessWidget {
                       FlutterMarkdownPlusRenderer(
                         data: text,
                         onLinkTap: _openLink,
-                        onImageTap: (src, alt) => _openImage(
-                          context,
-                          src,
-                          alt,
-                        ),
+                        onImageTap: (src, alt) => _openImage(context, src, alt),
                       ),
                     // Only show streaming indicator when there's actual text
                     // being streamed. When text is empty, the status indicator
@@ -158,10 +154,7 @@ class ChatMessageWidget extends StatelessWidget {
               ),
             ),
           if (isUser)
-            _buildUserMessageActionsRow(
-              context,
-              messageText: text,
-            )
+            _buildUserMessageActionsRow(context, messageText: text)
           else ...[
             // Show citations section after the message for assistant messages
             if (sourceReferences.isNotEmpty)
@@ -175,10 +168,7 @@ class ChatMessageWidget extends StatelessWidget {
                 ),
               ),
             if (!isStreaming)
-              _buildAgentMessageActionsRow(
-                context,
-                messageText: text,
-              ),
+              _buildAgentMessageActionsRow(context, messageText: text),
           ],
         ],
       ),
@@ -296,8 +286,11 @@ class ChatMessageWidget extends StatelessWidget {
       await Clipboard.setData(ClipboardData(text: text));
       showSnackBar('Copied to clipboard');
     } on PlatformException catch (e, stackTrace) {
-      Loggers.ui
-          .error('Clipboard copy failed', error: e, stackTrace: stackTrace);
+      Loggers.ui.error(
+        'Clipboard copy failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
       showSnackBar('Could not copy to clipboard');
     }
   }
@@ -382,9 +375,7 @@ class _ThinkingSectionState extends State<ThinkingSection> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant,
-        ),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(soliplexTheme.radii.md),
       ),
       child: Column(

@@ -48,9 +48,7 @@ void main() {
     });
 
     test('returns existing ID from prefs', () async {
-      SharedPreferences.setMockInitialValues({
-        'install_id': 'existing-uuid',
-      });
+      SharedPreferences.setMockInitialValues({'install_id': 'existing-uuid'});
       prefs = await SharedPreferences.getInstance();
 
       final container = createContainer(prefs);

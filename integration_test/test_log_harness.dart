@@ -161,13 +161,11 @@ class TestLogHarness {
     );
     if (endIndex == -1) {
       dumpLogs(last: 30);
-      fail(
-        'End log not found after start: [$endLogger] "$endPattern"',
-      );
+      fail('End log not found after start: [$endLogger] "$endPattern"');
     }
-    return records[endIndex]
-        .timestamp
-        .difference(records[startIndex].timestamp);
+    return records[endIndex].timestamp.difference(
+          records[startIndex].timestamp,
+        );
   }
 
   /// Dump recent logs to console (for failure diagnostics).

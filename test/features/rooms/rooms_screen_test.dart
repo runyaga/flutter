@@ -186,16 +186,12 @@ void main() {
       });
 
       testWidgets('hides badge when no unread runs', (tester) async {
-        final mockRooms = [
-          TestData.createRoom(id: 'room1', name: 'Room 1'),
-        ];
+        final mockRooms = [TestData.createRoom(id: 'room1', name: 'Room 1')];
 
         await tester.pumpWidget(
           createTestApp(
             home: const RoomsScreen(),
-            overrides: [
-              roomsProvider.overrideWith((ref) async => mockRooms),
-            ],
+            overrides: [roomsProvider.overrideWith((ref) async => mockRooms)],
           ),
         );
         await tester.pumpAndSettle();

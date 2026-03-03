@@ -9,9 +9,7 @@ void main() {
   group('StatusIndicator', () {
     Widget buildWidget(ActiveRunState runState) {
       return MaterialApp(
-        home: Scaffold(
-          body: StatusIndicator(runState: runState),
-        ),
+        home: Scaffold(body: StatusIndicator(runState: runState)),
       );
     }
 
@@ -34,8 +32,9 @@ void main() {
       expect(find.text('Executing: search, fetch'), findsOneWidget);
     });
 
-    testWidgets('shows "Calling: tool1" for ToolCallActivity in streaming',
-        (WidgetTester tester) async {
+    testWidgets('shows "Calling: tool1" for ToolCallActivity in streaming', (
+      WidgetTester tester,
+    ) async {
       const state = RunningState(
         conversation: Conversation(
           threadId: 'thread-1',
@@ -51,8 +50,9 @@ void main() {
       expect(find.text('Calling: search'), findsOneWidget);
     });
 
-    testWidgets('shows "Thinking" for ThinkingActivity',
-        (WidgetTester tester) async {
+    testWidgets('shows "Thinking" for ThinkingActivity', (
+      WidgetTester tester,
+    ) async {
       const state = RunningState(
         conversation: Conversation(
           threadId: 'thread-1',
@@ -66,8 +66,9 @@ void main() {
       expect(find.text('Thinking'), findsOneWidget);
     });
 
-    testWidgets('shows "Responding" for RespondingActivity',
-        (WidgetTester tester) async {
+    testWidgets('shows "Responding" for RespondingActivity', (
+      WidgetTester tester,
+    ) async {
       const state = RunningState(
         conversation: Conversation(
           threadId: 'thread-1',
@@ -85,8 +86,9 @@ void main() {
       expect(find.text('Responding'), findsOneWidget);
     });
 
-    testWidgets('shows "Executing: search" for single tool',
-        (WidgetTester tester) async {
+    testWidgets('shows "Executing: search" for single tool', (
+      WidgetTester tester,
+    ) async {
       const state = ExecutingToolsState(
         conversation: Conversation(
           threadId: 'thread-1',

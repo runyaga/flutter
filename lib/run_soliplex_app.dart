@@ -45,9 +45,7 @@ import 'package:soliplex_logging/soliplex_logging.dart';
 ///       .register(myDbLookupTool),
 /// ),
 /// ```
-Future<void> runSoliplexApp({
-  required SoliplexConfig config,
-}) async {
+Future<void> runSoliplexApp({required SoliplexConfig config}) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Capture Flutter framework errors (layout, build, rendering).

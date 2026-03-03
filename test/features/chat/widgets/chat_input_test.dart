@@ -581,10 +581,7 @@ void main() {
         );
 
         // Assert
-        expect(
-          find.widgetWithIcon(IconButton, Icons.filter_alt),
-          findsNothing,
-        );
+        expect(find.widgetWithIcon(IconButton, Icons.filter_alt), findsNothing);
       });
 
       testWidgets('displays selected document above input', (tester) async {

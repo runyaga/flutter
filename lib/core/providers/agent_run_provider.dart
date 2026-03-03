@@ -120,10 +120,7 @@ class AgentRunNotifier extends Notifier<RunState> {
           } else {
             result = await ref.read(toolRegistryProvider).execute(tc);
           }
-          return tc.copyWith(
-            status: ToolCallStatus.completed,
-            result: result,
-          );
+          return tc.copyWith(status: ToolCallStatus.completed, result: result);
         } on Object catch (e) {
           return tc.copyWith(
             status: ToolCallStatus.failed,
@@ -140,10 +137,7 @@ class AgentRunNotifier extends Notifier<RunState> {
   /// Executes Python code via Monty with isolated per-call host state.
   ///
   /// Charts produced by `chart_create()` are published to [agentChartProvider].
-  Future<String> _executePython(
-    ToolCallInfo tc,
-    ThreadKey threadKey,
-  ) async {
+  Future<String> _executePython(ToolCallInfo tc, ThreadKey threadKey) async {
     final cache = ref.read(bridgeCacheProvider);
     final hostBundle = createFlutterHostBundle(
       onChartCreated: (_, config) {
@@ -168,5 +162,6 @@ class AgentRunNotifier extends Notifier<RunState> {
 /// Non-autoDispose — lives for the app session. The existing
 /// `activeRunNotifierProvider` is untouched; this is a parallel
 /// proof-of-concept.
-final agentRunProvider =
-    NotifierProvider<AgentRunNotifier, RunState>(AgentRunNotifier.new);
+final agentRunProvider = NotifierProvider<AgentRunNotifier, RunState>(
+  AgentRunNotifier.new,
+);

@@ -165,8 +165,9 @@ void main() {
       expect(find.text('Search knowledge base'), findsNothing);
     });
 
-    testWidgets('shows MCP detail line for MCP-enabled tools when expanded',
-        (tester) async {
+    testWidgets('shows MCP detail line for MCP-enabled tools when expanded', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -242,22 +243,20 @@ void main() {
       expect(find.text('Yes'), findsWidgets);
     });
 
-    testWidgets('shows MCP token with copy button when allowMcp is true',
-        (tester) async {
+    testWidgets('shows MCP token with copy button when allowMcp is true', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      const room = Room(
-        id: 'room-1',
-        name: 'MCP Room',
-        allowMcp: true,
-      );
+      const room = Room(id: 'room-1', name: 'MCP Room', allowMcp: true);
 
       final mockApi = MockSoliplexApi();
-      when(() => mockApi.getMcpToken('room-1'))
-          .thenAnswer((_) async => 'test-token-abc123');
+      when(
+        () => mockApi.getMcpToken('room-1'),
+      ).thenAnswer((_) async => 'test-token-abc123');
 
       await tester.pumpWidget(
         createTestApp(
@@ -284,15 +283,12 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      const room = Room(
-        id: 'room-1',
-        name: 'MCP Room',
-        allowMcp: true,
-      );
+      const room = Room(id: 'room-1', name: 'MCP Room', allowMcp: true);
 
       final mockApi = MockSoliplexApi();
-      when(() => mockApi.getMcpToken('room-1'))
-          .thenAnswer((_) async => 'test-token-abc123');
+      when(
+        () => mockApi.getMcpToken('room-1'),
+      ).thenAnswer((_) async => 'test-token-abc123');
 
       await tester.pumpWidget(
         createTestApp(
@@ -327,12 +323,10 @@ void main() {
       expect(find.byIcon(Icons.check), findsNothing);
     });
 
-    testWidgets('does not show MCP token when allowMcp is false',
-        (tester) async {
-      const room = Room(
-        id: 'room-1',
-        name: 'No MCP Room',
-      );
+    testWidgets('does not show MCP token when allowMcp is false', (
+      tester,
+    ) async {
+      const room = Room(id: 'room-1', name: 'No MCP Room');
 
       await tester.pumpWidget(
         createTestApp(
@@ -499,17 +493,16 @@ void main() {
       expect(find.text('Show metadata'), findsOneWidget);
     });
 
-    testWidgets('hides "Show metadata" button when metadata is empty',
-        (tester) async {
+    testWidgets('hides "Show metadata" button when metadata is empty', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final room = _createRoomWithAgent();
-      const docs = [
-        RagDocument(id: 'doc-1', title: 'Document 1.pdf'),
-      ];
+      const docs = [RagDocument(id: 'doc-1', title: 'Document 1.pdf')];
 
       await tester.pumpWidget(
         createTestApp(
@@ -535,8 +528,9 @@ void main() {
       expect(find.text('Show metadata'), findsNothing);
     });
 
-    testWidgets('"Show metadata" opens dialog with all metadata',
-        (tester) async {
+    testWidgets('"Show metadata" opens dialog with all metadata', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -594,8 +588,9 @@ void main() {
     });
 
     group('document search', () {
-      testWidgets('shows search field when more than one document',
-          (tester) async {
+      testWidgets('shows search field when more than one document', (
+        tester,
+      ) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
@@ -638,9 +633,7 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         const room = Room(id: 'room-1', name: 'Test Room');
-        const docs = [
-          RagDocument(id: 'doc-1', title: 'Alpha.pdf'),
-        ];
+        const docs = [RagDocument(id: 'doc-1', title: 'Alpha.pdf')];
 
         await tester.pumpWidget(
           createTestApp(
@@ -752,8 +745,9 @@ void main() {
         expect(find.text('Beta.pdf'), findsNothing);
       });
 
-      testWidgets('shows filtered count in title when searching',
-          (tester) async {
+      testWidgets('shows filtered count in title when searching', (
+        tester,
+      ) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
@@ -815,10 +809,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('System Prompt'), findsOneWidget);
-        expect(
-          find.text('You are a helpful assistant.'),
-          findsOneWidget,
-        );
+        expect(find.text('You are a helpful assistant.'), findsOneWidget);
       });
 
       testWidgets('expands and collapses on tap', (tester) async {
@@ -862,8 +853,9 @@ void main() {
         expect(find.text('Show more'), findsNothing);
       });
 
-      testWidgets('shows "Show more" for long single-line prompt that wraps',
-          (tester) async {
+      testWidgets('shows "Show more" for long single-line prompt that wraps', (
+        tester,
+      ) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
@@ -897,8 +889,9 @@ void main() {
         expect(find.text('Show more'), findsOneWidget);
       });
 
-      testWidgets('hides "Show more" when prompt has 3 or fewer lines',
-          (tester) async {
+      testWidgets('hides "Show more" when prompt has 3 or fewer lines', (
+        tester,
+      ) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
@@ -1042,15 +1035,12 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        const room = Room(
-          id: 'room-1',
-          name: 'MCP Room',
-          allowMcp: true,
-        );
+        const room = Room(id: 'room-1', name: 'MCP Room', allowMcp: true);
 
         final mockApi = MockSoliplexApi();
-        when(() => mockApi.getMcpToken('room-1'))
-            .thenAnswer((_) async => throw Exception('token fetch failed'));
+        when(
+          () => mockApi.getMcpToken('room-1'),
+        ).thenAnswer((_) async => throw Exception('token fetch failed'));
 
         await tester.pumpWidget(
           createTestApp(
@@ -1074,11 +1064,7 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        const room = Room(
-          id: 'room-1',
-          name: 'MCP Room',
-          allowMcp: true,
-        );
+        const room = Room(id: 'room-1', name: 'MCP Room', allowMcp: true);
 
         final mockApi = MockSoliplexApi();
         // First call fails, second succeeds
@@ -1113,8 +1099,9 @@ void main() {
     });
 
     group('documents states', () {
-      testWidgets('shows error with retry button when loading fails',
-          (tester) async {
+      testWidgets('shows error with retry button when loading fails', (
+        tester,
+      ) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
@@ -1143,8 +1130,9 @@ void main() {
         expect(notifier.retryCalled, isTrue);
       });
 
-      testWidgets('shows empty message when room has no documents',
-          (tester) async {
+      testWidgets('shows empty message when room has no documents', (
+        tester,
+      ) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
@@ -1284,8 +1272,9 @@ void main() {
         expect(find.text('Query the database'), findsNothing);
       });
 
-      testWidgets('expands client tool to show description on tap',
-          (tester) async {
+      testWidgets('expands client tool to show description on tap', (
+        tester,
+      ) async {
         tester.view.physicalSize = const Size(800, 2000);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
@@ -1468,9 +1457,7 @@ void main() {
           home: const RoomInfoScreen(roomId: 'nonexistent'),
           overrides: [
             roomsProvider.overrideWith(
-              (ref) async => [
-                const Room(id: 'room-1', name: 'Other Room'),
-              ],
+              (ref) async => [const Room(id: 'room-1', name: 'Other Room')],
             ),
             documentsProviderOverride('nonexistent'),
           ],

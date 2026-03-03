@@ -241,8 +241,9 @@ void main() {
         TestData.createThread(id: 'new', roomId: roomId, createdAt: newer),
         TestData.createThread(id: 'mid', roomId: roomId, createdAt: middle),
       ];
-      when(() => mockApi.getThreads(roomId))
-          .thenAnswer((_) async => mockThreads);
+      when(
+        () => mockApi.getThreads(roomId),
+      ).thenAnswer((_) async => mockThreads);
 
       final container = ProviderContainer(
         overrides: [apiProvider.overrideWithValue(mockApi)],
@@ -280,8 +281,9 @@ void main() {
           createdAt: sameTime,
         ),
       ];
-      when(() => mockApi.getThreads(roomId))
-          .thenAnswer((_) async => mockThreads);
+      when(
+        () => mockApi.getThreads(roomId),
+      ).thenAnswer((_) async => mockThreads);
 
       final container = ProviderContainer(
         overrides: [apiProvider.overrideWithValue(mockApi)],

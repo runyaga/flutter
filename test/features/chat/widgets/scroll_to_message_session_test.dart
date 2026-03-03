@@ -31,10 +31,7 @@ void main() {
     });
 
     test('returns false for a message not in the list', () {
-      expect(
-        session.shouldScrollTo('msg-unknown', messages),
-        isFalse,
-      );
+      expect(session.shouldScrollTo('msg-unknown', messages), isFalse);
     });
 
     test('returns false for the same id already scrolled to', () {

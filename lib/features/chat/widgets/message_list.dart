@@ -106,10 +106,7 @@ DisplayMessagesResult computeDisplayMessages(
   }
 
   // Not streaming and no thinking - return history unchanged
-  return DisplayMessagesResult(
-    historicalMessages,
-    hasSyntheticMessage: false,
-  );
+  return DisplayMessagesResult(historicalMessages, hasSyntheticMessage: false);
 }
 
 /// Computes trailing spacer height for the message list.
@@ -143,8 +140,10 @@ double computeSpacerHeight({
       viewportDimension != null) {
     final realContent =
         maxScrollExtent + viewportDimension - currentSpacerHeight;
-    return (targetScrollOffset + viewportHeight - realContent)
-        .clamp(0.0, viewportHeight);
+    return (targetScrollOffset + viewportHeight - realContent).clamp(
+      0.0,
+      viewportHeight,
+    );
   }
   return viewportHeight;
 }
@@ -174,8 +173,9 @@ class MessageList extends ConsumerStatefulWidget {
 class _MessageListState extends ConsumerState<MessageList> {
   final _scrollController = AnchoredScrollController();
   final GlobalKey _scrollTargetKey = GlobalKey();
-  late final _scrollSession =
-      ScrollToMessageSession(controller: _scrollController);
+  late final _scrollSession = ScrollToMessageSession(
+    controller: _scrollController,
+  );
   final _scrollButton = ScrollButtonController();
   bool _hasScrolledOnLoad = false;
   double _spacerHeight = 0;
@@ -249,8 +249,10 @@ class _MessageListState extends ConsumerState<MessageList> {
   void _jumpToContentBottom() {
     if (!mounted || !_scrollController.hasClients) return;
     final pos = _scrollController.position;
-    final target =
-        (pos.maxScrollExtent - _spacerHeight).clamp(0.0, pos.maxScrollExtent);
+    final target = (pos.maxScrollExtent - _spacerHeight).clamp(
+      0.0,
+      pos.maxScrollExtent,
+    );
     _scrollController.jumpTo(target);
   }
 
@@ -605,10 +607,7 @@ class _MessageListState extends ConsumerState<MessageList> {
               builder: (context, visible, child) => AnimatedOpacity(
                 opacity: visible ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
-                child: IgnorePointer(
-                  ignoring: !visible,
-                  child: child,
-                ),
+                child: IgnorePointer(ignoring: !visible, child: child),
               ),
               child: Material(
                 elevation: 4,

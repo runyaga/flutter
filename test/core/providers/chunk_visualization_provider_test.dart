@@ -22,8 +22,9 @@ void main() {
         imagesBase64: const ['img1', 'img2'],
       );
 
-      when(() => mockApi.getChunkVisualization('room-1', 'chunk-123'))
-          .thenAnswer((_) async => expected);
+      when(
+        () => mockApi.getChunkVisualization('room-1', 'chunk-123'),
+      ).thenAnswer((_) async => expected);
 
       final container = ProviderContainer(
         overrides: [apiProvider.overrideWithValue(mockApi)],
@@ -31,13 +32,18 @@ void main() {
       addTearDown(container.dispose);
 
       final result = await container.read(
-        chunkVisualizationProvider((roomId: 'room-1', chunkId: 'chunk-123'))
-            .future,
+        chunkVisualizationProvider(
+          (
+            roomId: 'room-1',
+            chunkId: 'chunk-123',
+          ),
+        ).future,
       );
 
       expect(result, equals(expected));
-      verify(() => mockApi.getChunkVisualization('room-1', 'chunk-123'))
-          .called(1);
+      verify(
+        () => mockApi.getChunkVisualization('room-1', 'chunk-123'),
+      ).called(1);
     });
 
     test('uses correct parameters for different family keys', () async {
@@ -56,18 +62,28 @@ void main() {
 
       // Fetch two different chunks
       await container.read(
-        chunkVisualizationProvider((roomId: 'room-A', chunkId: 'chunk-1'))
-            .future,
+        chunkVisualizationProvider(
+          (
+            roomId: 'room-A',
+            chunkId: 'chunk-1',
+          ),
+        ).future,
       );
       await container.read(
-        chunkVisualizationProvider((roomId: 'room-B', chunkId: 'chunk-2'))
-            .future,
+        chunkVisualizationProvider(
+          (
+            roomId: 'room-B',
+            chunkId: 'chunk-2',
+          ),
+        ).future,
       );
 
-      verify(() => mockApi.getChunkVisualization('room-A', 'chunk-1'))
-          .called(1);
-      verify(() => mockApi.getChunkVisualization('room-B', 'chunk-2'))
-          .called(1);
+      verify(
+        () => mockApi.getChunkVisualization('room-A', 'chunk-1'),
+      ).called(1);
+      verify(
+        () => mockApi.getChunkVisualization('room-B', 'chunk-2'),
+      ).called(1);
     });
 
     test('caches result for same family key', () async {
@@ -86,17 +102,26 @@ void main() {
 
       // Fetch same chunk twice
       await container.read(
-        chunkVisualizationProvider((roomId: 'room-1', chunkId: 'chunk-1'))
-            .future,
+        chunkVisualizationProvider(
+          (
+            roomId: 'room-1',
+            chunkId: 'chunk-1',
+          ),
+        ).future,
       );
       await container.read(
-        chunkVisualizationProvider((roomId: 'room-1', chunkId: 'chunk-1'))
-            .future,
+        chunkVisualizationProvider(
+          (
+            roomId: 'room-1',
+            chunkId: 'chunk-1',
+          ),
+        ).future,
       );
 
       // Should only call API once due to caching
-      verify(() => mockApi.getChunkVisualization('room-1', 'chunk-1'))
-          .called(1);
+      verify(
+        () => mockApi.getChunkVisualization('room-1', 'chunk-1'),
+      ).called(1);
     });
   });
 }

@@ -79,18 +79,12 @@ class HttpInspectorPanel extends ConsumerWidget {
   }
 
   void _showDetail(BuildContext context, HttpEventGroup group) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _DetailPage(group: group),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => _DetailPage(group: group)));
   }
 
-  Widget _buildHeader(
-    ThemeData theme,
-    int requestCount,
-    bool isCompact,
-  ) {
+  Widget _buildHeader(ThemeData theme, int requestCount, bool isCompact) {
     final titleStyle =
         isCompact ? theme.textTheme.titleSmall : theme.textTheme.titleMedium;
 
@@ -101,9 +95,7 @@ class HttpInspectorPanel extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Text('Requests ($requestCount)', style: titleStyle),
-          ),
+          Expanded(child: Text('Requests ($requestCount)', style: titleStyle)),
           const _ClearButton(),
         ],
       ),

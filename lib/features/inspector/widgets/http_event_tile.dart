@@ -68,9 +68,7 @@ class HttpEventTile extends StatelessWidget {
 
     final pathStyle =
         (dense ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)
-            ?.copyWith(
-      color: isSelected ? selectedColor : null,
-    );
+            ?.copyWith(color: isSelected ? selectedColor : null);
 
     return Row(
       children: [

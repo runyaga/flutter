@@ -77,10 +77,7 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
     _executor = MontyToolExecutor(
       threadKey: _threadKey,
       bridgeCache: _bridgeCache,
-      hostWiring: HostFunctionWiring(
-        hostApi: hostApi,
-        dfRegistry: dfRegistry,
-      ),
+      hostWiring: HostFunctionWiring(hostApi: hostApi, dfRegistry: dfRegistry),
     );
     _commands = _buildCommands();
     _addOutput(
@@ -145,17 +142,16 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
                   focusNode: _inputFocusNode,
                   maxLines: 5,
                   minLines: 1,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
                   decoration: const InputDecoration(
                     hintText:
                         'df_create, py <code>, help  (Shift+Enter = newline)',
                     border: OutlineInputBorder(),
                     isDense: true,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 10,
+                    ),
                   ),
                 ),
               ),
@@ -248,11 +244,7 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: SelectableText(
         '$prefix${line.text}',
-        style: TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 12,
-          color: color,
-        ),
+        style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: color),
       ),
     );
   }
@@ -487,9 +479,11 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
       ..writeln('  py print(squares)')
       ..writeln()
       ..writeln('Python — chart from single line:')
-      ..writeln('  py chart_create({"type":"line","title":"Test",'
-          ' "x_label":"x","y_label":"y",'
-          ' "points":[[1,2],[2,4],[3,1]]})')
+      ..writeln(
+        '  py chart_create({"type":"line","title":"Test",'
+        ' "x_label":"x","y_label":"y",'
+        ' "points":[[1,2],[2,4],[3,1]]})',
+      )
       ..writeln()
       ..writeln('Python — multi-line (py: then Shift+Enter, or play button):')
       ..writeln(
@@ -509,16 +503,20 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
       ..writeln()
       ..writeln('  py:')
       ..writeln('  pts = [[x, x*x] for x in range(1, 8)]')
-      ..writeln('  cfg = {"type":"scatter","title":"Squares",'
-          ' "x_label":"x","y_label":"x^2","points":pts}')
+      ..writeln(
+        '  cfg = {"type":"scatter","title":"Squares",'
+        ' "x_label":"x","y_label":"x^2","points":pts}',
+      )
       ..writeln('  chart_create(cfg)')
       ..writeln()
       ..writeln('  py:')
       ..writeln('  vals = [12, 7, 19, 5, 14]')
       ..writeln('  labels = ["apple","banana","cherry","date","elderberry"]')
-      ..writeln('  cfg = {"type":"bar","title":"Fruit",'
-          ' "x_label":"fruit","y_label":"count",'
-          ' "labels":labels,"values":vals}')
+      ..writeln(
+        '  cfg = {"type":"bar","title":"Fruit",'
+        ' "x_label":"fruit","y_label":"count",'
+        ' "labels":labels,"values":vals}',
+      )
       ..writeln('  chart_create(cfg)');
   }
 
@@ -537,9 +535,7 @@ class _DebugDataFrameScreenState extends ConsumerState<DebugDataFrameScreen> {
           // Try JSON object parse first
           Map<String, Object?> args;
           if (rawArgs.startsWith('{')) {
-            args = Map<String, Object?>.from(
-              jsonDecode(rawArgs) as Map,
-            );
+            args = Map<String, Object?>.from(jsonDecode(rawArgs) as Map);
           } else if (rawArgs.isEmpty) {
             args = {};
           } else {

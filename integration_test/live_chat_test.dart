@@ -106,10 +106,7 @@ void main() {
       await $.tester.pump(const Duration(milliseconds: 500));
 
       // At least 2 messages: user message + assistant response.
-      expect(
-        find.byType(ChatMessageWidget),
-        findsAtLeast(2),
-      );
+      expect(find.byType(ChatMessageWidget), findsAtLeast(2));
 
       // White-box: verify AG-UI lifecycle events in logs.
       harness

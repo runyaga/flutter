@@ -115,9 +115,7 @@ void main() {
         late _TestLogConfigNotifier notifier;
 
         await tester.pumpWidget(
-          _createTelemetryApp(
-            onNotifierCreated: (n) => notifier = n,
-          ),
+          _createTelemetryApp(onNotifierCreated: (n) => notifier = n),
         );
         await tester.pump();
 
@@ -252,9 +250,7 @@ void main() {
         late _TestLogConfigNotifier notifier;
 
         await tester.pumpWidget(
-          _createTelemetryApp(
-            onNotifierCreated: (n) => notifier = n,
-          ),
+          _createTelemetryApp(onNotifierCreated: (n) => notifier = n),
         );
         await tester.pump();
 
@@ -280,9 +276,7 @@ void main() {
         late _TestLogConfigNotifier notifier;
 
         await tester.pumpWidget(
-          _createTelemetryApp(
-            onNotifierCreated: (n) => notifier = n,
-          ),
+          _createTelemetryApp(onNotifierCreated: (n) => notifier = n),
         );
         await tester.pump();
 
@@ -302,9 +296,7 @@ void main() {
         final originalEndpoint = LogConfig.defaultConfig.backendEndpoint;
 
         await tester.pumpWidget(
-          _createTelemetryApp(
-            onNotifierCreated: (n) => notifier = n,
-          ),
+          _createTelemetryApp(onNotifierCreated: (n) => notifier = n),
         );
         await tester.pump();
 
@@ -324,9 +316,7 @@ void main() {
         final originalEndpoint = LogConfig.defaultConfig.backendEndpoint;
 
         await tester.pumpWidget(
-          _createTelemetryApp(
-            onNotifierCreated: (n) => notifier = n,
-          ),
+          _createTelemetryApp(onNotifierCreated: (n) => notifier = n),
         );
         await tester.pump();
 

@@ -55,10 +55,7 @@ class _AnchoredScrollPosition extends ScrollPositionWithSingleContext {
   double? _realMaxScrollExtent;
 
   @override
-  bool applyContentDimensions(
-    double minScrollExtent,
-    double maxScrollExtent,
-  ) {
+  bool applyContentDimensions(double minScrollExtent, double maxScrollExtent) {
     _realMaxScrollExtent = maxScrollExtent;
     final anchor = controller.anchorOffset;
     if (anchor != null && hasPixels && anchor > maxScrollExtent) {

@@ -54,19 +54,14 @@ class RequestDetailView extends StatelessWidget {
       padding: const EdgeInsets.all(SoliplexSpacing.s4),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
-        border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant),
-        ),
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _MethodBadge(
-                method: group.methodLabel,
-                isStream: group.isStream,
-              ),
+              _MethodBadge(method: group.methodLabel, isStream: group.isStream),
               const SizedBox(width: SoliplexSpacing.s2),
               Expanded(child: HttpStatusDisplay(group: group)),
               Text(
@@ -154,10 +149,7 @@ class _RequestTab extends StatelessWidget {
           const SizedBox(height: SoliplexSpacing.s4),
         ],
         if (body != null) ...[
-          _SectionHeader(
-            title: 'Body',
-            onCopy: () => _copyBody(context, body),
-          ),
+          _SectionHeader(title: 'Body', onCopy: () => _copyBody(context, body)),
           _BodyDisplay(body: body),
         ],
       ],
@@ -242,10 +234,7 @@ class _ResponseTab extends StatelessWidget {
     );
   }
 
-  Widget _buildErrorResponse(
-    BuildContext context,
-    HttpErrorEvent error,
-  ) {
+  Widget _buildErrorResponse(BuildContext context, HttpErrorEvent error) {
     return _ErrorDisplay(
       message: error.exception.message,
       details: 'Type: ${error.exception.runtimeType}\n'
@@ -264,10 +253,7 @@ class _ResponseTab extends StatelessWidget {
           label: 'Duration',
           value: resp.duration.toHttpDurationString(),
         ),
-        _MetadataRow(
-          label: 'Size',
-          value: resp.bodySize.toHttpBytesString(),
-        ),
+        _MetadataRow(label: 'Size', value: resp.bodySize.toHttpBytesString()),
         if (resp.headers != null && resp.headers!.isNotEmpty) ...[
           const SizedBox(height: SoliplexSpacing.s4),
           _SectionHeader(
@@ -322,18 +308,12 @@ class _CurlTab extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                'curl command',
-                style: theme.textTheme.titleSmall,
-              ),
+              Text('curl command', style: theme.textTheme.titleSmall),
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.copy, size: 20),
-                onPressed: () => _copyToClipboard(
-                  context,
-                  curl,
-                  'curl command copied',
-                ),
+                onPressed: () =>
+                    _copyToClipboard(context, curl, 'curl command copied'),
                 tooltip: 'Copy to clipboard',
               ),
             ],
@@ -417,9 +397,7 @@ class _HeadersTable extends StatelessWidget {
                     ? colorScheme.surfaceContainerLow
                     : colorScheme.surface,
                 border: index > 0
-                    ? Border(
-                        top: BorderSide(color: colorScheme.outlineVariant),
-                      )
+                    ? Border(top: BorderSide(color: colorScheme.outlineVariant))
                     : null,
               ),
               child: Row(
@@ -472,9 +450,7 @@ class _BodyDisplay extends StatelessWidget {
       ),
       child: SelectableText(
         formattedBody,
-        style: theme.textTheme.bodySmall?.copyWith(
-          fontFamily: 'monospace',
-        ),
+        style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
       ),
     );
   }
@@ -503,10 +479,7 @@ class _MetadataRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: SelectableText(
-              value,
-              style: theme.textTheme.bodyMedium,
-            ),
+            child: SelectableText(value, style: theme.textTheme.bodyMedium),
           ),
         ],
       ),

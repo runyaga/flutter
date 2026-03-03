@@ -115,10 +115,7 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
 // ---------------------------------------------------------------------------
 
 class _PatternSelector extends StatelessWidget {
-  const _PatternSelector({
-    required this.selected,
-    required this.onChanged,
-  });
+  const _PatternSelector({required this.selected, required this.onChanged});
 
   final PipelinePattern? selected;
   final ValueChanged<PipelinePattern>? onChanged;
@@ -132,19 +129,12 @@ class _PatternSelector extends StatelessWidget {
         border: OutlineInputBorder(),
       ),
       items: builtInPatterns
-          .map(
-            (p) => DropdownMenuItem(
-              value: p.id,
-              child: Text(p.name),
-            ),
-          )
+          .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
           .toList(),
       onChanged: onChanged == null
           ? null
           : (id) {
-              final pattern = builtInPatterns.firstWhere(
-                (p) => p.id == id,
-              );
+              final pattern = builtInPatterns.firstWhere((p) => p.id == id);
               onChanged!(pattern);
             },
     );
@@ -170,15 +160,9 @@ class _PatternInfo extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              pattern.name,
-              style: theme.textTheme.titleSmall,
-            ),
+            Text(pattern.name, style: theme.textTheme.titleSmall),
             const SizedBox(height: 4),
-            Text(
-              pattern.description,
-              style: theme.textTheme.bodyMedium,
-            ),
+            Text(pattern.description, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 8),
             Text(
               'Execution: $layerDesc',
@@ -246,9 +230,7 @@ class _PromptInput extends StatelessWidget {
           icon: isRunning
               ? const SizedBox.square(
                   dimension: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.play_arrow),
           label: const Text('Run'),
@@ -285,10 +267,7 @@ class _StatusBar extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (elapsed != null)
-          Text(
-            '${elapsed.inSeconds}s',
-            style: theme.textTheme.bodySmall,
-          ),
+          Text('${elapsed.inSeconds}s', style: theme.textTheme.bodySmall),
         const SizedBox(width: SoliplexSpacing.s4),
         Text(
           '$completed / $total nodes complete',
@@ -296,11 +275,7 @@ class _StatusBar extends StatelessWidget {
         ),
         if (pipeline.status == PipelineStatus.completed) ...[
           const SizedBox(width: SoliplexSpacing.s2),
-          Icon(
-            Icons.check_circle,
-            size: 16,
-            color: theme.colorScheme.primary,
-          ),
+          Icon(Icons.check_circle, size: 16, color: theme.colorScheme.primary),
         ],
       ],
     );
@@ -333,9 +308,7 @@ class _DagView extends StatelessWidget {
       children: [
         for (var i = 0; i < layers.length; i++) ...[
           if (i > 0)
-            _AnimatedEdge(
-              state: _computeEdgeState(layers[i - 1], layers[i]),
-            ),
+            _AnimatedEdge(state: _computeEdgeState(layers[i - 1], layers[i])),
           _buildLayer(context, layers[i]),
         ],
       ],
@@ -358,14 +331,9 @@ class _DagView extends StatelessWidget {
     return _EdgeState.idle;
   }
 
-  Widget _buildLayer(
-    BuildContext context,
-    List<DagNode> nodes,
-  ) {
+  Widget _buildLayer(BuildContext context, List<DagNode> nodes) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: SoliplexSpacing.s1,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: SoliplexSpacing.s1),
       child: Wrap(
         alignment: WrapAlignment.center,
         spacing: SoliplexSpacing.s3,
@@ -529,9 +497,7 @@ class _DagNodeChip extends StatelessWidget {
           theme.colorScheme.onPrimaryContainer,
           const SizedBox.square(
             dimension: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-            ),
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
       NodeStatus.completed => (
@@ -563,10 +529,7 @@ class _DagNodeChip extends StatelessWidget {
           color: bgColor,
           borderRadius: BorderRadius.circular(12),
           border: isSelected
-              ? Border.all(
-                  color: theme.colorScheme.primary,
-                  width: 2,
-                )
+              ? Border.all(color: theme.colorScheme.primary, width: 2)
               : null,
           boxShadow: status == NodeStatus.running
               ? [
@@ -596,10 +559,7 @@ class _DagNodeChip extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               '(${node.roomId})',
-              style: TextStyle(
-                color: fgColor.withAlpha(153),
-                fontSize: 10,
-              ),
+              style: TextStyle(color: fgColor.withAlpha(153), fontSize: 10),
             ),
           ],
         ),
@@ -613,10 +573,7 @@ class _DagNodeChip extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _NodeDetailPanel extends StatelessWidget {
-  const _NodeDetailPanel({
-    required this.nodeState,
-    required this.pattern,
-  });
+  const _NodeDetailPanel({required this.nodeState, required this.pattern});
 
   final NodeState nodeState;
   final PipelinePattern pattern;
@@ -624,15 +581,11 @@ class _NodeDetailPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final node = pattern.nodes.firstWhere(
-      (n) => n.id == nodeState.nodeId,
-    );
+    final node = pattern.nodes.firstWhere((n) => n.id == nodeState.nodeId);
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(SoliplexSpacing.s4),
         child: Column(
@@ -658,8 +611,9 @@ class _NodeDetailPanel extends StatelessWidget {
               const SizedBox(height: SoliplexSpacing.s3),
               Text(
                 'INPUT',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: SoliplexSpacing.s1),
               Container(
@@ -679,15 +633,14 @@ class _NodeDetailPanel extends StatelessWidget {
               const SizedBox(height: SoliplexSpacing.s3),
               Text(
                 'OUTPUT',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: SoliplexSpacing.s1),
               Container(
                 width: double.infinity,
-                constraints: const BoxConstraints(
-                  maxHeight: 200,
-                ),
+                constraints: const BoxConstraints(maxHeight: 200),
                 padding: const EdgeInsets.all(SoliplexSpacing.s2),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest,

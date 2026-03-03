@@ -331,8 +331,9 @@ void main() {
       );
       final container = ProviderContainer(
         overrides: [
-          toolRegistryProvider
-              .overrideWithValue(const ToolRegistry().register(tool)),
+          toolRegistryProvider.overrideWithValue(
+            const ToolRegistry().register(tool),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -357,8 +358,9 @@ void main() {
       );
       final container = ProviderContainer(
         overrides: [
-          toolRegistryProvider
-              .overrideWithValue(const ToolRegistry().register(clientTool)),
+          toolRegistryProvider.overrideWithValue(
+            const ToolRegistry().register(clientTool),
+          ),
         ],
       );
       addTearDown(container.dispose);

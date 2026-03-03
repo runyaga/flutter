@@ -167,8 +167,9 @@ void main() {
     });
 
     group('Streaming Behavior', () {
-      testWidgets('shows messages without extra widget when not streaming',
-          (tester) async {
+      testWidgets('shows messages without extra widget when not streaming', (
+        tester,
+      ) async {
         // Arrange
         final messages = [TestData.createMessage(text: 'Hello')];
 
@@ -465,76 +466,68 @@ void main() {
         },
       );
 
-      testWidgets(
-        'fills viewport when last message is from user',
-        (tester) async {
-          final messages = [
-            TestData.createMessage(id: 'msg-1', text: 'Hello'),
-          ];
+      testWidgets('fills viewport when last message is from user', (
+        tester,
+      ) async {
+        final messages = [TestData.createMessage(id: 'msg-1', text: 'Hello')];
 
-          await tester.pumpWidget(
-            createTestApp(
-              home: const Scaffold(body: MessageList()),
-              overrides: [
-                currentThreadProvider.overrideWith(
-                  (ref) => TestData.createThread(),
-                ),
-                allMessagesProvider.overrideWith((ref) async => messages),
-                activeRunNotifierOverride(const IdleState()),
-              ],
-            ),
-          );
-          await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          createTestApp(
+            home: const Scaffold(body: MessageList()),
+            overrides: [
+              currentThreadProvider.overrideWith(
+                (ref) => TestData.createThread(),
+              ),
+              allMessagesProvider.overrideWith((ref) async => messages),
+              activeRunNotifierOverride(const IdleState()),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
 
-          final spacer = tester.widget<SizedBox>(
-            find.byKey(MessageList.trailingSpacerKey),
-          );
-          expect(spacer.height, greaterThan(0));
-        },
-      );
+        final spacer = tester.widget<SizedBox>(
+          find.byKey(MessageList.trailingSpacerKey),
+        );
+        expect(spacer.height, greaterThan(0));
+      });
 
-      testWidgets(
-        'fills viewport when streaming',
-        (tester) async {
-          final messages = [
-            TestData.createMessage(id: 'msg-1', text: 'Hello'),
-          ];
+      testWidgets('fills viewport when streaming', (tester) async {
+        final messages = [TestData.createMessage(id: 'msg-1', text: 'Hello')];
 
-          const conversation = domain.Conversation(
-            threadId: 'test-thread',
-            status: domain.Running(runId: 'test-run'),
-          );
+        const conversation = domain.Conversation(
+          threadId: 'test-thread',
+          status: domain.Running(runId: 'test-run'),
+        );
 
-          await tester.pumpWidget(
-            createTestApp(
-              home: const Scaffold(body: MessageList()),
-              overrides: [
-                currentThreadProvider.overrideWith(
-                  (ref) => TestData.createThread(),
-                ),
-                allMessagesProvider.overrideWith((ref) async => messages),
-                activeRunNotifierOverride(
-                  const RunningState(
-                    conversation: conversation,
-                    streaming: TextStreaming(
-                      messageId: 'msg-2',
-                      user: ChatUser.assistant,
-                      text: 'Responding...',
-                    ),
+        await tester.pumpWidget(
+          createTestApp(
+            home: const Scaffold(body: MessageList()),
+            overrides: [
+              currentThreadProvider.overrideWith(
+                (ref) => TestData.createThread(),
+              ),
+              allMessagesProvider.overrideWith((ref) async => messages),
+              activeRunNotifierOverride(
+                const RunningState(
+                  conversation: conversation,
+                  streaming: TextStreaming(
+                    messageId: 'msg-2',
+                    user: ChatUser.assistant,
+                    text: 'Responding...',
                   ),
                 ),
-              ],
-            ),
-          );
-          await tester.pump();
-          await tester.pump();
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
 
-          final spacer = tester.widget<SizedBox>(
-            find.byKey(MessageList.trailingSpacerKey),
-          );
-          expect(spacer.height, greaterThan(0));
-        },
-      );
+        final spacer = tester.widget<SizedBox>(
+          find.byKey(MessageList.trailingSpacerKey),
+        );
+        expect(spacer.height, greaterThan(0));
+      });
     });
 
     group('Scroll-to-bottom button', () {
@@ -558,9 +551,7 @@ void main() {
               currentThreadProvider.overrideWith(
                 (ref) => TestData.createThread(),
               ),
-              allMessagesProvider.overrideWith(
-                (ref) async => manyMessages(),
-              ),
+              allMessagesProvider.overrideWith((ref) async => manyMessages()),
               activeRunNotifierOverride(const IdleState()),
             ],
           ),
@@ -577,9 +568,7 @@ void main() {
         expect(opacity.opacity, equals(0.0));
       });
 
-      testWidgets('appears after scrolling away from bottom', (
-        tester,
-      ) async {
+      testWidgets('appears after scrolling away from bottom', (tester) async {
         await tester.pumpWidget(
           createTestApp(
             home: const MessageList(),
@@ -587,9 +576,7 @@ void main() {
               currentThreadProvider.overrideWith(
                 (ref) => TestData.createThread(),
               ),
-              allMessagesProvider.overrideWith(
-                (ref) async => manyMessages(),
-              ),
+              allMessagesProvider.overrideWith((ref) async => manyMessages()),
               activeRunNotifierOverride(const IdleState()),
             ],
           ),
@@ -618,9 +605,7 @@ void main() {
               currentThreadProvider.overrideWith(
                 (ref) => TestData.createThread(),
               ),
-              allMessagesProvider.overrideWith(
-                (ref) async => manyMessages(),
-              ),
+              allMessagesProvider.overrideWith((ref) async => manyMessages()),
               activeRunNotifierOverride(const IdleState()),
             ],
           ),
@@ -657,9 +642,7 @@ void main() {
               currentThreadProvider.overrideWith(
                 (ref) => TestData.createThread(),
               ),
-              allMessagesProvider.overrideWith(
-                (ref) async => manyMessages(),
-              ),
+              allMessagesProvider.overrideWith((ref) async => manyMessages()),
               activeRunNotifierOverride(const IdleState()),
             ],
           ),
@@ -702,9 +685,7 @@ void main() {
               currentThreadProvider.overrideWith(
                 (ref) => TestData.createThread(),
               ),
-              allMessagesProvider.overrideWith(
-                (ref) async => manyMessages(),
-              ),
+              allMessagesProvider.overrideWith((ref) async => manyMessages()),
               activeRunNotifierOverride(const IdleState()),
             ],
           ),
@@ -750,9 +731,7 @@ void main() {
 
       test('returns historical messages unchanged for CompletedState', () {
         // Arrange
-        final history = [
-          TestData.createMessage(id: 'msg-1', text: 'Hello'),
-        ];
+        final history = [TestData.createMessage(id: 'msg-1', text: 'Hello')];
         const runState = CompletedState(
           conversation: Conversation(threadId: 'thread-1'),
           result: Success(),
@@ -768,26 +747,28 @@ void main() {
     });
 
     group('when running with AwaitingText', () {
-      test('returns historical messages unchanged when no thinking content',
-          () {
-        // Arrange
-        final history = [
-          TestData.createMessage(id: 'msg-1', text: 'User message'),
-        ];
-        const runState = RunningState(
-          conversation: Conversation(
-            threadId: 'thread-1',
-            status: Running(runId: 'run-1'),
-          ),
-        );
+      test(
+        'returns historical messages unchanged when no thinking content',
+        () {
+          // Arrange
+          final history = [
+            TestData.createMessage(id: 'msg-1', text: 'User message'),
+          ];
+          const runState = RunningState(
+            conversation: Conversation(
+              threadId: 'thread-1',
+              status: Running(runId: 'run-1'),
+            ),
+          );
 
-        // Act
-        final result = sut.computeDisplayMessages(history, runState);
+          // Act
+          final result = sut.computeDisplayMessages(history, runState);
 
-        // Assert
-        expect(result.messages, equals(history));
-        expect(result.hasSyntheticMessage, isFalse);
-      });
+          // Assert
+          expect(result.messages, equals(history));
+          expect(result.hasSyntheticMessage, isFalse);
+        },
+      );
 
       test('creates synthetic message for pre-text thinking', () {
         // Arrange
@@ -810,10 +791,7 @@ void main() {
         expect(result.messages.length, equals(1));
         final message = result.messages.first as TextMessage;
         expect(message.text, isEmpty);
-        expect(
-          message.thinkingText,
-          equals('Thinking before response...'),
-        );
+        expect(message.thinkingText, equals('Thinking before response...'));
       });
 
       test('synthetic pre-text thinking message is from assistant', () {
@@ -824,9 +802,7 @@ void main() {
             threadId: 'thread-1',
             status: Running(runId: 'run-1'),
           ),
-          streaming: AwaitingText(
-            bufferedThinkingText: 'Thinking...',
-          ),
+          streaming: AwaitingText(bufferedThinkingText: 'Thinking...'),
         );
 
         // Act
@@ -1192,22 +1168,20 @@ void main() {
     });
 
     test(
-      'returns viewportHeight when targetScrollOffset set but '
-      'viewportDimension is null',
-      () {
-        expect(
-          sut.computeSpacerHeight(
-            isStreaming: true,
-            lastMessageUser: ChatUser.user,
-            viewportHeight: 600,
-            targetScrollOffset: 100,
-            maxScrollExtent: 500,
-            viewportDimension: null,
-            currentSpacerHeight: 0,
-          ),
-          equals(600),
-        );
-      },
-    );
+        'returns viewportHeight when targetScrollOffset set but '
+        'viewportDimension is null', () {
+      expect(
+        sut.computeSpacerHeight(
+          isStreaming: true,
+          lastMessageUser: ChatUser.user,
+          viewportHeight: 600,
+          targetScrollOffset: 100,
+          maxScrollExtent: 500,
+          viewportDimension: null,
+          currentSpacerHeight: 0,
+        ),
+        equals(600),
+      );
+    });
   });
 }

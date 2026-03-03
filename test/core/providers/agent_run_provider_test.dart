@@ -27,11 +27,8 @@ const _roomId = 'room-1';
 const _threadId = 'thread-1';
 const _runId = 'run-abc';
 
-RunInfo _runInfo() => RunInfo(
-      id: _runId,
-      threadId: _threadId,
-      createdAt: DateTime(2026),
-    );
+RunInfo _runInfo() =>
+    RunInfo(id: _runId, threadId: _threadId, createdAt: DateTime(2026));
 
 List<BaseEvent> _happyPathEvents() => [
       const RunStartedEvent(threadId: _threadId, runId: _runId),
@@ -90,9 +87,7 @@ ProviderContainer createContainer({
 // ---------------------------------------------------------------------------
 
 void stubCreateRun(MockSoliplexApi api) {
-  when(() => api.createRun(any(), any())).thenAnswer(
-    (_) async => _runInfo(),
-  );
+  when(() => api.createRun(any(), any())).thenAnswer((_) async => _runInfo());
 }
 
 void stubRunAgent(
@@ -161,11 +156,9 @@ void main() {
         final states = <RunState>[];
         container.listen(agentRunProvider, (_, next) => states.add(next));
 
-        await container.read(agentRunProvider.notifier).startRun(
-              roomId: _roomId,
-              threadId: _threadId,
-              userMessage: 'Hi',
-            );
+        await container
+            .read(agentRunProvider.notifier)
+            .startRun(roomId: _roomId, threadId: _threadId, userMessage: 'Hi');
         await Future<void>.delayed(Duration.zero);
 
         expect(states.first, isA<RunningState>());
@@ -291,13 +284,12 @@ void main() {
         container = createContainer(api: api, agUiClient: agUiClient);
         addTearDown(container.dispose);
 
-        await container.read(agentRunProvider.notifier).startRun(
-              roomId: _roomId,
-              threadId: _threadId,
-              userMessage: 'Hi',
-            );
-        controller
-            .add(const RunStartedEvent(threadId: _threadId, runId: _runId));
+        await container
+            .read(agentRunProvider.notifier)
+            .startRun(roomId: _roomId, threadId: _threadId, userMessage: 'Hi');
+        controller.add(
+          const RunStartedEvent(threadId: _threadId, runId: _runId),
+        );
         await Future<void>.delayed(Duration.zero);
 
         expect(container.read(agentRunProvider), isA<RunningState>());
@@ -325,11 +317,9 @@ void main() {
         container = createContainer(api: api, agUiClient: agUiClient);
         addTearDown(container.dispose);
 
-        await container.read(agentRunProvider.notifier).startRun(
-              roomId: _roomId,
-              threadId: _threadId,
-              userMessage: 'Hi',
-            );
+        await container
+            .read(agentRunProvider.notifier)
+            .startRun(roomId: _roomId, threadId: _threadId, userMessage: 'Hi');
         await Future<void>.delayed(Duration.zero);
 
         final state = container.read(agentRunProvider);
@@ -340,18 +330,16 @@ void main() {
       });
 
       test('createRun failure transitions to FailedState', () async {
-        when(() => api.createRun(any(), any())).thenThrow(
-          const AuthException(message: 'Token expired'),
-        );
+        when(
+          () => api.createRun(any(), any()),
+        ).thenThrow(const AuthException(message: 'Token expired'));
 
         container = createContainer(api: api, agUiClient: agUiClient);
         addTearDown(container.dispose);
 
-        await container.read(agentRunProvider.notifier).startRun(
-              roomId: _roomId,
-              threadId: _threadId,
-              userMessage: 'Hi',
-            );
+        await container
+            .read(agentRunProvider.notifier)
+            .startRun(roomId: _roomId, threadId: _threadId, userMessage: 'Hi');
         await Future<void>.delayed(Duration.zero);
 
         final state = container.read(agentRunProvider);
@@ -372,11 +360,9 @@ void main() {
         container = createContainer(api: api, agUiClient: agUiClient);
         addTearDown(container.dispose);
 
-        await container.read(agentRunProvider.notifier).startRun(
-              roomId: _roomId,
-              threadId: _threadId,
-              userMessage: 'Hi',
-            );
+        await container
+            .read(agentRunProvider.notifier)
+            .startRun(roomId: _roomId, threadId: _threadId, userMessage: 'Hi');
         await Future<void>.delayed(Duration.zero);
 
         expect(container.read(agentRunProvider), isA<CompletedState>());

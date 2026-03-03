@@ -17,10 +17,7 @@ import 'package:soliplex_frontend/core/models/active_run_state.dart';
 /// Also shows client-side tool execution status via [ExecutingToolsState].
 class StatusIndicator extends StatelessWidget {
   /// Creates a status indicator.
-  const StatusIndicator({
-    required this.runState,
-    super.key,
-  });
+  const StatusIndicator({required this.runState, super.key});
 
   /// The active run state containing current activity information.
   final ActiveRunState runState;

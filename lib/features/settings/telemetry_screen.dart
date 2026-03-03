@@ -119,11 +119,7 @@ class TelemetryScreen extends ConsumerWidget {
     try {
       throw Exception('Test exception from Telemetry screen');
     } on Exception catch (e, s) {
-      Loggers.telemetry.error(
-        'Test exception fired',
-        error: e,
-        stackTrace: s,
-      );
+      Loggers.telemetry.error('Test exception fired', error: e, stackTrace: s);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error logged — check Logfire')),
       );

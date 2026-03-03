@@ -49,8 +49,10 @@ final sourceReferencesForUserMessageProvider =
 /// Sources:
 /// 1. Active run's conversation messageStates (if running or completed)
 /// 2. Cached thread history messageStates (for historical threads)
-final runIdForUserMessageProvider =
-    Provider.family<String?, String?>((ref, userMessageId) {
+final runIdForUserMessageProvider = Provider.family<String?, String?>((
+  ref,
+  userMessageId,
+) {
   if (userMessageId == null) return null;
 
   // Try active run first
