@@ -1,7 +1,9 @@
-import 'package:soliplex_agent/soliplex_agent.dart' show AgentApi, HostApi;
+import 'package:soliplex_agent/soliplex_agent.dart'
+    show AgentApi, FormApi, HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/src/df_functions.dart';
+import 'package:soliplex_scripting/src/stream_registry.dart';
 
 /// Wires [HostApi] methods to [HostFunction]s and registers them onto a
 /// [MontyBridge] via a [HostFunctionRegistry].
@@ -19,13 +21,22 @@ class HostFunctionWiring {
     required HostApi hostApi,
     AgentApi? agentApi,
     DfRegistry? dfRegistry,
+    StreamRegistry? streamRegistry,
+    FormApi? formApi,
+    List<HostFunction>? extraFunctions,
   })  : _hostApi = hostApi,
         _agentApi = agentApi,
-        _dfRegistry = dfRegistry ?? DfRegistry();
+        _dfRegistry = dfRegistry ?? DfRegistry(),
+        _streamRegistry = streamRegistry,
+        _formApi = formApi,
+        _extraFunctions = extraFunctions;
 
   final HostApi _hostApi;
   final AgentApi? _agentApi;
   final DfRegistry _dfRegistry;
+  final StreamRegistry? _streamRegistry;
+  final FormApi? _formApi;
+  final List<HostFunction>? _extraFunctions;
 
   /// Registers all host function categories (plus introspection builtins)
   /// onto [bridge].
@@ -34,8 +45,17 @@ class HostFunctionWiring {
       ..addCategory('df', buildDfFunctions(_dfRegistry))
       ..addCategory('chart', _chartFunctions())
       ..addCategory('platform', _platformFunctions());
+    if (_streamRegistry != null) {
+      registry.addCategory('stream', _streamFunctions());
+    }
+    if (_formApi != null) {
+      registry.addCategory('form', _formFunctions());
+    }
     if (_agentApi != null) {
       registry.addCategory('agent', _agentFunctions());
+    }
+    if (_extraFunctions != null && _extraFunctions.isNotEmpty) {
+      registry.addCategory('extra', _extraFunctions);
     }
     registry.registerAllOnto(bridge);
   }
@@ -59,6 +79,35 @@ class HostFunctionWiring {
               throw ArgumentError.value(raw, 'config', 'Expected a map.');
             }
             return _hostApi.registerChart(Map<String, Object?>.from(raw));
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'chart_update',
+            description: 'Update an existing chart with a new configuration.',
+            params: [
+              HostParam(
+                name: 'chart_id',
+                type: HostParamType.integer,
+                description: 'Chart handle returned by chart_create.',
+              ),
+              HostParam(
+                name: 'config',
+                type: HostParamType.map,
+                description: 'New chart configuration.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final chartId = (args['chart_id']! as num).toInt();
+            final raw = args['config'];
+            if (raw is! Map) {
+              throw ArgumentError.value(raw, 'config', 'Expected a map.');
+            }
+            return _hostApi.updateChart(
+              chartId,
+              Map<String, Object?>.from(raw),
+            );
           },
         ),
       ];
@@ -91,6 +140,135 @@ class HostFunctionWiring {
               throw ArgumentError.value(rawArgs, 'args', 'Expected a map.');
             }
             return _hostApi.invoke(name, Map<String, Object?>.from(rawArgs));
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'sleep',
+            description: 'Pause execution for a number of milliseconds.',
+            params: [
+              HostParam(
+                name: 'ms',
+                type: HostParamType.integer,
+                description: 'Duration in milliseconds.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final ms = (args['ms']! as num).toInt();
+            await Future<void>.delayed(Duration(milliseconds: ms));
+            return null;
+          },
+        ),
+      ];
+
+  List<HostFunction> _formFunctions() => [
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'form_create',
+            description: 'Create a dynamic form with field definitions.',
+            params: [
+              HostParam(
+                name: 'fields',
+                type: HostParamType.list,
+                description: 'List of field definition maps.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final raw = args['fields']! as List<Object?>;
+            final fields = <Map<String, Object?>>[];
+            for (final item in raw) {
+              fields.add(Map<String, Object?>.from(item! as Map));
+            }
+            return _formApi!.createForm(fields);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'form_set_errors',
+            description: 'Set validation errors on a form.',
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Form handle.',
+              ),
+              HostParam(
+                name: 'errors',
+                type: HostParamType.map,
+                description: 'Map of field name to error message.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = (args['handle']! as num).toInt();
+            final raw = args['errors'];
+            if (raw is! Map) {
+              throw ArgumentError.value(
+                raw,
+                'errors',
+                'Expected a map.',
+              );
+            }
+            return _formApi!.setFormErrors(
+              handle,
+              Map<String, String>.from(raw),
+            );
+          },
+        ),
+      ];
+
+  List<HostFunction> _streamFunctions() => [
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'stream_subscribe',
+            description: 'Subscribe to a named data stream.',
+            params: [
+              HostParam(
+                name: 'name',
+                type: HostParamType.string,
+                description: 'Stream name.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final name = args['name']! as String;
+            return _streamRegistry!.subscribe(name);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'stream_next',
+            description: 'Pull the next value from a stream subscription.',
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Subscription handle.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = (args['handle']! as num).toInt();
+            return _streamRegistry!.next(handle);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'stream_close',
+            description: 'Close a stream subscription early.',
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Subscription handle.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = (args['handle']! as num).toInt();
+            return _streamRegistry!.close(handle);
           },
         ),
       ];
@@ -133,7 +311,7 @@ class HostFunctionWiring {
           ),
           handler: (args) async {
             final raw = args['handles']! as List<Object?>;
-            final handles = List<int>.from(raw);
+            final handles = raw.cast<num>().map((n) => n.toInt()).toList();
             return _agentApi!.waitAll(handles);
           },
         ),
@@ -150,14 +328,15 @@ class HostFunctionWiring {
             ],
           ),
           handler: (args) async {
-            final handle = args['handle']! as int;
+            final handle = (args['handle']! as num).toInt();
             return _agentApi!.getResult(handle);
           },
         ),
         HostFunction(
           schema: const HostFunctionSchema(
             name: 'ask_llm',
-            description: 'Spawn an agent and return its result in one call.',
+            description: 'Send a prompt to an LLM and return the response text '
+                'and thread ID. Pass thread_id to continue a conversation.',
             params: [
               HostParam(
                 name: 'prompt',
@@ -171,14 +350,27 @@ class HostFunctionWiring {
                 defaultValue: 'general',
                 description: 'Room ID (defaults to "general").',
               ),
+              HostParam(
+                name: 'thread_id',
+                type: HostParamType.string,
+                isRequired: false,
+                description: 'Thread ID to continue an existing conversation.',
+              ),
             ],
           ),
           handler: (args) async {
             final prompt = args['prompt']! as String;
             final room = args['room']! as String;
+            final threadId = args['thread_id'] as String?;
             final api = _agentApi!;
-            final handle = await api.spawnAgent(room, prompt);
-            return api.getResult(handle);
+            final handle = await api.spawnAgent(
+              room,
+              prompt,
+              threadId: threadId,
+            );
+            final tid = api.getThreadId(handle);
+            final result = await api.getResult(handle);
+            return <String, Object?>{'text': result, 'thread_id': tid};
           },
         ),
       ];

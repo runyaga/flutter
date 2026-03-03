@@ -28,15 +28,22 @@ class FakeAgentApi implements AgentApi {
   /// Recorded calls as `{methodName: [args]}`.
   final Map<String, List<Object?>> calls = {};
 
+  /// Thread ID returned by [getThreadId].
+  String threadIdResult = 'fake-thread-id';
+
   @override
   Future<int> spawnAgent(
     String roomId,
     String prompt, {
+    String? threadId,
     Duration? timeout,
   }) async {
-    calls['spawnAgent'] = [roomId, prompt, timeout];
+    calls['spawnAgent'] = [roomId, prompt, threadId, timeout];
     return spawnResult++;
   }
+
+  @override
+  String getThreadId(int handle) => threadIdResult;
 
   @override
   Future<List<String>> waitAll(List<int> handles, {Duration? timeout}) async {

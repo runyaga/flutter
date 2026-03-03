@@ -50,6 +50,8 @@ dependencies:
     path: packages/soliplex_schema
   soliplex_scripting:
     path: packages/soliplex_scripting
+  soliplex_showcase:
+    path: packages/soliplex_showcase
   url_launcher: ^6.3.2
   uuid: ^4.5.1
   wakelock_plus:

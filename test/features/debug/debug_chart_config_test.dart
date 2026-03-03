@@ -84,6 +84,133 @@ void main() {
       });
     });
 
+    group('pie chart', () {
+      test('parses valid config', () {
+        final config = DebugChartConfig.fromMap({
+          'type': 'pie',
+          'title': 'Market Share',
+          'labels': ['Chrome', 'Safari', 'Firefox'],
+          'values': [65.0, 18.5, 6.3],
+          'center_radius': 50,
+        });
+
+        expect(config, isA<PieChartConfig>());
+        final pie = config as PieChartConfig;
+        expect(pie.title, 'Market Share');
+        expect(pie.labels, ['Chrome', 'Safari', 'Firefox']);
+        expect(pie.values, [65.0, 18.5, 6.3]);
+        expect(pie.centerRadius, 50.0);
+      });
+
+      test('uses defaults for missing optional fields', () {
+        final config = DebugChartConfig.fromMap({'type': 'pie'});
+
+        final pie = config as PieChartConfig;
+        expect(pie.labels, isEmpty);
+        expect(pie.values, isEmpty);
+        expect(pie.centerRadius, 40.0);
+      });
+    });
+
+    group('radar chart', () {
+      test('parses valid config', () {
+        final config = DebugChartConfig.fromMap({
+          'type': 'radar',
+          'title': 'Performance',
+          'axes': ['Speed', 'Quality', 'Cost'],
+          'values': [80, 90, 70],
+        });
+
+        expect(config, isA<RadarChartConfig>());
+        final radar = config as RadarChartConfig;
+        expect(radar.title, 'Performance');
+        expect(radar.axes, ['Speed', 'Quality', 'Cost']);
+        expect(radar.values, [80.0, 90.0, 70.0]);
+      });
+    });
+
+    group('image config', () {
+      test('parses valid config', () {
+        final config = DebugChartConfig.fromMap({
+          'type': 'image',
+          'title': 'Test Image',
+          'width': 2,
+          'height': 2,
+          'pixels': [
+            255,
+            0,
+            0,
+            255,
+            0,
+            255,
+            0,
+            255,
+            0,
+            0,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+          ],
+        });
+
+        expect(config, isA<ImageConfig>());
+        final img = config as ImageConfig;
+        expect(img.width, 2);
+        expect(img.height, 2);
+        expect(img.pixels, hasLength(16));
+      });
+    });
+
+    group('graph config', () {
+      test('parses valid config', () {
+        final config = DebugChartConfig.fromMap({
+          'type': 'graph',
+          'title': 'Network',
+          'nodes': ['A', 'B', 'C'],
+          'edges': [
+            [0, 1],
+            [1, 2],
+          ],
+          'positions': [
+            [0, 0],
+            [1, 0],
+            [0.5, 1],
+          ],
+        });
+
+        expect(config, isA<GraphConfig>());
+        final graph = config as GraphConfig;
+        expect(graph.nodes, ['A', 'B', 'C']);
+        expect(graph.edges, [(0, 1), (1, 2)]);
+        expect(graph.positions, hasLength(3));
+      });
+    });
+
+    group('heatmap config', () {
+      test('parses valid config', () {
+        final config = DebugChartConfig.fromMap({
+          'type': 'heatmap',
+          'title': 'Correlation',
+          'rows': 2,
+          'cols': 2,
+          'values': [1.0, 0.5, 0.5, 1.0],
+          'row_labels': ['A', 'B'],
+          'col_labels': ['A', 'B'],
+        });
+
+        expect(config, isA<HeatmapConfig>());
+        final hm = config as HeatmapConfig;
+        expect(hm.rows, 2);
+        expect(hm.cols, 2);
+        expect(hm.values, [1.0, 0.5, 0.5, 1.0]);
+        expect(hm.rowLabels, ['A', 'B']);
+        expect(hm.colLabels, ['A', 'B']);
+      });
+    });
+
     group('error cases', () {
       test('throws FormatException when type is missing', () {
         expect(
@@ -101,7 +228,7 @@ void main() {
 
       test('throws FormatException for unknown chart type', () {
         expect(
-          () => DebugChartConfig.fromMap({'type': 'pie'}),
+          () => DebugChartConfig.fromMap({'type': 'unknown_type'}),
           throwsA(
             isA<FormatException>().having(
               (e) => e.message,
