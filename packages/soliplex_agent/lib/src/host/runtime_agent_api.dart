@@ -21,17 +21,23 @@ class RuntimeAgentApi implements AgentApi {
   Future<int> spawnAgent(
     String roomId,
     String prompt, {
+    String? threadId,
     Duration? timeout,
   }) async {
     final session = await _runtime.spawn(
       roomId: roomId,
       prompt: prompt,
+      threadId: threadId,
       timeout: timeout,
+      ephemeral: false,
     );
     final handle = _nextHandle++;
     _handles[handle] = session;
     return handle;
   }
+
+  @override
+  String getThreadId(int handle) => _lookupSession(handle).threadKey.threadId;
 
   @override
   Future<List<String>> waitAll(List<int> handles, {Duration? timeout}) async {

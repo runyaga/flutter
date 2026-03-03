@@ -37,12 +37,17 @@ class _PendingFuture {
 /// Orchestrates the Monty start/resume loop, dispatching external function
 /// calls to registered [HostFunction] handlers and emitting [BridgeEvent]s.
 class DefaultMontyBridge implements MontyBridge {
-  DefaultMontyBridge({MontyPlatform? platform, MontyLimits? limits})
-      : _explicitPlatform = platform,
-        _limits = limits;
+  DefaultMontyBridge({
+    MontyPlatform? platform,
+    MontyLimits? limits,
+    bool useFutures = true,
+  })  : _explicitPlatform = platform,
+        _limits = limits,
+        _useFutures = useFutures;
 
   final MontyPlatform? _explicitPlatform;
   final MontyLimits? _limits;
+  final bool _useFutures;
   final Map<String, HostFunction> _functions = {};
   final Map<int, _PendingFuture> _pendingFutures = {};
   int _idCounter = 0;
@@ -105,7 +110,7 @@ class DefaultMontyBridge implements MontyBridge {
     final printBuffer = StringBuffer();
     final wrappedCode = '$_printPreamble\n$code';
     final externalFunctions = [_consoleWriteFn, ..._functions.keys];
-    final futuresCapable = _platform is MontyFutureCapable;
+    final futuresCapable = _useFutures && _platform is MontyFutureCapable;
 
     _pendingFutures.clear();
 

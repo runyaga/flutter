@@ -6,8 +6,14 @@
 abstract interface class AgentApi {
   /// Spawns a new agent in [roomId] with the given [prompt].
   ///
+  /// If [threadId] is provided, continues an existing conversation thread.
   /// Returns an integer handle for tracking the agent session.
-  Future<int> spawnAgent(String roomId, String prompt, {Duration? timeout});
+  Future<int> spawnAgent(
+    String roomId,
+    String prompt, {
+    String? threadId,
+    Duration? timeout,
+  });
 
   /// Waits for all agents identified by [handles] to complete.
   ///
@@ -16,6 +22,9 @@ abstract interface class AgentApi {
 
   /// Returns the output text for a completed agent [handle].
   Future<String> getResult(int handle, {Duration? timeout});
+
+  /// Returns the thread ID for a given agent [handle].
+  String getThreadId(int handle);
 
   /// Cancels the agent identified by [handle].
   ///
