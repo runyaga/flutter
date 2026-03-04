@@ -3,7 +3,7 @@ import 'package:dart_monty_platform_interface/dart_monty_testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_frontend/core/services/negotiated_room_mapper.dart';
-import 'package:soliplex_monty/soliplex_monty.dart';
+import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 
 const _usage = MontyResourceUsage(
   memoryBytesUsed: 1024,

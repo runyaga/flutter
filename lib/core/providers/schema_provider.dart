@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:soliplex_frontend/core/logging/loggers.dart';
 import 'package:soliplex_frontend/core/providers/api_provider.dart';
-import 'package:soliplex_monty/soliplex_monty.dart';
+import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 
 /// SchemaExecutor singleton (empty until initialized).
 ///

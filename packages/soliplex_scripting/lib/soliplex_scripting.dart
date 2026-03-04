@@ -4,7 +4,12 @@ library;
 export 'package:soliplex_agent/soliplex_agent.dart' show ThreadKey;
 
 export 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart'
-    show HostFunction, HostFunctionSchema, HostParam, HostParamType;
+    show
+        HostFunction,
+        HostFunctionSchema,
+        HostParam,
+        HostParamType,
+        MontyLimitsDefaults;
 
 export 'src/ag_ui_bridge_adapter.dart';
 export 'src/bridge_cache.dart';

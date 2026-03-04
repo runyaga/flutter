@@ -95,12 +95,14 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
     _executor = MontyToolExecutor(
       threadKey: _threadKey,
       bridgeCache: _bridgeCache,
+      executionTimeout: const Duration(seconds: 60),
       hostWiring: HostFunctionWiring(
         hostApi: hostApi,
         dfRegistry: dfRegistry,
         streamRegistry: _streamRegistry,
         formApi: _formApi,
         agentApi: RuntimeAgentApi(runtime: runtime),
+        agentTimeout: const Duration(seconds: 60),
         extraFunctions: [
           HostFunction(
             schema: const HostFunctionSchema(

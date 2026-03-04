@@ -39,10 +39,7 @@ class _FakeHostApi implements HostApi {
   bool updateChart(int chartId, Map<String, Object?> chartConfig) => false;
 
   @override
-  Future<Object?> invoke(
-    String name,
-    Map<String, Object?> args,
-  ) async {
+  Future<Object?> invoke(String name, Map<String, Object?> args) async {
     calls['invoke'] = [name, args];
     return 'ok';
   }
@@ -96,9 +93,7 @@ class _ScriptableBridge implements MontyBridge {
           ..add(BridgeToolCallStart(callId: 'c1', name: fnName))
           ..add(BridgeToolCallArgs(callId: 'c1', delta: argsJson));
 
-        final args = Map<String, Object?>.from(
-          jsonDecode(argsJson) as Map,
-        );
+        final args = Map<String, Object?>.from(jsonDecode(argsJson) as Map);
         final result = await fn.handler(args);
         final resultStr = jsonEncode(result);
 
@@ -111,9 +106,7 @@ class _ScriptableBridge implements MontyBridge {
     controller
       ..add(const BridgeStepFinished(stepId: 'step-1'))
       ..add(const BridgeTextStart(messageId: 'msg-1'))
-      ..add(
-        const BridgeTextContent(messageId: 'msg-1', delta: 'done'),
-      )
+      ..add(const BridgeTextContent(messageId: 'msg-1', delta: 'done'))
       ..add(const BridgeTextEnd(messageId: 'msg-1'))
       ..add(const BridgeRunFinished(threadId: 't', runId: 'r'));
     await controller.close();
@@ -131,10 +124,7 @@ void main() {
         hostApi: hostApi,
         dfRegistry: DfRegistry(),
       );
-      final cache = BridgeCache(
-        limit: 2,
-        bridgeFactory: _ScriptableBridge.new,
-      );
+      final cache = BridgeCache(limit: 2, bridgeFactory: _ScriptableBridge.new);
       final executor = MontyToolExecutor(
         threadKey: _key,
         bridgeCache: cache,
@@ -166,10 +156,7 @@ void main() {
         hostApi: hostApi,
         dfRegistry: DfRegistry(),
       );
-      final cache = BridgeCache(
-        limit: 2,
-        bridgeFactory: _ScriptableBridge.new,
-      );
+      final cache = BridgeCache(limit: 2, bridgeFactory: _ScriptableBridge.new);
       final executor = MontyToolExecutor(
         threadKey: _key,
         bridgeCache: cache,
@@ -187,10 +174,7 @@ void main() {
 
       final registry = await resolver.call('room-1');
 
-      expect(
-        registry.contains(PythonExecutorTool.toolName),
-        isTrue,
-      );
+      expect(registry.contains(PythonExecutorTool.toolName), isTrue);
 
       final toolCall = ToolCallInfo(
         id: 'tc-e2e',
@@ -215,14 +199,8 @@ void main() {
         spawnResult: 42,
         getResultResult: 'agent says hello',
       );
-      final wiring = HostFunctionWiring(
-        hostApi: hostApi,
-        agentApi: agentApi,
-      );
-      final cache = BridgeCache(
-        limit: 2,
-        bridgeFactory: _ScriptableBridge.new,
-      );
+      final wiring = HostFunctionWiring(hostApi: hostApi, agentApi: agentApi);
+      final cache = BridgeCache(limit: 2, bridgeFactory: _ScriptableBridge.new);
       final executor = MontyToolExecutor(
         threadKey: _key,
         bridgeCache: cache,
@@ -252,14 +230,8 @@ void main() {
         spawnResult: 7,
         getResultResult: 'the answer is 42',
       );
-      final wiring = HostFunctionWiring(
-        hostApi: hostApi,
-        agentApi: agentApi,
-      );
-      final cache = BridgeCache(
-        limit: 2,
-        bridgeFactory: _ScriptableBridge.new,
-      );
+      final wiring = HostFunctionWiring(hostApi: hostApi, agentApi: agentApi);
+      final cache = BridgeCache(limit: 2, bridgeFactory: _ScriptableBridge.new);
       final executor = MontyToolExecutor(
         threadKey: _key,
         bridgeCache: cache,
@@ -288,17 +260,9 @@ void main() {
 
     test('wait_all via executor → bridge → AgentApi', () async {
       final hostApi = _FakeHostApi();
-      final agentApi = FakeAgentApi(
-        waitAllResult: ['result-a', 'result-b'],
-      );
-      final wiring = HostFunctionWiring(
-        hostApi: hostApi,
-        agentApi: agentApi,
-      );
-      final cache = BridgeCache(
-        limit: 2,
-        bridgeFactory: _ScriptableBridge.new,
-      );
+      final agentApi = FakeAgentApi(waitAllResult: ['result-a', 'result-b']);
+      final wiring = HostFunctionWiring(hostApi: hostApi, agentApi: agentApi);
+      final cache = BridgeCache(limit: 2, bridgeFactory: _ScriptableBridge.new);
       final executor = MontyToolExecutor(
         threadKey: _key,
         bridgeCache: cache,
@@ -308,9 +272,7 @@ void main() {
       final toolCall = ToolCallInfo(
         id: 'tc-agent-wait',
         name: PythonExecutorTool.toolName,
-        arguments: jsonEncode({
-          'code': 'wait_all({"handles": [1, 2]})',
-        }),
+        arguments: jsonEncode({'code': 'wait_all({"handles": [1, 2]})'}),
       );
 
       final result = await executor.execute(toolCall);

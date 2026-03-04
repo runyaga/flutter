@@ -1,7 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:soliplex_client/soliplex_client.dart';
-import 'package:soliplex_monty/soliplex_monty.dart';
+import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 
 /// Validates a [Room]'s tool definitions through [SchemaExecutor].
 ///

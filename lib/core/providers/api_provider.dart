@@ -9,7 +9,8 @@ import 'package:soliplex_frontend/core/auth/auth_provider.dart';
 import 'package:soliplex_frontend/core/logging/loggers.dart';
 import 'package:soliplex_frontend/core/providers/config_provider.dart';
 import 'package:soliplex_frontend/core/providers/http_log_provider.dart';
-import 'package:soliplex_scripting/soliplex_scripting.dart' show BridgeCache;
+import 'package:soliplex_scripting/soliplex_scripting.dart'
+    show BridgeCache, MontyLimitsDefaults;
 
 /// Provider for platform constraints (WASM vs native concurrency limits).
 final platformConstraintsProvider = Provider<PlatformConstraints>((ref) {
@@ -23,7 +24,10 @@ final platformConstraintsProvider = Provider<PlatformConstraints>((ref) {
 /// Keyed by `ThreadKey`. Limit comes from [PlatformConstraints].
 final bridgeCacheProvider = Provider<BridgeCache>((ref) {
   final constraints = ref.read(platformConstraintsProvider);
-  final cache = BridgeCache(limit: constraints.maxConcurrentBridges);
+  final cache = BridgeCache(
+    limit: constraints.maxConcurrentBridges,
+    defaultLimits: MontyLimitsDefaults.tool,
+  );
   ref.onDispose(cache.disposeAll);
   return cache;
 });

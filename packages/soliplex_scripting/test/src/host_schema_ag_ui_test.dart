@@ -81,30 +81,12 @@ void main() {
       final params = tool.parameters as Map<String, Object?>;
       final properties = params['properties']! as Map<String, Object?>;
 
-      expect(
-        (properties['s']! as Map)['type'],
-        'string',
-      );
-      expect(
-        (properties['i']! as Map)['type'],
-        'integer',
-      );
-      expect(
-        (properties['n']! as Map)['type'],
-        'number',
-      );
-      expect(
-        (properties['b']! as Map)['type'],
-        'boolean',
-      );
-      expect(
-        (properties['l']! as Map)['type'],
-        'array',
-      );
-      expect(
-        (properties['m']! as Map)['type'],
-        'object',
-      );
+      expect((properties['s']! as Map)['type'], 'string');
+      expect((properties['i']! as Map)['type'], 'integer');
+      expect((properties['n']! as Map)['type'], 'number');
+      expect((properties['b']! as Map)['type'], 'boolean');
+      expect((properties['l']! as Map)['type'], 'array');
+      expect((properties['m']! as Map)['type'], 'object');
     });
   });
 }
