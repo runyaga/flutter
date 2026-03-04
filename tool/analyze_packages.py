@@ -46,6 +46,15 @@ def main() -> int:
             skipped.append(name)
             continue
         print(f"Analyzing {name}...")
+        # Ensure dependencies are resolved (needed in worktrees / fresh clones).
+        pkg_config = os.path.join(pkg_path, ".dart_tool", "package_config.json")
+        if not os.path.isfile(pkg_config):
+            subprocess.run(
+                ["dart", "pub", "get"],
+                cwd=pkg_path,
+                env=env,
+                capture_output=True,
+            )
         result = subprocess.run(
             ["dart", "analyze", "--fatal-infos", pkg_path],
             env=env,
