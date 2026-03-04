@@ -291,7 +291,8 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
           registry.get(_handle(args)).groupAgg(
                 _castStringList(args['group_cols'])!,
                 Map<String, String>.from(
-                    args['agg_map']! as Map<String, Object?>),
+                  args['agg_map']! as Map<String, Object?>,
+                ),
               ),
         ),
       ),
@@ -356,7 +357,8 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
         handler: (args) async => registry.register(
           registry.get(_handle(args)).rename(
                 Map<String, String>.from(
-                    args['mapping']! as Map<String, Object?>),
+                  args['mapping']! as Map<String, Object?>,
+                ),
               ),
         ),
       ),
@@ -518,7 +520,9 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
         ),
         handler: (args) async => registry.register(
           registry.get(_handle(args)).nsmallest(
-              (args['n']! as num).toInt(), args['column']! as String),
+                (args['n']! as num).toInt(),
+                args['column']! as String,
+              ),
         ),
       ),
 

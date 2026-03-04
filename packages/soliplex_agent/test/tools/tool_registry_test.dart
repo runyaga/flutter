@@ -1,6 +1,4 @@
-import 'package:ag_ui/ag_ui.dart';
-import 'package:soliplex_client/src/application/tool_registry.dart';
-import 'package:soliplex_client/src/domain/chat_message.dart';
+import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:test/test.dart';
 
 /// Inline test tool — no demo tool shipped in the package.

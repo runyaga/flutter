@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_agent/soliplex_agent.dart';
 
 ToolRegistry buildDemoToolRegistry() {
   return const ToolRegistry()

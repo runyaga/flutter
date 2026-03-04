@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:soliplex_agent/soliplex_agent.dart'
+    show ClientTool, ToolRegistry;
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_client/soliplex_client.dart' as domain show Running;
 import 'package:soliplex_frontend/core/models/active_run_state.dart';

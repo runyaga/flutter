@@ -1,4 +1,4 @@
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_agent/src/tools/tool_registry.dart';
 
 /// Resolves a room-scoped [ToolRegistry].
 ///

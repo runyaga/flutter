@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:soliplex_agent/soliplex_agent.dart' show ToolRegistry;
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_client/soliplex_client.dart' as domain
     show Cancelled, Completed, Conversation, Failed, Idle, Running;
