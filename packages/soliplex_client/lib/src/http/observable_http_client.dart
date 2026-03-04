@@ -6,6 +6,7 @@ import 'package:soliplex_client/src/http/http_observer.dart';
 import 'package:soliplex_client/src/http/http_redactor.dart';
 import 'package:soliplex_client/src/http/http_response.dart';
 import 'package:soliplex_client/src/http/soliplex_http_client.dart';
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 
 /// HTTP client decorator that notifies observers of all HTTP activity.
 ///
@@ -155,6 +156,7 @@ class ObservableHttpClient implements SoliplexHttpClient {
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
+    CancelToken? cancelToken,
   }) async {
     final requestId = _generateRequestId();
     final startTime = DateTime.now();
@@ -187,6 +189,7 @@ class ObservableHttpClient implements SoliplexHttpClient {
       uri,
       headers: headers,
       body: body,
+      cancelToken: cancelToken,
     );
 
     var emittedEnd = false;

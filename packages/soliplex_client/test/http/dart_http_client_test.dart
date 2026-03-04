@@ -4,7 +4,8 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_client/soliplex_client.dart' hide CancelToken;
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 import 'package:test/test.dart';
 
 class MockHttpClient extends Mock implements http.Client {}
@@ -759,6 +760,80 @@ void main() {
         expect(response.reasonPhrase, equals('Unauthorized'));
         expect(response.isSuccess, isFalse);
       });
+
+      test(
+        'throws CancelledException when token already cancelled',
+        () async {
+          final token = CancelToken()..cancel('Pre-cancelled');
+
+          await expectLater(
+            client.requestStream(
+              'GET',
+              Uri.parse('https://example.com/stream'),
+              cancelToken: token,
+            ),
+            throwsA(
+              isA<CancelledException>().having(
+                (e) => e.reason,
+                'reason',
+                'Pre-cancelled',
+              ),
+            ),
+          );
+
+          verifyNever(() => mockClient.send(any()));
+        },
+      );
+
+      test(
+        'throws CancelledException when cancelled after send',
+        () async {
+          final token = CancelToken();
+
+          when(() => mockClient.send(any())).thenAnswer((_) async {
+            token.cancel('Cancelled after send');
+            return _createStreamedResponse(statusCode: 200, body: []);
+          });
+
+          await expectLater(
+            client.requestStream(
+              'GET',
+              Uri.parse('https://example.com/stream'),
+              cancelToken: token,
+            ),
+            throwsA(isA<CancelledException>()),
+          );
+        },
+      );
+
+      test(
+        'does not wrap CancelledException in NetworkException',
+        () async {
+          final token = CancelToken()..cancel('Already cancelled');
+
+          await expectLater(
+            client.requestStream(
+              'GET',
+              Uri.parse('https://example.com/stream'),
+              cancelToken: token,
+            ),
+            throwsA(isA<CancelledException>()),
+          );
+
+          // Verify it's NOT a NetworkException
+          try {
+            await client.requestStream(
+              'GET',
+              Uri.parse('https://example.com/stream'),
+              cancelToken: CancelToken()..cancel(),
+            );
+            fail('Expected CancelledException');
+          } catch (e) {
+            expect(e, isNot(isA<NetworkException>()));
+            expect(e, isA<CancelledException>());
+          }
+        },
+      );
     });
 
     group('close', () {

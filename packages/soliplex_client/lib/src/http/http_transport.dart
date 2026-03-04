@@ -162,6 +162,7 @@ class HttpTransport {
       uri,
       headers: requestHeaders,
       body: requestBody,
+      cancelToken: cancelToken,
     );
 
     try {

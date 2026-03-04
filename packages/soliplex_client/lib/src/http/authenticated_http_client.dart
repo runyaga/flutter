@@ -1,5 +1,6 @@
 import 'package:soliplex_client/src/http/http_response.dart';
 import 'package:soliplex_client/src/http/soliplex_http_client.dart';
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 
 /// HTTP client decorator that injects Bearer token authentication.
 ///
@@ -57,12 +58,14 @@ class AuthenticatedHttpClient implements SoliplexHttpClient {
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
+    CancelToken? cancelToken,
   }) {
     return _inner.requestStream(
       method,
       uri,
       headers: _injectAuth(headers),
       body: body,
+      cancelToken: cancelToken,
     );
   }
 

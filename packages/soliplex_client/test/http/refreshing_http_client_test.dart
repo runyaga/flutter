@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:mocktail/mocktail.dart';
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_client/soliplex_client.dart' hide CancelToken;
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 import 'package:test/test.dart';
 
 class MockSoliplexHttpClient extends Mock implements SoliplexHttpClient {}
@@ -70,6 +71,7 @@ class FakeHttpClient implements SoliplexHttpClient {
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
+    CancelToken? cancelToken,
   }) async {
     return const StreamedHttpResponse(
       statusCode: 200,
@@ -401,6 +403,53 @@ void main() {
         final subscription = response.body.listen((_) {});
 
         verify(() => mockRefresher.refreshIfExpiringSoon()).called(1);
+
+        await subscription.cancel();
+        await controller.close();
+        client.close();
+      });
+
+      test('forwards cancelToken to inner client', () async {
+        final controller = StreamController<List<int>>();
+        final token = CancelToken();
+
+        when(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
+
+        final client = RefreshingHttpClient(
+          inner: mockClient,
+          refresher: mockRefresher,
+        );
+
+        final response = await client.requestStream(
+          'GET',
+          Uri.parse('https://example.com/stream'),
+          cancelToken: token,
+        );
+
+        final subscription = response.body.listen((_) {});
+
+        verify(
+          () => mockClient.requestStream(
+            'GET',
+            Uri.parse('https://example.com/stream'),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            cancelToken: token,
+          ),
+        ).called(1);
 
         await subscription.cancel();
         await controller.close();

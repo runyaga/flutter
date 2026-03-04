@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:mocktail/mocktail.dart';
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_client/soliplex_client.dart' hide CancelToken;
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 import 'package:test/test.dart';
 
 class MockSoliplexHttpClient extends Mock implements SoliplexHttpClient {}
@@ -1664,6 +1665,7 @@ void main() {
             any(),
             headers: any(named: 'headers'),
             body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) async => StreamedHttpResponse(
@@ -1687,6 +1689,48 @@ void main() {
             Uri.parse('https://example.com/stream'),
             headers: const {'Accept': 'text/event-stream'},
             body: 'test body',
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).called(1);
+
+        await subscription.cancel();
+        await controller.close();
+      });
+
+      test('forwards cancelToken to wrapped client', () async {
+        final controller = StreamController<List<int>>();
+        final token = CancelToken();
+
+        when(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
+
+        final response = await observableClient.requestStream(
+          'GET',
+          Uri.parse('https://example.com/stream'),
+          cancelToken: token,
+        );
+
+        final subscription = response.body.listen((_) {});
+
+        verify(
+          () => mockClient.requestStream(
+            'GET',
+            Uri.parse('https://example.com/stream'),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            cancelToken: token,
           ),
         ).called(1);
 

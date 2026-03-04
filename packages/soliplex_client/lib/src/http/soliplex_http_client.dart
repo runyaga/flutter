@@ -1,4 +1,6 @@
+import 'package:soliplex_client/src/errors/exceptions.dart';
 import 'package:soliplex_client/src/http/http_response.dart';
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 
 /// Default timeout for HTTP requests (10 minutes).
 ///
@@ -57,6 +59,8 @@ abstract class SoliplexHttpClient {
   /// - [uri]: The request URI
   /// - [headers]: Optional request headers
   /// - [body]: Optional request body (same types as [request])
+  /// - [cancelToken]: Optional token for cancelling the request. When
+  ///   cancelled, throws [CancelledException] instead of proceeding.
   ///
   /// Throws `NetworkException` on connection failures.
   /// Throws `CancelledException` if the request was cancelled.
@@ -65,6 +69,7 @@ abstract class SoliplexHttpClient {
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
+    CancelToken? cancelToken,
   });
 
   /// Closes the client and releases any resources.

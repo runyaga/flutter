@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:soliplex_client/src/errors/exceptions.dart';
 import 'package:soliplex_client/src/http/http_response.dart';
 import 'package:soliplex_client/src/http/soliplex_http_client.dart';
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 
 /// Default HTTP client using `package:http`.
 ///
@@ -117,13 +118,17 @@ class DartHttpClient implements SoliplexHttpClient {
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
+    CancelToken? cancelToken,
   }) async {
     _checkNotClosed();
+    cancelToken?.throwIfCancelled();
 
     final request = _createRequest(method, uri, headers, body);
 
     try {
       final streamedResponse = await _client.send(request);
+
+      cancelToken?.throwIfCancelled();
 
       return StreamedHttpResponse(
         statusCode: streamedResponse.statusCode,
@@ -139,6 +144,8 @@ class DartHttpClient implements SoliplexHttpClient {
           },
         ),
       );
+    } on CancelledException {
+      rethrow;
     } on http.ClientException catch (e, stackTrace) {
       throw NetworkException(
         message: 'Client error: ${e.message}',

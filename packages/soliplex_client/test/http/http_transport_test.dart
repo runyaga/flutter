@@ -1065,6 +1065,7 @@ void main() {
             any(),
             headers: any(named: 'headers'),
             body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) async => StreamedHttpResponse(
@@ -1122,6 +1123,7 @@ void main() {
             any(),
             headers: any(named: 'headers'),
             body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) async => StreamedHttpResponse(
@@ -1201,6 +1203,7 @@ void main() {
             any(),
             headers: any(named: 'headers'),
             body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) async => StreamedHttpResponse(

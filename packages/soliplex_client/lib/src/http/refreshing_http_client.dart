@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:soliplex_client/src/http/http_response.dart';
 import 'package:soliplex_client/src/http/soliplex_http_client.dart';
 import 'package:soliplex_client/src/http/token_refresher.dart';
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 
 /// HTTP client decorator that handles token refresh.
 ///
@@ -134,11 +135,18 @@ class RefreshingHttpClient implements SoliplexHttpClient {
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
+    CancelToken? cancelToken,
   }) async {
     // Proactive refresh only - can't retry mid-stream on 401
     await _refresher.refreshIfExpiringSoon();
 
-    return _inner.requestStream(method, uri, headers: headers, body: body);
+    return _inner.requestStream(
+      method,
+      uri,
+      headers: headers,
+      body: body,
+      cancelToken: cancelToken,
+    );
   }
 
   @override

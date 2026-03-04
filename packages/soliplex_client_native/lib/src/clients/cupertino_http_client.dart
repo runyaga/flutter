@@ -5,7 +5,8 @@ import 'dart:typed_data';
 import 'package:cupertino_http/cupertino_http.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_client/cancel_token.dart';
+import 'package:soliplex_client/soliplex_client.dart' hide CancelToken;
 
 /// HTTP client using Apple's NSURLSession via cupertino_http.
 ///
@@ -135,13 +136,17 @@ class CupertinoHttpClient implements SoliplexHttpClient {
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
+    CancelToken? cancelToken,
   }) async {
     _checkNotClosed();
+    cancelToken?.throwIfCancelled();
 
     final request = _createRequest(method, uri, headers, body);
 
     try {
       final streamedResponse = await _client.send(request);
+
+      cancelToken?.throwIfCancelled();
 
       return StreamedHttpResponse(
         statusCode: streamedResponse.statusCode,
@@ -157,6 +162,8 @@ class CupertinoHttpClient implements SoliplexHttpClient {
           },
         ),
       );
+    } on CancelledException {
+      rethrow;
     } on http.ClientException catch (e, stackTrace) {
       throw NetworkException(
         message: 'Client error: ${e.message}',
