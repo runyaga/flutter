@@ -1,11 +1,7 @@
 import 'dart:async';
 
 import 'package:mocktail/mocktail.dart';
-import 'package:soliplex_client/soliplex_client.dart';
-import 'package:soliplex_client/src/application/run_orchestrator.dart';
-import 'package:soliplex_client/src/application/run_state.dart';
-import 'package:soliplex_client/src/domain/failure_reason.dart';
-import 'package:soliplex_client/src/domain/thread_key.dart';
+import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:test/test.dart';
 

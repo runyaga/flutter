@@ -12,40 +12,54 @@ dart test
 dart test --coverage
 ```
 
+## Directory Structure
+
+```text
+lib/src/
+  host/           # Platform callbacks (HostApi, PlatformConstraints)
+  models/         # AgentResult, FailureReason, ThreadKey
+  orchestration/  # RunOrchestrator, RunState, ErrorClassifier
+  runtime/        # AgentRuntime, AgentSession
+  tools/          # ToolRegistry, ToolRegistryResolver
+  client_bundle.dart
+```
+
 ## Architecture
 
-### Runtime
+### Runtime (`src/runtime/`)
 
 - `AgentRuntime` -- top-level facade; spawns and manages `AgentSession` instances
 - `AgentSession` -- single autonomous interaction; automates the tool-execution loop
 - `AgentSessionState` -- enum (spawning, running, completed, ...)
 
-### Run (single-run state machine)
+### Orchestration (`src/orchestration/`)
 
 - `RunOrchestrator` -- drives one AG-UI run: SSE stream, event processing, tool yielding
 - `RunState` -- sealed hierarchy: Idle, Running, ToolYielding, Completed, Failed, Cancelled
 - `ErrorClassifier` -- maps exceptions to `FailureReason`
 
-### Models
+### Models (`src/models/`)
 
 - `AgentResult` -- sealed: AgentSuccess, AgentFailure, AgentTimedOut
 - `FailureReason` -- categorised failure enum
 - `ThreadKey` -- typedef record `(serverId, roomId, threadId)`
 
-### Host
+### Host (`src/host/`)
 
 - `HostApi` -- abstract platform callback interface
 - `PlatformConstraints` -- abstract platform limits
 - `NativePlatformConstraints` / `WebPlatformConstraints` -- concrete implementations
 - `FakeHostApi` -- test double
 
-### Tools
+### Tools (`src/tools/`)
 
+- `ToolRegistry` -- immutable registry of tool definitions and executors
 - `ToolRegistryResolver` -- typedef factory returning `ToolRegistry` per room
 
 ## Dependencies
 
 - `soliplex_client` -- REST API, AG-UI client, domain models
+- `ag_ui` -- AG-UI protocol types (events, tool definitions)
 - `soliplex_logging` -- structured logging
 - `meta` -- annotations
 

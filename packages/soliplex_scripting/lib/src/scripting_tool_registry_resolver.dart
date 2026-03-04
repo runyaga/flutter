@@ -1,6 +1,5 @@
-import 'package:soliplex_agent/soliplex_agent.dart' show ToolRegistryResolver;
-import 'package:soliplex_client/soliplex_client.dart'
-    show ClientTool, ToolRegistry;
+import 'package:soliplex_agent/soliplex_agent.dart'
+    show ClientTool, ToolRegistry, ToolRegistryResolver;
 import 'package:soliplex_scripting/src/monty_tool_executor.dart';
 import 'package:soliplex_scripting/src/python_executor_tool.dart';
 

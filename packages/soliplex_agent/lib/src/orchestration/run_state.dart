@@ -1,8 +1,7 @@
 import 'package:meta/meta.dart';
+import 'package:soliplex_agent/src/models/failure_reason.dart';
+import 'package:soliplex_agent/src/models/thread_key.dart';
 import 'package:soliplex_client/soliplex_client.dart';
-
-import 'package:soliplex_client/src/domain/failure_reason.dart';
-import 'package:soliplex_client/src/domain/thread_key.dart';
 
 /// State of a single agent run lifecycle.
 ///
@@ -174,7 +173,7 @@ class FailedState extends RunState {
 /// Run yielded pending tool calls for client-side execution.
 ///
 /// The orchestrator transitions here when `RunFinishedEvent` arrives with
-/// tool calls that are registered in the [ToolRegistry] (client-side tools).
+/// tool calls that are registered in the `ToolRegistry` (client-side tools).
 /// Server-side tool calls are not included in [pendingToolCalls].
 ///
 /// The caller should:

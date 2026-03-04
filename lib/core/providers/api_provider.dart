@@ -2,7 +2,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:soliplex_agent/soliplex_agent.dart'
-    show NativePlatformConstraints, PlatformConstraints, WebPlatformConstraints;
+    show
+        NativePlatformConstraints,
+        PlatformConstraints,
+        ToolRegistry,
+        WebPlatformConstraints;
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_client_native/soliplex_client_native.dart';
 import 'package:soliplex_frontend/core/auth/auth_provider.dart';
