@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:soliplex_agent/soliplex_agent.dart'
-    show ClientTool, ToolRegistry;
+    show ClientTool, ToolExecutionContext, ToolRegistry;
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_frontend/core/providers/api_provider.dart';
 import 'package:soliplex_frontend/core/providers/rooms_provider.dart';
@@ -17,6 +17,13 @@ import 'package:soliplex_scripting/soliplex_scripting.dart';
 // ---------------------------------------------------------------------------
 
 class MockMontyBridge extends Mock implements MontyBridge {}
+
+class _FakeContext implements ToolExecutionContext {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
+}
+
+final _ctx = _FakeContext();
 
 class FakeToolCallInfo extends Fake implements ToolCallInfo {}
 
@@ -89,7 +96,7 @@ void main() {
           name: 'custom_tool',
           description: 'A custom tool',
         ),
-        executor: (_) async => 'result',
+        executor: (_, __) async => 'result',
       );
       final container = ProviderContainer(
         overrides: [
@@ -221,7 +228,7 @@ void main() {
           description: 'Get weather',
           parameters: {'type': 'object', 'properties': <String, dynamic>{}},
         ),
-        executor: (toolCall) async {
+        executor: (toolCall, _) async {
           executedCalls.add(toolCall);
           return '72°F and sunny';
         },
@@ -245,6 +252,7 @@ void main() {
           name: 'custom.tools.weather',
           arguments: jsonEncode(<String, dynamic>{}),
         ),
+        _ctx,
       );
 
       expect(result, '72°F and sunny');

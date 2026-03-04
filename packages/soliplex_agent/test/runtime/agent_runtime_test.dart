@@ -85,7 +85,7 @@ ToolRegistry _weatherRegistry() {
   return const ToolRegistry().register(
     ClientTool(
       definition: const Tool(name: 'weather', description: 'Weather tool'),
-      executor: (_) async => '72°F, sunny',
+      executor: (_, __) async => '72°F, sunny',
     ),
   );
 }
@@ -533,7 +533,7 @@ void main() {
           name: 'execute_python',
           description: 'Run Python',
         ),
-        executor: (_) async => 'python result',
+        executor: (_, __) async => 'python result',
       );
 
       runtime = AgentRuntime(

@@ -5,11 +5,14 @@ import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/src/models/agent_result.dart';
 import 'package:soliplex_agent/src/models/failure_reason.dart';
 import 'package:soliplex_agent/src/models/thread_key.dart';
+import 'package:soliplex_agent/src/orchestration/execution_event.dart';
 import 'package:soliplex_agent/src/orchestration/run_orchestrator.dart';
 import 'package:soliplex_agent/src/orchestration/run_state.dart';
 import 'package:soliplex_agent/src/runtime/agent_runtime.dart';
 import 'package:soliplex_agent/src/runtime/agent_session_state.dart';
+import 'package:soliplex_agent/src/runtime/session_extension.dart';
 import 'package:soliplex_agent/src/scripting/script_environment.dart';
+import 'package:soliplex_agent/src/tools/tool_execution_context.dart';
 import 'package:soliplex_agent/src/tools/tool_registry.dart';
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
@@ -58,6 +61,12 @@ class AgentSession {
   final ToolRegistry _toolRegistry;
   final ScriptEnvironment? _scriptEnvironment;
   final Logger _logger;
+
+  /// Temporary stub context passed to tool executors.
+  ///
+  /// **Replaced in V7** when `AgentSession implements ToolExecutionContext`.
+  /// Currently no tool uses the context (all pass `_`), so this is safe.
+  final ToolExecutionContext _stubContext = _StubExecutionContext();
 
   final List<AgentSession> _children = [];
   final Completer<AgentResult> _resultCompleter = Completer<AgentResult>();
@@ -247,7 +256,7 @@ class AgentSession {
 
   Future<ToolCallInfo> _executeSingle(ToolCallInfo toolCall) async {
     try {
-      final result = await _toolRegistry.execute(toolCall);
+      final result = await _toolRegistry.execute(toolCall, _stubContext);
       return toolCall.copyWith(
         status: ToolCallStatus.completed,
         result: result,
@@ -339,4 +348,28 @@ class AgentSession {
       _state == AgentSessionState.completed ||
       _state == AgentSessionState.failed ||
       _state == AgentSessionState.cancelled;
+}
+
+/// Temporary no-op context for V5 compatibility.
+///
+/// All tool executors currently ignore the context parameter (`_`), so
+/// these methods are never called. Replaced in V7 when [AgentSession]
+/// implements [ToolExecutionContext] directly.
+class _StubExecutionContext implements ToolExecutionContext {
+  @override
+  CancelToken get cancelToken => throw UnimplementedError('V7');
+
+  @override
+  Future<AgentSession> spawnChild({
+    required String roomId,
+    required String prompt,
+  }) =>
+      throw UnimplementedError('V7');
+
+  @override
+  void emitEvent(ExecutionEvent event) => throw UnimplementedError('V7');
+
+  @override
+  T? getExtension<T extends SessionExtension>() =>
+      throw UnimplementedError('V7');
 }

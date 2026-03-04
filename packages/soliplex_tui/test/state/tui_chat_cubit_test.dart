@@ -120,7 +120,7 @@ void main() {
         toolRegistry = const ToolRegistry().register(
           ClientTool(
             definition: const Tool(name: 'get_time', description: 'Gets time'),
-            executor: (_) async => '2025-01-01T00:00:00Z',
+            executor: (_, __) async => '2025-01-01T00:00:00Z',
           ),
         );
         when(

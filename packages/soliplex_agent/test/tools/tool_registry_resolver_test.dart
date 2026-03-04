@@ -3,6 +3,10 @@ import 'dart:convert';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:test/test.dart';
 
+import '../helpers/fake_tool_execution_context.dart';
+
+final _ctx = FakeToolExecutionContext();
+
 void main() {
   group('ToolRegistryResolver', () {
     group('typedef contract', () {
@@ -26,7 +30,7 @@ void main() {
                   name: 'weather',
                   description: 'Get weather',
                 ),
-                executor: (call) async => '{"temp": 72}',
+                executor: (call, _) async => '{"temp": 72}',
               ),
             );
           }
@@ -62,7 +66,7 @@ void main() {
                     },
                   },
                 ),
-                executor: (call) async {
+                executor: (call, _) async {
                   final args = jsonDecode(call.arguments) as Map;
                   final format = args['format'] as String? ?? 'decimal';
                   if (format == 'dms') {
@@ -78,7 +82,7 @@ void main() {
                   name: 'clipboard_read',
                   description: 'Read clipboard contents',
                 ),
-                executor: (call) async => 'clipboard text',
+                executor: (call, _) async => 'clipboard text',
               ),
             );
       });
@@ -102,6 +106,7 @@ void main() {
             name: 'get_location',
             arguments: '{"format": "decimal"}',
           ),
+          _ctx,
         );
 
         final parsed = jsonDecode(result) as Map<String, dynamic>;
@@ -116,6 +121,7 @@ void main() {
             name: 'get_location',
             arguments: '{"format": "dms"}',
           ),
+          _ctx,
         );
 
         expect(result, contains('40°44'));
@@ -124,6 +130,7 @@ void main() {
       test('executes a different tool', () async {
         final result = await registry.execute(
           const ToolCallInfo(id: 'tc-3', name: 'clipboard_read'),
+          _ctx,
         );
 
         expect(result, equals('clipboard text'));
@@ -160,6 +167,7 @@ void main() {
         expect(
           () => registry.execute(
             const ToolCallInfo(id: 'tc-1', name: 'missing_tool'),
+            _ctx,
           ),
           throwsA(isA<StateError>()),
         );
@@ -172,13 +180,15 @@ void main() {
               name: 'fail_tool',
               description: 'Always fails',
             ),
-            executor: (call) async => throw Exception('Tool execution failed'),
+            executor: (call, _) async =>
+                throw Exception('Tool execution failed'),
           ),
         );
 
         expect(
           () => registry.execute(
             const ToolCallInfo(id: 'tc-1', name: 'fail_tool'),
+            _ctx,
           ),
           throwsA(
             isA<Exception>().having(
@@ -210,7 +220,7 @@ void main() {
                   'required': ['city'],
                 },
               ),
-              executor: (call) async {
+              executor: (call, _) async {
                 final args = jsonDecode(call.arguments) as Map;
                 return '{"city": "${args['city']}", "temp": 72}';
               },
@@ -222,14 +232,14 @@ void main() {
                 name: 'file_picker',
                 description: 'Pick a file',
               ),
-              executor: (call) async => '/path/to/file.txt',
+              executor: (call, _) async => '/path/to/file.txt',
             ),
             ClientTool(
               definition: const Tool(
                 name: 'file_read',
                 description: 'Read file contents',
               ),
-              executor: (call) async => 'file contents here',
+              executor: (call, _) async => 'file contents here',
             ),
           ],
         };
@@ -271,6 +281,7 @@ void main() {
             name: 'get_weather',
             arguments: '{"city": "NYC"}',
           ),
+          _ctx,
         );
 
         final parsed = jsonDecode(result) as Map<String, dynamic>;
@@ -288,7 +299,7 @@ void main() {
                 name: 'delayed_tool',
                 description: 'Async-resolved tool',
               ),
-              executor: (call) async => 'async result',
+              executor: (call, _) async => 'async result',
             ),
           );
         }
@@ -304,7 +315,7 @@ void main() {
         final updated = original.register(
           ClientTool(
             definition: const Tool(name: 'tool_a', description: 'Tool A'),
-            executor: (call) async => 'a',
+            executor: (call, _) async => 'a',
           ),
         );
 
@@ -317,19 +328,19 @@ void main() {
             .register(
               ClientTool(
                 definition: const Tool(name: 'tool_1', description: 'First'),
-                executor: (call) async => '1',
+                executor: (call, _) async => '1',
               ),
             )
             .register(
               ClientTool(
                 definition: const Tool(name: 'tool_2', description: 'Second'),
-                executor: (call) async => '2',
+                executor: (call, _) async => '2',
               ),
             )
             .register(
               ClientTool(
                 definition: const Tool(name: 'tool_3', description: 'Third'),
-                executor: (call) async => '3',
+                executor: (call, _) async => '3',
               ),
             );
 

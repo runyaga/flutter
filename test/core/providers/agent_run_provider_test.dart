@@ -61,7 +61,7 @@ ToolRegistry _registryWith({String toolName = 'weather'}) {
   return const ToolRegistry().register(
     ClientTool(
       definition: Tool(name: toolName, description: 'A test tool'),
-      executor: (_) async => '72°F, sunny',
+      executor: (_, __) async => '72°F, sunny',
     ),
   );
 }
@@ -240,7 +240,7 @@ void main() {
         final failingRegistry = const ToolRegistry().register(
           ClientTool(
             definition: const Tool(name: 'weather', description: 'A test tool'),
-            executor: (_) async => throw Exception('tool broke'),
+            executor: (_, __) async => throw Exception('tool broke'),
           ),
         );
         stubCreateRun(api);

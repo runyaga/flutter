@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:soliplex_agent/soliplex_agent.dart'
-    show FakeAgentApi, HostApi, ToolRegistry;
+    show FakeAgentApi, HostApi, ToolExecutionContext, ToolRegistry;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
@@ -10,6 +10,14 @@ import 'package:soliplex_scripting/soliplex_scripting.dart';
 import 'package:test/test.dart';
 
 const ThreadKey _key = (serverId: 's', roomId: 'r', threadId: 't');
+
+/// Stub [ToolExecutionContext] — tools in these tests ignore the context.
+class _FakeContext implements ToolExecutionContext {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
+}
+
+final _ctx = _FakeContext();
 
 /// Records calls and returns canned values.
 class _FakeHostApi implements HostApi {
@@ -184,7 +192,7 @@ void main() {
         }),
       );
 
-      final result = await registry.execute(toolCall);
+      final result = await registry.execute(toolCall, _ctx);
       expect(result, 'done');
       expect(hostApi.calls, contains('registerChart'));
 

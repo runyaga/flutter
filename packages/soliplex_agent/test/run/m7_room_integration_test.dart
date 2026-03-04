@@ -60,7 +60,7 @@ void main() {
               'properties': <String, dynamic>{},
             },
           ),
-          executor: (_) async => '{"cpu": "12%", "memory": "4.2GB"}',
+          executor: (_, __) async => '{"cpu": "12%", "memory": "4.2GB"}',
         ),
       );
     });
@@ -180,7 +180,7 @@ void main() {
                   'properties': <String, dynamic>{},
                 },
               ),
-              executor: (_) async => 'result_A',
+              executor: (_, __) async => 'result_A',
             ),
           )
           .register(
@@ -193,7 +193,7 @@ void main() {
                   'properties': <String, dynamic>{},
                 },
               ),
-              executor: (_) async => 'result_B',
+              executor: (_, __) async => 'result_B',
             ),
           )
           .register(
@@ -206,7 +206,7 @@ void main() {
                   'properties': <String, dynamic>{},
                 },
               ),
-              executor: (_) async => 'result_C',
+              executor: (_, __) async => 'result_C',
             ),
           );
     });
@@ -471,7 +471,7 @@ void main() {
               },
             },
           ),
-          executor: (_) async => '42',
+          executor: (_, __) async => '42',
         ),
       );
     });
@@ -659,7 +659,7 @@ void main() {
             },
           ),
           // Executor is unused — we control results manually.
-          executor: (_) async => '',
+          executor: (_, __) async => '',
         ),
       );
     });

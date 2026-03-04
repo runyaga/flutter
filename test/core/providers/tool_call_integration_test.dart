@@ -1,9 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soliplex_agent/soliplex_agent.dart'
-    show ClientTool, ToolRegistry;
+    show ClientTool, ToolExecutionContext, ToolRegistry;
 import 'package:soliplex_client/soliplex_client.dart';
 
 import '../../helpers/mock_agui_stream.dart';
+
+class _FakeContext implements ToolExecutionContext {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
+}
+
+final _ctx = _FakeContext();
 
 void main() {
   group('Tool call integration', () {
@@ -16,7 +23,7 @@ void main() {
             name: 'get_secret_number',
             description: 'Returns the secret number for a person',
           ),
-          executor: (toolCall) async {
+          executor: (toolCall, _) async {
             final args = toolCall.arguments;
             if (args.contains('alice')) return '42';
             if (args.contains('bob')) return '7';
@@ -66,7 +73,7 @@ void main() {
       final executed = await Future.wait(
         conversation.toolCalls.map((tc) async {
           try {
-            final result = await registry.execute(tc);
+            final result = await registry.execute(tc, _ctx);
             return tc.copyWith(
               status: ToolCallStatus.completed,
               result: result,
@@ -182,7 +189,7 @@ void main() {
       final executed = await Future.wait(
         conversation.toolCalls.map((tc) async {
           try {
-            final result = await registry.execute(tc);
+            final result = await registry.execute(tc, _ctx);
             return tc.copyWith(
               status: ToolCallStatus.completed,
               result: result,

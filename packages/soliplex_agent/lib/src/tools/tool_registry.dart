@@ -1,12 +1,18 @@
 import 'package:meta/meta.dart';
+import 'package:soliplex_agent/src/tools/tool_execution_context.dart';
 import 'package:soliplex_client/soliplex_client.dart';
 
-/// Signature for a function that executes a tool call.
+/// Signature for a function that executes a tool call with context.
 ///
-/// Receives the [ToolCallInfo] (name, arguments, id) and returns a result
-/// string. Throwing an exception marks the tool call as failed; the error
-/// message is forwarded to the model.
-typedef ToolExecutor = Future<String> Function(ToolCallInfo toolCall);
+/// Receives the [ToolCallInfo] (name, arguments, id) and a
+/// [ToolExecutionContext] providing cancellation, child spawning, and
+/// session-scoped extensions. Returns a result string. Throwing an
+/// exception marks the tool call as failed; the error message is
+/// forwarded to the model.
+typedef ToolExecutor = Future<String> Function(
+  ToolCallInfo toolCall,
+  ToolExecutionContext context,
+);
 
 /// Default JSON Schema for tools that take no parameters.
 const Map<String, Object> emptyToolParameters = {
@@ -100,12 +106,14 @@ class ToolRegistry {
 
   /// Executes the tool matching the given tool call's name.
   ///
-  /// Returns the result string on success. On failure, returns the error
-  /// message prefixed with `"Error: "`. Callers should check the
-  /// [ToolCallInfo.status] they set based on whether this threw.
-  Future<String> execute(ToolCallInfo toolCall) async {
+  /// The [ctx] is forwarded to the tool executor so tools can access
+  /// cancellation tokens, child spawning, and session extensions.
+  Future<String> execute(
+    ToolCallInfo toolCall,
+    ToolExecutionContext ctx,
+  ) async {
     final tool = lookup(toolCall.name);
-    return tool.executor(toolCall);
+    return tool.executor(toolCall, ctx);
   }
 
   /// Whether a tool with [name] is registered.

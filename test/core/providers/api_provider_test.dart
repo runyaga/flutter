@@ -329,7 +329,7 @@ void main() {
     test('can be overridden with tools', () {
       final tool = ClientTool(
         definition: const Tool(name: 'test_tool', description: 'A test tool'),
-        executor: (_) async => 'result',
+        executor: (_, __) async => 'result',
       );
       final container = ProviderContainer(
         overrides: [
@@ -355,7 +355,7 @@ void main() {
           name: 'client_tool',
           description: 'A client tool',
         ),
-        executor: (_) async => 'result',
+        executor: (_, __) async => 'result',
       );
       final container = ProviderContainer(
         overrides: [

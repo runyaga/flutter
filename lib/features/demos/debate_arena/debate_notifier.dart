@@ -123,7 +123,7 @@ class DebateNotifier extends Notifier<DebateState> {
         return base.register(
           ClientTool(
             definition: PythonExecutorTool.definition,
-            executor: executor.execute,
+            executor: (toolCall, _) => executor.execute(toolCall),
           ),
         );
       },

@@ -62,12 +62,12 @@ List<BaseEvent> _resumeTextEvents() => [
 
 ToolRegistry _registryWith({
   String toolName = 'weather',
-  Future<String> Function(ToolCallInfo)? executor,
+  ToolExecutor? executor,
 }) {
   return const ToolRegistry().register(
     ClientTool(
       definition: Tool(name: toolName, description: 'A test tool'),
-      executor: executor ?? (_) async => '72°F, sunny',
+      executor: executor ?? (_, __) async => '72°F, sunny',
     ),
   );
 }
@@ -277,7 +277,7 @@ void main() {
 
     test('tool error → ToolCallStatus.failed, session continues', () async {
       final registry = _registryWith(
-        executor: (_) async => throw Exception('API down'),
+        executor: (_, __) async => throw Exception('API down'),
       );
       stubCreateRun();
 
