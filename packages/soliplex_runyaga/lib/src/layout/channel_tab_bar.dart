@@ -47,8 +47,8 @@ class ChannelTabBar extends ConsumerWidget {
                       sp: sp,
                       onTap: () {
                         ref
-                            .read(currentThreadIdProvider.notifier)
-                            .select(thread.id);
+                            .read(threadSelectionProvider.notifier)
+                            .select(roomId!, thread.id);
                       },
                     );
                   },
@@ -73,7 +73,7 @@ class ChannelTabBar extends ConsumerWidget {
               isSelected: false,
               sp: sp,
               onTap: () {
-                ref.read(currentThreadIdProvider.notifier).select(null);
+                ref.read(threadSelectionProvider.notifier).select(roomId, null);
               },
             ),
         ],

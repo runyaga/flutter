@@ -6,6 +6,8 @@ class MockSoliplexApi extends Mock implements SoliplexApi {}
 
 class MockAgUiClient extends Mock implements AgUiClient {}
 
+class MockSoliplexHttpClient extends Mock implements SoliplexHttpClient {}
+
 void main() {
   group('ServerConnection', () {
     late MockSoliplexApi api;
@@ -81,6 +83,50 @@ void main() {
       );
 
       expect(conn.toString(), contains('prod'));
+    });
+
+    group('.create()', () {
+      test('wires SoliplexApi and AgUiClient from server URL', () {
+        final httpClient = MockSoliplexHttpClient();
+        final conn = ServerConnection.create(
+          serverId: 'test-server',
+          serverUrl: 'http://localhost:8000',
+          httpClient: httpClient,
+        );
+
+        expect(conn.serverId, 'test-server');
+        expect(conn.api, isA<SoliplexApi>());
+        expect(conn.agUiClient, isA<AgUiClient>());
+      });
+
+      test('asserts on URL with /api/v1 suffix', () {
+        final httpClient = MockSoliplexHttpClient();
+        expect(
+          () => ServerConnection.create(
+            serverId: 'bad',
+            serverUrl: 'http://localhost:8000/api/v1',
+            httpClient: httpClient,
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+      });
+
+      test('equality still based on serverId', () {
+        final http1 = MockSoliplexHttpClient();
+        final http2 = MockSoliplexHttpClient();
+        final conn1 = ServerConnection.create(
+          serverId: 'same',
+          serverUrl: 'http://a.com',
+          httpClient: http1,
+        );
+        final conn2 = ServerConnection.create(
+          serverId: 'same',
+          serverUrl: 'http://b.com',
+          httpClient: http2,
+        );
+
+        expect(conn1, equals(conn2));
+      });
     });
   });
 }

@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_agent/soliplex_agent.dart';
 
 import 'agent_providers.dart';
 
@@ -45,19 +45,30 @@ final threadsProvider =
   return threads;
 });
 
-/// Currently selected thread ID.
-final currentThreadIdProvider =
-    NotifierProvider<_CurrentThreadId, String?>(_CurrentThreadId.new);
+/// Per-room thread selection: `roomId → threadId`.
+final threadSelectionProvider =
+    NotifierProvider<_ThreadSelection, Map<String, String?>>(
+  _ThreadSelection.new,
+);
 
-class _CurrentThreadId extends Notifier<String?> {
+class _ThreadSelection extends Notifier<Map<String, String?>> {
   @override
-  String? build() => null;
+  Map<String, String?> build() => {};
 
-  void select(String? threadId) => state = threadId;
+  void select(String roomId, String? threadId) {
+    state = {...state, roomId: threadId};
+  }
 }
 
-/// Nicknames/users in the current room (placeholder — backend doesn't expose this yet).
+/// Currently selected thread ID (derived from room + selection map).
+final currentThreadIdProvider = Provider<String?>((ref) {
+  final roomId = ref.watch(currentRoomIdProvider);
+  if (roomId == null) return null;
+  final selections = ref.watch(threadSelectionProvider);
+  return selections[roomId];
+});
+
+/// Nicknames/users in the current room (placeholder).
 final nickListProvider = Provider<List<String>>((ref) {
-  // TODO: Wire to real user presence when backend supports it.
   return const ['@engineer1', '+operator1', 'worker1'];
 });

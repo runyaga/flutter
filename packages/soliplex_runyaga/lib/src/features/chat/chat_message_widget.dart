@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_agent/soliplex_agent.dart';
 
 import '../../design/tokens/colors.dart';
 import '../../design/tokens/spacing.dart';

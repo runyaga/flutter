@@ -12,8 +12,8 @@ dependencies:
     sdk: flutter
   flutter_riverpod: ^3.1.0
   google_fonts: ^6.2.1
-  soliplex_client:
-    path: ../soliplex_client
+  soliplex_agent:
+    path: ../soliplex_agent
   soliplex_client_native:
     path: ../soliplex_client_native
   soliplex_logging:
@@ -21,7 +21,6 @@ dependencies:
   flutter_markdown_plus: ^1.0.7
   markdown: ^7.0.0
   flutter_highlight: ^0.7.0
-  http: ^1.6.0
   url_launcher: ^6.3.1
 
 dev_dependencies:
