@@ -14,10 +14,7 @@ void main() {
     });
 
     test('subscribe + next yields values then null', () async {
-      registry.registerFactory(
-        'counter',
-        () => Stream.fromIterable([1, 2, 3]),
-      );
+      registry.registerFactory('counter', () => Stream.fromIterable([1, 2, 3]));
 
       final handle = registry.subscribe('counter');
       expect(handle, isPositive);
@@ -29,15 +26,12 @@ void main() {
     });
 
     test('close cancels early', () async {
-      registry.registerFactory(
-        'infinite',
-        () async* {
-          var i = 0;
-          while (true) {
-            yield i++;
-          }
-        },
-      );
+      registry.registerFactory('infinite', () async* {
+        var i = 0;
+        while (true) {
+          yield i++;
+        }
+      });
 
       final handle = registry.subscribe('infinite');
       expect(await registry.next(handle), 0);
@@ -52,10 +46,7 @@ void main() {
     });
 
     test('unknown handle throws ArgumentError', () async {
-      expect(
-        () => registry.next(999),
-        throwsA(isA<ArgumentError>()),
-      );
+      expect(() => registry.next(999), throwsA(isA<ArgumentError>()));
     });
 
     test('subscribe with unknown name throws ArgumentError', () {
@@ -67,14 +58,8 @@ void main() {
 
     test('dispose cancels all active subscriptions', () async {
       registry
-        ..registerFactory(
-          'a',
-          () => Stream.fromIterable([1, 2, 3]),
-        )
-        ..registerFactory(
-          'b',
-          () => Stream.fromIterable([4, 5, 6]),
-        );
+        ..registerFactory('a', () => Stream.fromIterable([1, 2, 3]))
+        ..registerFactory('b', () => Stream.fromIterable([4, 5, 6]));
 
       final h1 = registry.subscribe('a');
       final h2 = registry.subscribe('b');
@@ -86,21 +71,12 @@ void main() {
       await registry.dispose();
 
       // After dispose, handles are gone.
-      expect(
-        () => registry.next(h1),
-        throwsA(isA<ArgumentError>()),
-      );
-      expect(
-        () => registry.next(h2),
-        throwsA(isA<ArgumentError>()),
-      );
+      expect(() => registry.next(h1), throwsA(isA<ArgumentError>()));
+      expect(() => registry.next(h2), throwsA(isA<ArgumentError>()));
     });
 
     test('multiple subscriptions to same factory are independent', () async {
-      registry.registerFactory(
-        'nums',
-        () => Stream.fromIterable([10, 20]),
-      );
+      registry.registerFactory('nums', () => Stream.fromIterable([10, 20]));
 
       final h1 = registry.subscribe('nums');
       final h2 = registry.subscribe('nums');

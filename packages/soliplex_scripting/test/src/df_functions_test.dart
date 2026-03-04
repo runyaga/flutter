@@ -40,8 +40,9 @@ void main() {
 
       test('df_dispose_all has no params', () {
         final fns = buildDfFunctions(registry);
-        final disposeAll =
-            fns.firstWhere((f) => f.schema.name == 'df_dispose_all');
+        final disposeAll = fns.firstWhere(
+          (f) => f.schema.name == 'df_dispose_all',
+        );
         expect(disposeAll.schema.params, isEmpty);
       });
     });
@@ -75,10 +76,7 @@ void main() {
           'columns': null,
         }))! as int;
 
-        final rows = await head.handler({
-          'handle': handle,
-          'n': 2,
-        });
+        final rows = await head.handler({'handle': handle, 'n': 2});
         expect(rows, isA<List<Object?>>());
         expect((rows! as List<Object?>).length, 2);
       });
@@ -117,8 +115,9 @@ void main() {
 
       test('df_dispose_all returns null', () async {
         final fns = buildDfFunctions(registry);
-        final disposeAll =
-            fns.firstWhere((f) => f.schema.name == 'df_dispose_all');
+        final disposeAll = fns.firstWhere(
+          (f) => f.schema.name == 'df_dispose_all',
+        );
 
         final result = await disposeAll.handler({});
         expect(result, isNull);
@@ -146,10 +145,8 @@ void main() {
           'value': 28,
         }))! as int;
 
-        final rows = (await head.handler({
-          'handle': filteredHandle,
-          'n': 10,
-        }))! as List<Object?>;
+        final rows = (await head.handler({'handle': filteredHandle, 'n': 10}))!
+            as List<Object?>;
 
         expect(rows.length, 2);
       });

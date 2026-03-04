@@ -22,11 +22,7 @@ class _StubHostApi implements HostApi {
   bool updateChart(int chartId, Map<String, Object?> chartConfig) => false;
 
   @override
-  Future<Object?> invoke(
-    String name,
-    Map<String, Object?> args,
-  ) async =>
-      null;
+  Future<Object?> invoke(String name, Map<String, Object?> args) async => null;
 }
 
 Future<ToolRegistry> _emptyResolver(String roomId) async {
@@ -83,10 +79,7 @@ void main() {
       final registry = await resolver.call('room-1');
 
       expect(registry.contains('existing_tool'), isTrue);
-      expect(
-        registry.contains(PythonExecutorTool.toolName),
-        isTrue,
-      );
+      expect(registry.contains(PythonExecutorTool.toolName), isTrue);
       expect(registry.length, 2);
     });
 

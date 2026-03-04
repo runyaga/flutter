@@ -219,6 +219,34 @@ void main() {
       });
     });
 
+    group('default limits', () {
+      test('bridge created with default limits when no factory', () {
+        final cache = BridgeCache(
+          limit: 1,
+          defaultLimits: MontyLimitsDefaults.tool,
+        );
+        final bridge = cache.acquire(_key1);
+        expect(bridge, isA<DefaultMontyBridge>());
+        cache
+          ..release(_key1)
+          ..disposeAll();
+      });
+
+      test('factory takes precedence over defaultLimits', () {
+        final custom = _MockBridge();
+        final cache = BridgeCache(
+          limit: 1,
+          defaultLimits: MontyLimitsDefaults.tool,
+          bridgeFactory: () => custom,
+        );
+        final bridge = cache.acquire(_key1);
+        expect(identical(bridge, custom), isTrue);
+        cache
+          ..release(_key1)
+          ..disposeAll();
+      });
+    });
+
     group('limit = 1 (WASM scenario)', () {
       late BridgeCache wasmCache;
 
@@ -246,10 +274,7 @@ void main() {
       test('throws on second concurrent acquire', () {
         wasmCache.acquire(_key1);
 
-        expect(
-          () => wasmCache.acquire(_key2),
-          throwsStateError,
-        );
+        expect(() => wasmCache.acquire(_key2), throwsStateError);
       });
 
       test('allows sequential use after release', () {

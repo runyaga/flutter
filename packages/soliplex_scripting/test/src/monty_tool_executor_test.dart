@@ -181,8 +181,9 @@ void main() {
           ),
         );
 
-        final result =
-            await executor.execute(_toolCall('print("Hello World")'));
+        final result = await executor.execute(
+          _toolCall('print("Hello World")'),
+        );
         expect(result, 'Hello World');
       });
 
@@ -257,6 +258,30 @@ void main() {
             ),
           ),
         );
+      });
+
+      test('execution times out and evicts tainted bridge', () async {
+        final controller = StreamController<BridgeEvent>();
+        final bridge = _FakeBridge(events: controller.stream);
+        final cache = BridgeCache(limit: 1, bridgeFactory: () => bridge);
+        final executor = MontyToolExecutor(
+          threadKey: _key,
+          bridgeCache: cache,
+          hostWiring: HostFunctionWiring(
+            hostApi: _StubHostApi(),
+            dfRegistry: DfRegistry(),
+          ),
+          executionTimeout: const Duration(milliseconds: 50),
+        );
+
+        await expectLater(
+          executor.execute(_toolCall('while True: pass')),
+          throwsA(isA<TimeoutException>()),
+        );
+        // Bridge must be evicted — not released back to pool.
+        expect(cache.contains(_key), isFalse);
+        expect(bridge.disposed, isTrue);
+        await controller.close();
       });
 
       test('returns empty string when no text events', () async {

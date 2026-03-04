@@ -7,7 +7,8 @@ import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_frontend/core/providers/api_provider.dart';
 import 'package:soliplex_frontend/core/providers/rooms_provider.dart';
 import 'package:soliplex_frontend/core/services/thread_bridge_cache.dart';
-import 'package:soliplex_monty/soliplex_monty.dart';
+import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
+import 'package:soliplex_scripting/soliplex_scripting.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -156,21 +157,21 @@ void main() {
     test('bridge collects text output from events', () async {
       when(() => mockBridge.execute(any())).thenAnswer((_) {
         return Stream.fromIterable([
-          const RunStartedEvent(threadId: '1', runId: '1'),
-          const TextMessageStartEvent(messageId: 'm1'),
-          const TextMessageContentEvent(messageId: 'm1', delta: 'Hello '),
-          const TextMessageEndEvent(messageId: 'm1'),
-          const TextMessageStartEvent(messageId: 'm2'),
-          const TextMessageContentEvent(messageId: 'm2', delta: 'World'),
-          const TextMessageEndEvent(messageId: 'm2'),
-          const RunFinishedEvent(threadId: '1', runId: '1'),
+          const BridgeRunStarted(threadId: '1', runId: '1'),
+          const BridgeTextStart(messageId: 'm1'),
+          const BridgeTextContent(messageId: 'm1', delta: 'Hello '),
+          const BridgeTextEnd(messageId: 'm1'),
+          const BridgeTextStart(messageId: 'm2'),
+          const BridgeTextContent(messageId: 'm2', delta: 'World'),
+          const BridgeTextEnd(messageId: 'm2'),
+          const BridgeRunFinished(threadId: '1', runId: '1'),
         ]);
       });
 
       final events = mockBridge.execute('print("Hello World")');
       final buffer = StringBuffer();
       await for (final event in events) {
-        if (event is TextMessageContentEvent) {
+        if (event is BridgeTextContent) {
           buffer.write(event.delta);
         }
       }
@@ -181,15 +182,15 @@ void main() {
     test('bridge emits error event on failure', () async {
       when(() => mockBridge.execute(any())).thenAnswer((_) {
         return Stream.fromIterable([
-          const RunStartedEvent(threadId: '1', runId: '1'),
-          const RunErrorEvent(message: 'NameError: undefined variable'),
+          const BridgeRunStarted(threadId: '1', runId: '1'),
+          const BridgeRunError(message: 'NameError: undefined variable'),
         ]);
       });
 
       final events = mockBridge.execute('print(x)');
       String? errorMessage;
       await for (final event in events) {
-        if (event is RunErrorEvent) {
+        if (event is BridgeRunError) {
           errorMessage = event.message;
         }
       }

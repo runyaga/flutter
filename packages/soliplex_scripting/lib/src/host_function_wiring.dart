@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:soliplex_agent/soliplex_agent.dart'
     show AgentApi, FormApi, HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
@@ -24,12 +26,14 @@ class HostFunctionWiring {
     StreamRegistry? streamRegistry,
     FormApi? formApi,
     List<HostFunction>? extraFunctions,
+    Duration agentTimeout = const Duration(seconds: 30),
   })  : _hostApi = hostApi,
         _agentApi = agentApi,
         _dfRegistry = dfRegistry ?? DfRegistry(),
         _streamRegistry = streamRegistry,
         _formApi = formApi,
-        _extraFunctions = extraFunctions;
+        _extraFunctions = extraFunctions,
+        _agentTimeout = agentTimeout;
 
   final HostApi _hostApi;
   final AgentApi? _agentApi;
@@ -37,6 +41,7 @@ class HostFunctionWiring {
   final StreamRegistry? _streamRegistry;
   final FormApi? _formApi;
   final List<HostFunction>? _extraFunctions;
+  final Duration _agentTimeout;
 
   /// Registers all host function categories (plus introspection builtins)
   /// onto [bridge].
@@ -105,9 +110,7 @@ class HostFunctionWiring {
               throw ArgumentError.value(raw, 'config', 'Expected a map.');
             }
             return _hostApi.updateChart(
-              chartId,
-              Map<String, Object?>.from(raw),
-            );
+                chartId, Map<String, Object?>.from(raw));
           },
         ),
       ];
@@ -205,16 +208,10 @@ class HostFunctionWiring {
             final handle = (args['handle']! as num).toInt();
             final raw = args['errors'];
             if (raw is! Map) {
-              throw ArgumentError.value(
-                raw,
-                'errors',
-                'Expected a map.',
-              );
+              throw ArgumentError.value(raw, 'errors', 'Expected a map.');
             }
-            return _formApi!.setFormErrors(
-              handle,
-              Map<String, String>.from(raw),
-            );
+            return _formApi!
+                .setFormErrors(handle, Map<String, String>.from(raw));
           },
         ),
       ];
@@ -312,7 +309,7 @@ class HostFunctionWiring {
           handler: (args) async {
             final raw = args['handles']! as List<Object?>;
             final handles = raw.cast<num>().map((n) => n.toInt()).toList();
-            return _agentApi!.waitAll(handles);
+            return _agentApi!.waitAll(handles).timeout(_agentTimeout);
           },
         ),
         HostFunction(
@@ -329,7 +326,7 @@ class HostFunctionWiring {
           ),
           handler: (args) async {
             final handle = (args['handle']! as num).toInt();
-            return _agentApi!.getResult(handle);
+            return _agentApi!.getResult(handle).timeout(_agentTimeout);
           },
         ),
         HostFunction(
@@ -363,13 +360,11 @@ class HostFunctionWiring {
             final room = args['room']! as String;
             final threadId = args['thread_id'] as String?;
             final api = _agentApi!;
-            final handle = await api.spawnAgent(
-              room,
-              prompt,
-              threadId: threadId,
-            );
+            final handle = await api
+                .spawnAgent(room, prompt, threadId: threadId)
+                .timeout(_agentTimeout);
             final tid = api.getThreadId(handle);
-            final result = await api.getResult(handle);
+            final result = await api.getResult(handle).timeout(_agentTimeout);
             return <String, Object?>{'text': result, 'thread_id': tid};
           },
         ),
