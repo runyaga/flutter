@@ -110,7 +110,9 @@ class HostFunctionWiring {
               throw ArgumentError.value(raw, 'config', 'Expected a map.');
             }
             return _hostApi.updateChart(
-                chartId, Map<String, Object?>.from(raw));
+              chartId,
+              Map<String, Object?>.from(raw),
+            );
           },
         ),
       ];

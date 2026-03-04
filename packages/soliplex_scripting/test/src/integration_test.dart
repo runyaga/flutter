@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:soliplex_agent/soliplex_agent.dart' show FakeAgentApi, HostApi;
-import 'package:soliplex_client/soliplex_client.dart'
-    show ToolCallInfo, ToolRegistry;
+import 'package:soliplex_agent/soliplex_agent.dart'
+    show FakeAgentApi, HostApi, ToolRegistry;
+import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';

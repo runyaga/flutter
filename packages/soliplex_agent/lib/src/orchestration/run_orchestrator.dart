@@ -1,10 +1,11 @@
 import 'dart:async';
 
+import 'package:soliplex_agent/src/models/failure_reason.dart';
+import 'package:soliplex_agent/src/models/thread_key.dart';
+import 'package:soliplex_agent/src/orchestration/error_classifier.dart';
+import 'package:soliplex_agent/src/orchestration/run_state.dart';
+import 'package:soliplex_agent/src/tools/tool_registry.dart';
 import 'package:soliplex_client/soliplex_client.dart';
-import 'package:soliplex_client/src/application/error_classifier.dart';
-import 'package:soliplex_client/src/application/run_state.dart';
-import 'package:soliplex_client/src/domain/failure_reason.dart';
-import 'package:soliplex_client/src/domain/thread_key.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 
 /// Orchestrates a single AG-UI run lifecycle.

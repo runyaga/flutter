@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:soliplex_agent/soliplex_agent.dart'
+    show ClientTool, ToolRegistry;
 import 'package:soliplex_client/soliplex_client.dart';
 
 import '../../helpers/mock_agui_stream.dart';

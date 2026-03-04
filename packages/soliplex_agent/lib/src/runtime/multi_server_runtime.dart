@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:soliplex_agent/src/host/platform_constraints.dart';
 import 'package:soliplex_agent/src/models/agent_result.dart';
+import 'package:soliplex_agent/src/models/thread_key.dart';
 import 'package:soliplex_agent/src/runtime/agent_runtime.dart';
 import 'package:soliplex_agent/src/runtime/agent_session.dart';
 import 'package:soliplex_agent/src/runtime/server_registry.dart';
 import 'package:soliplex_agent/src/tools/tool_registry_resolver.dart';
-import 'package:soliplex_client/run.dart' show ThreadKey;
 import 'package:soliplex_logging/soliplex_logging.dart';
 
 /// Coordinator wrapping per-server [AgentRuntime] instances.

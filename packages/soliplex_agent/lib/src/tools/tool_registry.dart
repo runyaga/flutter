@@ -1,6 +1,5 @@
-import 'package:ag_ui/ag_ui.dart';
 import 'package:meta/meta.dart';
-import 'package:soliplex_client/src/domain/chat_message.dart';
+import 'package:soliplex_client/soliplex_client.dart';
 
 /// Signature for a function that executes a tool call.
 ///
