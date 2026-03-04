@@ -49,4 +49,5 @@ export 'src/features/connection/connect_screen.dart';
 // ── Providers ──
 export 'src/providers/agent_providers.dart';
 export 'src/providers/room_providers.dart';
-export 'src/providers/streaming_providers.dart';
+export 'src/providers/session_providers.dart';
+export 'src/providers/signal_bridge.dart';

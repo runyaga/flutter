@@ -6,7 +6,7 @@ import '../../design/tokens/colors.dart';
 import '../../design/tokens/typography.dart';
 import '../../painters/steam_particle_painter.dart';
 import '../../providers/room_providers.dart';
-import '../../providers/streaming_providers.dart';
+import '../../providers/session_providers.dart';
 import 'chat_input.dart';
 import 'message_list.dart';
 
@@ -66,11 +66,12 @@ class _ChatPanelState extends ConsumerState<ChatPanel>
       );
     }
 
-    ref.read(activeRunStateProvider.notifier).sendMessage(
-          roomId: roomId,
-          threadId: threadId,
-          message: message,
-        );
+    sendMessage(
+      ref,
+      roomId: roomId,
+      message: message,
+      threadId: threadId,
+    );
   }
 
   @override

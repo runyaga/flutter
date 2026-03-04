@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:soliplex_agent/soliplex_agent.dart' hide State;
 
 import '../design/tokens/colors.dart';
 import '../design/tokens/spacing.dart';
@@ -7,13 +8,9 @@ import '../design/tokens/typography.dart';
 import '../design/theme/steampunk_theme_extension.dart';
 import '../painters/steel_plate_painter.dart';
 import '../providers/room_providers.dart';
-import '../providers/streaming_providers.dart';
+import '../providers/session_providers.dart';
 
 /// Bottom status bar — industrial instrument panel.
-///
-/// ```
-/// [!] PRESSURE: NOMINAL │ FLOW: 847 msg/h │ UPTIME: 4d 12h
-/// ```
 class StatusBar extends ConsumerWidget {
   const StatusBar({super.key});
 
@@ -21,20 +18,24 @@ class StatusBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sp = SteampunkTheme.of(context);
     final roomId = ref.watch(currentRoomIdProvider);
-    final runState = ref.watch(activeRunStateProvider);
+    final runState = ref.watch(activeRunStateProvider).value;
+    final isActive = runState is RunningState || runState is ToolYieldingState;
 
     final statusText = switch (runState) {
-      IdleState() => 'IDLE',
-      StreamingRunState() => 'STREAMING',
-      CompletedRunState() => 'COMPLETE',
-      FailedRunState(:final error) => 'ERROR: $error',
+      null || IdleState() => 'IDLE',
+      RunningState() => 'STREAMING',
+      ToolYieldingState() => 'TOOL EXEC',
+      CompletedState() => 'COMPLETE',
+      CancelledState() => 'CANCELLED',
+      FailedState(:final error) => 'ERROR: $error',
     };
 
     final statusColor = switch (runState) {
-      IdleState() => sp.pipeGreen,
-      StreamingRunState() => sp.furnaceOrange,
-      CompletedRunState() => sp.pipeGreen,
-      FailedRunState() => sp.furnaceRed,
+      null || IdleState() => sp.pipeGreen,
+      RunningState() || ToolYieldingState() => sp.furnaceOrange,
+      CompletedState() => sp.pipeGreen,
+      CancelledState() => sp.steamMuted,
+      FailedState() => sp.furnaceRed,
     };
 
     return CustomPaint(
@@ -44,7 +45,6 @@ class StatusBar extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: BoilerSpacing.s4),
         child: Row(
           children: [
-            // Status indicator dot
             Container(
               width: 8,
               height: 8,
@@ -69,25 +69,18 @@ class StatusBar extends ConsumerWidget {
                 color: statusColor,
               ),
             ),
-
             _StatusDivider(sp: sp),
-
             Text(
               'CONDUIT: ${roomId ?? "NONE"}',
               style: BoilerTypography.statusBar,
             ),
-
             _StatusDivider(sp: sp),
-
             Text(
               'PRESSURE: NOMINAL',
               style: BoilerTypography.statusBar,
             ),
-
             const Spacer(),
-
-            // Furnace heartbeat indicator
-            _FurnaceIndicator(isActive: runState.isRunning, sp: sp),
+            _FurnaceIndicator(isActive: isActive, sp: sp),
           ],
         ),
       ),

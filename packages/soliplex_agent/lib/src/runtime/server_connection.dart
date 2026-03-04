@@ -16,6 +16,37 @@ class ServerConnection {
     required this.agUiClient,
   });
 
+  /// Convenience factory — wires [SoliplexApi] + [AgUiClient] from a
+  /// server URL.
+  ///
+  /// [serverUrl] must be the root URL (e.g. `http://localhost:8000`).
+  /// The `/api/v1` prefix is added automatically — do not include it.
+  ///
+  /// Caller owns [httpClient] lifecycle (closing it).
+  factory ServerConnection.create({
+    required String serverId,
+    required String serverUrl,
+    required SoliplexHttpClient httpClient,
+  }) {
+    assert(
+      !serverUrl.endsWith('/api/v1') && !serverUrl.endsWith('/api/v1/'),
+      'serverUrl should be the root URL without /api/v1 suffix. '
+      'Got: $serverUrl',
+    );
+    final baseUrl = '$serverUrl/api/v1';
+    return ServerConnection(
+      serverId: serverId,
+      api: SoliplexApi(
+        transport: HttpTransport(client: httpClient),
+        urlBuilder: UrlBuilder(baseUrl),
+      ),
+      agUiClient: AgUiClient(
+        config: AgUiClientConfig(baseUrl: baseUrl),
+        httpClient: HttpClientAdapter(client: httpClient),
+      ),
+    );
+  }
+
   /// Unique identifier for this server (e.g. `'prod'`,
   /// `'staging.soliplex.io'`).
   final String serverId;

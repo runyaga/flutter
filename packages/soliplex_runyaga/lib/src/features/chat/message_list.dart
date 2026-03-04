@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:soliplex_agent/soliplex_agent.dart';
 
 import '../../design/tokens/colors.dart';
 import '../../design/tokens/spacing.dart';
 import '../../design/tokens/typography.dart';
-import '../../providers/streaming_providers.dart';
+import '../../providers/session_providers.dart';
 import 'chat_message_widget.dart';
 
 /// Scrollable message list with mIRC-style rendering.
@@ -14,11 +15,12 @@ class MessageList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final messagesAsync = ref.watch(messagesProvider);
-    final runState = ref.watch(activeRunStateProvider);
+    final runState = ref.watch(activeRunStateProvider).value;
+    final isStreaming = runState is RunningState;
 
     return messagesAsync.when(
       data: (messages) {
-        if (messages.isEmpty && runState is IdleState) {
+        if (messages.isEmpty && runState is IdleState?) {
           return Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -54,12 +56,15 @@ class MessageList extends ConsumerWidget {
             horizontal: BoilerSpacing.s3,
             vertical: BoilerSpacing.s2,
           ),
-          itemCount: messages.length + (runState is StreamingRunState ? 1 : 0),
+          itemCount: messages.length + (isStreaming ? 1 : 0),
           itemBuilder: (context, index) {
-            // Synthetic streaming message at the end
             if (index >= messages.length) {
-              final streaming = runState as StreamingRunState;
-              return _StreamingIndicator(text: streaming.currentText);
+              final streaming = runState! as RunningState;
+              final text = switch (streaming.streaming) {
+                TextStreaming(:final text) => text,
+                _ => '',
+              };
+              return _StreamingIndicator(text: text);
             }
             return ChatMessageWidget(message: messages[index]);
           },
@@ -97,7 +102,6 @@ class _StreamingIndicator extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Timestamp placeholder
           SizedBox(
             width: 50,
             child: Text(
@@ -105,7 +109,6 @@ class _StreamingIndicator extends StatelessWidget {
               style: BoilerTypography.chatTimestamp,
             ),
           ),
-          // Nick
           Text(
             'BOILER',
             style: BoilerTypography.sourceCodePro(
@@ -115,7 +118,6 @@ class _StreamingIndicator extends StatelessWidget {
             ),
           ),
           const SizedBox(width: BoilerSpacing.s2),
-          // Streaming content
           Expanded(
             child: text.isEmpty
                 ? Row(
