@@ -4,8 +4,25 @@ import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_cli/src/tool_definitions.dart';
 import 'package:test/test.dart';
 
+/// Minimal [ToolExecutionContext] for test-only use.
+class _FakeContext implements ToolExecutionContext {
+  @override
+  CancelToken get cancelToken => throw UnimplementedError();
+  @override
+  Future<AgentSession> spawnChild({
+    required String roomId,
+    required String prompt,
+  }) =>
+      throw UnimplementedError();
+  @override
+  void emitEvent(ExecutionEvent event) => throw UnimplementedError();
+  @override
+  T? getExtension<T extends SessionExtension>() => throw UnimplementedError();
+}
+
 void main() {
   late ToolRegistry registry;
+  final ctx = _FakeContext();
 
   setUp(() {
     registry = buildDemoToolRegistry();
@@ -27,6 +44,7 @@ void main() {
     test('secret_number returns 42', () async {
       final result = await registry.execute(
         const ToolCallInfo(id: 'tc-1', name: 'secret_number'),
+        ctx,
       );
       expect(result, equals('42'));
     });
@@ -38,6 +56,7 @@ void main() {
           name: 'echo',
           arguments: jsonEncode({'text': 'hello'}),
         ),
+        ctx,
       );
       expect(result, equals('hello'));
     });
@@ -45,6 +64,7 @@ void main() {
     test('echo returns empty string when no arguments', () async {
       final result = await registry.execute(
         const ToolCallInfo(id: 'tc-3', name: 'echo'),
+        ctx,
       );
       expect(result, isEmpty);
     });

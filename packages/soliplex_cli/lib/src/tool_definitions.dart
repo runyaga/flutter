@@ -38,9 +38,9 @@ ToolRegistry buildDemoToolRegistry() {
       );
 }
 
-Future<String> _secretNumber(ToolCallInfo toolCall) async => '42';
+Future<String> _secretNumber(ToolCallInfo toolCall, _) async => '42';
 
-Future<String> _echo(ToolCallInfo toolCall) async {
+Future<String> _echo(ToolCallInfo toolCall, _) async {
   if (!toolCall.hasArguments) return '';
   final args = jsonDecode(toolCall.arguments) as Map<String, dynamic>;
   return (args['text'] as String?) ?? '';

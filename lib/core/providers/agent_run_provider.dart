@@ -62,7 +62,7 @@ class AgentRunNotifier extends Notifier<RunState> {
       ClientTool(
         definition: PythonExecutorTool.definition,
         // Dummy — handled in _executeToolsAndResume.
-        executor: (_) => throw StateError('Handled by notifier'),
+        executor: (_, __) => throw StateError('Handled by notifier'),
       ),
     );
 
@@ -118,7 +118,10 @@ class AgentRunNotifier extends Notifier<RunState> {
           if (tc.name == PythonExecutorTool.toolName) {
             result = await _executePython(tc, yielding.threadKey);
           } else {
-            result = await ref.read(toolRegistryProvider).execute(tc);
+            result = await ref.read(toolRegistryProvider).execute(
+                  tc,
+                  _stubCtx,
+                );
           }
           return tc.copyWith(
             status: ToolCallStatus.completed,
@@ -170,3 +173,11 @@ class AgentRunNotifier extends Notifier<RunState> {
 /// proof-of-concept.
 final agentRunProvider =
     NotifierProvider<AgentRunNotifier, RunState>(AgentRunNotifier.new);
+
+final ToolExecutionContext _stubCtx = _StubExecutionContext();
+
+/// Temporary stub — tools currently ignore the context parameter.
+class _StubExecutionContext implements ToolExecutionContext {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
+}

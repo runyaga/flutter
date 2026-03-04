@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:soliplex_agent/soliplex_agent.dart' show ToolExecutionContext;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
@@ -44,6 +45,14 @@ ToolCallInfo _toolCall(String code) => ToolCallInfo(
       arguments: jsonEncode({'code': code}),
     );
 
+/// Stub context — tools in these tests ignore the context parameter.
+class _FakeContext implements ToolExecutionContext {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
+}
+
+final _ctx = _FakeContext();
+
 void main() {
   group('MontyScriptEnvironment', () {
     group('tools', () {
@@ -79,7 +88,8 @@ void main() {
         );
         addTearDown(env.dispose);
 
-        final result = await env.tools.first.executor(_toolCall('print("hi")'));
+        final result =
+            await env.tools.first.executor(_toolCall('print("hi")'), _ctx);
 
         expect(result, equals('Hello World'));
       });
@@ -97,7 +107,7 @@ void main() {
         addTearDown(env.dispose);
 
         expect(
-          env.tools.first.executor(_toolCall('print(x)')),
+          env.tools.first.executor(_toolCall('print(x)'), _ctx),
           throwsA(
             isA<StateError>().having(
               (e) => e.message,
@@ -122,7 +132,7 @@ void main() {
         });
 
         await expectLater(
-          env.tools.first.executor(_toolCall('while True: pass')),
+          env.tools.first.executor(_toolCall('while True: pass'), _ctx),
           throwsA(isA<TimeoutException>()),
         );
       });
@@ -139,7 +149,7 @@ void main() {
         );
         addTearDown(env.dispose);
 
-        final result = await env.tools.first.executor(_toolCall('x = 1'));
+        final result = await env.tools.first.executor(_toolCall('x = 1'), _ctx);
 
         expect(result, isEmpty);
       });

@@ -100,7 +100,7 @@ void main() {
       registry = registry.register(
         ClientTool(
           definition: Tool(name: entry.key, description: entry.key),
-          executor: entry.value,
+          executor: (tc, _) => entry.value(tc),
         ),
       );
     }

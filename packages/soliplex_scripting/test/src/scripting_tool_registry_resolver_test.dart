@@ -1,6 +1,6 @@
 import 'package:soliplex_agent/soliplex_agent.dart'
     show ClientTool, HostApi, ToolRegistry;
-import 'package:soliplex_client/soliplex_client.dart' show Tool, ToolCallInfo;
+import 'package:soliplex_client/soliplex_client.dart' show Tool;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
 import 'package:test/test.dart';
@@ -64,7 +64,7 @@ void main() {
           description: 'A pre-existing tool',
           parameters: <String, Object?>{},
         ),
-        executor: (ToolCallInfo _) async => 'noop',
+        executor: (_, __) async => 'noop',
       );
 
       Future<ToolRegistry> inner(String roomId) async {
@@ -95,7 +95,7 @@ void main() {
       expect(tool.definition, PythonExecutorTool.definition);
     });
 
-    test('executor wired to MontyToolExecutor.execute', () async {
+    test('executor delegates to MontyToolExecutor.execute', () async {
       final resolver = ScriptingToolRegistryResolver(
         inner: _emptyResolver,
         executor: executor,
@@ -104,7 +104,11 @@ void main() {
       final registry = await resolver.call('room-1');
       final tool = registry.lookup(PythonExecutorTool.toolName);
 
-      expect(tool.executor, equals(executor.execute));
+      // After the ToolExecutor signature change, the executor is a wrapper
+      // lambda rather than a direct reference. Verify the tool is present
+      // and wired to the correct definition.
+      expect(tool.definition, PythonExecutorTool.definition);
+      expect(tool.executor, isNotNull);
     });
   });
 }

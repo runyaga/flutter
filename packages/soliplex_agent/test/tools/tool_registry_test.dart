@@ -1,19 +1,23 @@
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:test/test.dart';
 
+import '../helpers/fake_tool_execution_context.dart';
+
 /// Inline test tool — no demo tool shipped in the package.
 ClientTool _testTool({
   String name = 'test_tool',
   String description = 'A test tool',
-  Future<String> Function(ToolCallInfo)? executor,
+  ToolExecutor? executor,
 }) {
   return ClientTool(
     definition: Tool(name: name, description: description),
-    executor: executor ?? (_) async => 'test result',
+    executor: executor ?? (_, __) async => 'test result',
   );
 }
 
 void main() {
+  final ctx = FakeToolExecutionContext();
+
   group('ToolRegistry', () {
     test('register adds tool to registry', () {
       const registry = ToolRegistry();
@@ -50,23 +54,23 @@ void main() {
 
     test('execute runs the tool executor', () async {
       final registry = const ToolRegistry().register(
-        _testTool(executor: (_) async => 'hello from tool'),
+        _testTool(executor: (_, __) async => 'hello from tool'),
       );
       const toolCall = ToolCallInfo(id: 'tc-1', name: 'test_tool');
 
-      final result = await registry.execute(toolCall);
+      final result = await registry.execute(toolCall, ctx);
 
       expect(result, 'hello from tool');
     });
 
     test('execute with failing executor propagates exception', () async {
       final registry = const ToolRegistry().register(
-        _testTool(executor: (_) async => throw Exception('boom')),
+        _testTool(executor: (_, __) async => throw Exception('boom')),
       );
       const toolCall = ToolCallInfo(id: 'tc-1', name: 'test_tool');
 
       expect(
-        () => registry.execute(toolCall),
+        () => registry.execute(toolCall, ctx),
         throwsA(isA<Exception>()),
       );
     });
@@ -80,6 +84,23 @@ void main() {
 
       expect(definitions, hasLength(2));
       expect(definitions.map((t) => t.name), containsAll(['tool_a', 'tool_b']));
+    });
+
+    test('execute passes context to executor', () async {
+      ToolExecutionContext? receivedCtx;
+      final registry = const ToolRegistry().register(
+        _testTool(
+          executor: (toolCall, context) async {
+            receivedCtx = context;
+            return 'ok';
+          },
+        ),
+      );
+      const toolCall = ToolCallInfo(id: 'tc-1', name: 'test_tool');
+
+      await registry.execute(toolCall, ctx);
+
+      expect(receivedCtx, same(ctx));
     });
   });
 }

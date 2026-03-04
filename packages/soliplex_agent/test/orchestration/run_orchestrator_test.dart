@@ -62,7 +62,7 @@ ToolRegistry _registryWith({String toolName = 'weather'}) {
   return const ToolRegistry().register(
     ClientTool(
       definition: Tool(name: toolName, description: 'A test tool'),
-      executor: (_) async => 'result',
+      executor: (_, __) async => 'result',
     ),
   );
 }

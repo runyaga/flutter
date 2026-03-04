@@ -46,6 +46,7 @@ export 'src/models/thread_key.dart';
 
 // ── Orchestration ──
 export 'src/orchestration/error_classifier.dart';
+export 'src/orchestration/execution_event.dart';
 export 'src/orchestration/run_orchestrator.dart';
 export 'src/orchestration/run_state.dart';
 
@@ -56,10 +57,12 @@ export 'src/runtime/agent_session_state.dart';
 export 'src/runtime/multi_server_runtime.dart';
 export 'src/runtime/server_connection.dart';
 export 'src/runtime/server_registry.dart';
+export 'src/runtime/session_extension.dart';
 
 // ── Scripting ──
 export 'src/scripting/script_environment.dart';
 
 // ── Tools ──
+export 'src/tools/tool_execution_context.dart';
 export 'src/tools/tool_registry.dart';
 export 'src/tools/tool_registry_resolver.dart';

@@ -27,7 +27,7 @@ class ScriptingToolRegistryResolver {
     return registry.register(
       ClientTool(
         definition: PythonExecutorTool.definition,
-        executor: _executor.execute,
+        executor: (toolCall, _) => _executor.execute(toolCall),
       ),
     );
   }

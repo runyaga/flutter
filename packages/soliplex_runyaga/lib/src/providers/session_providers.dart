@@ -12,7 +12,7 @@ final _log = LogManager.instance.getLogger('runyaga.session');
 final _secretCodeTool = ClientTool.simple(
   name: 'secret_code',
   description: 'Returns the secret code.',
-  executor: (toolCall) async {
+  executor: (toolCall, _) async {
     _log.info('secret_code tool called');
     return '42';
   },

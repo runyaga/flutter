@@ -168,7 +168,7 @@ class PipelineNotifier extends Notifier<PipelineState> {
         return base.register(
           ClientTool(
             definition: PythonExecutorTool.definition,
-            executor: executor.execute,
+            executor: (toolCall, _) => executor.execute(toolCall),
           ),
         );
       },

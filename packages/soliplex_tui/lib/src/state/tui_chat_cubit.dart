@@ -26,6 +26,7 @@ class TuiChatCubit extends Cubit<TuiChatState> {
   final RunOrchestrator _orchestrator;
   final ToolRegistry _toolRegistry;
   final ThreadKey _threadKey;
+  final ToolExecutionContext _stubContext = _StubExecutionContext();
 
   List<ChatMessage> _lastMessages = const [];
   StreamSubscription<RunState>? _subscription;
@@ -104,7 +105,7 @@ class TuiChatCubit extends Cubit<TuiChatState> {
     for (final tc in pendingTools) {
       Loggers.tool.info('Executing tool: ${tc.name}');
       try {
-        final result = await _toolRegistry.execute(tc);
+        final result = await _toolRegistry.execute(tc, _stubContext);
         Loggers.tool.debug('Tool ${tc.name} completed');
         executedTools.add(
           tc.copyWith(status: ToolCallStatus.completed, result: result),
@@ -127,4 +128,28 @@ class TuiChatCubit extends Cubit<TuiChatState> {
     _orchestrator.dispose();
     return super.close();
   }
+}
+
+/// Temporary no-op context for V5 compatibility.
+///
+/// All tool executors currently ignore the context parameter (`_`), so
+/// these methods are never called. Replaced in V8 when TUI delegates
+/// to `AgentSession` directly.
+class _StubExecutionContext implements ToolExecutionContext {
+  @override
+  CancelToken get cancelToken => throw UnimplementedError('V8');
+
+  @override
+  Future<AgentSession> spawnChild({
+    required String roomId,
+    required String prompt,
+  }) =>
+      throw UnimplementedError('V8');
+
+  @override
+  void emitEvent(ExecutionEvent event) => throw UnimplementedError('V8');
+
+  @override
+  T? getExtension<T extends SessionExtension>() =>
+      throw UnimplementedError('V8');
 }

@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:soliplex_agent/soliplex_agent.dart' show ToolRegistry;
+import 'package:soliplex_agent/soliplex_agent.dart'
+    show ToolExecutionContext, ToolRegistry;
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_client/soliplex_client.dart' as domain
     show Cancelled, Completed, Conversation, Failed, Idle, Running;
@@ -36,6 +37,8 @@ import 'package:soliplex_frontend/core/services/tool_execution_zone.dart';
 ///   userMessage: 'Hello!',
 /// );
 /// ```
+final ToolExecutionContext _stubCtx = _StubExecutionContext();
+
 class ActiveRunNotifier extends Notifier<ActiveRunState> {
   late AgUiClient _agUiClient;
   late ToolRegistry _toolRegistry;
@@ -560,7 +563,7 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
               'Executing tool "${toolCall.name}" (${toolCall.id})',
             );
             try {
-              final result = await toolRegistry.execute(toolCall);
+              final result = await toolRegistry.execute(toolCall, _stubCtx);
               Loggers.toolExecution.debug(
                 'Tool "${toolCall.name}" completed '
                 '(${result.length} chars result)',
@@ -923,4 +926,10 @@ class ActiveRunNotifier extends Notifier<ActiveRunState> {
       ref.read(threadHistoryCacheProvider.notifier).updateHistory(key, history);
     };
   }
+}
+
+/// Temporary stub — tools currently ignore the context parameter.
+class _StubExecutionContext implements ToolExecutionContext {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
 }

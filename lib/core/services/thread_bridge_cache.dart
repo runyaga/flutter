@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meta/meta.dart';
+import 'package:soliplex_agent/soliplex_agent.dart' show ToolExecutionContext;
 import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_frontend/core/logging/loggers.dart';
@@ -78,7 +79,7 @@ class ThreadBridgeCacheNotifier extends Notifier<ThreadBridgeCacheState> {
                 'Dispatching ${mapping.pythonName} '
                 '→ ${mapping.registryName}',
               );
-              return registry.execute(toolCall);
+              return registry.execute(toolCall, _stubCtx);
             },
           ),
       ])
@@ -120,3 +121,11 @@ final threadBridgeCacheProvider =
     NotifierProvider<ThreadBridgeCacheNotifier, ThreadBridgeCacheState>(
   ThreadBridgeCacheNotifier.new,
 );
+
+final ToolExecutionContext _stubCtx = _StubExecutionContext();
+
+/// Temporary stub — tools currently ignore the context parameter.
+class _StubExecutionContext implements ToolExecutionContext {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
+}
