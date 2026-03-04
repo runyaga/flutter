@@ -56,20 +56,19 @@ class HttpClientAdapter extends http.BaseClient {
     Map<String, String> headers,
     List<int>? bodyBytes,
   ) async {
-    // Use requestStream for SSE - it throws NetworkException on HTTP errors
-    final byteStream = client.requestStream(
+    final response = await client.requestStream(
       request.method,
       request.url,
       headers: headers,
       body: bodyBytes,
     );
 
-    // requestStream throws on HTTP errors, so successful streams are 200
     return http.StreamedResponse(
-      byteStream,
-      200,
+      response.body,
+      response.statusCode,
       request: request,
-      headers: {'content-type': 'text/event-stream'},
+      headers: response.headers,
+      reasonPhrase: response.reasonPhrase,
     );
   }
 

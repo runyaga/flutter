@@ -65,13 +65,16 @@ class FakeHttpClient implements SoliplexHttpClient {
   }
 
   @override
-  Stream<List<int>> requestStream(
+  Future<StreamedHttpResponse> requestStream(
     String method,
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
-  }) {
-    return const Stream.empty();
+  }) async {
+    return const StreamedHttpResponse(
+      statusCode: 200,
+      body: Stream.empty(),
+    );
   }
 
   @override
@@ -378,20 +381,24 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
         final client = RefreshingHttpClient(
           inner: mockClient,
           refresher: mockRefresher,
         );
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
 
-        final subscription = stream.listen((_) {});
-        await Future<void>.delayed(Duration.zero);
+        final subscription = response.body.listen((_) {});
 
         verify(() => mockRefresher.refreshIfExpiringSoon()).called(1);
 
@@ -410,20 +417,24 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
         final client = RefreshingHttpClient(
           inner: mockClient,
           refresher: mockRefresher,
         );
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
 
-        final subscription = stream.listen((_) {});
-        await Future<void>.delayed(Duration.zero);
+        final subscription = response.body.listen((_) {});
 
         verifyNever(() => mockRefresher.tryRefresh());
 
@@ -473,22 +484,26 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
         final client = RefreshingHttpClient(
           inner: mockClient,
           refresher: mockRefresher,
         );
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'POST',
           Uri.parse('https://example.com/stream'),
           headers: {'Accept': 'text/event-stream'},
           body: 'request body',
         );
 
-        final subscription = stream.listen((_) {});
-        await Future<void>.delayed(Duration.zero);
+        final subscription = response.body.listen((_) {});
 
         verify(
           () => mockClient.requestStream(

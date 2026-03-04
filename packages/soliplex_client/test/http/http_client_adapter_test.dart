@@ -143,7 +143,13 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+            headers: const {'content-type': 'text/event-stream'},
+          ),
+        );
 
         final request = http.Request('POST', Uri.parse('https://api.test/sse'))
           ..headers['accept'] = 'text/event-stream'
@@ -152,7 +158,6 @@ void main() {
 
         final streamedResponse = await httpClient.send(request);
 
-        // SSE streams return 200 (errors throw before returning)
         expect(streamedResponse.statusCode, 200);
         expect(streamedResponse.headers['content-type'], 'text/event-stream');
 
@@ -189,7 +194,13 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+            headers: const {'content-type': 'text/event-stream'},
+          ),
+        );
 
         final request = http.Request('GET', Uri.parse('https://api.test/sse'))
           ..headers['accept'] = 'text/event-stream';
@@ -225,7 +236,13 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+            headers: const {'content-type': 'text/event-stream'},
+          ),
+        );
 
         // Test with 'Accept' (capital A)
         final request = http.Request('GET', Uri.parse('https://api.test/sse'))

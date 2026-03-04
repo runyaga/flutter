@@ -150,12 +150,12 @@ class ObservableHttpClient implements SoliplexHttpClient {
   }
 
   @override
-  Stream<List<int>> requestStream(
+  Future<StreamedHttpResponse> requestStream(
     String method,
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
-  }) {
+  }) async {
     final requestId = _generateRequestId();
     final startTime = DateTime.now();
     var bytesReceived = 0;
@@ -182,19 +182,13 @@ class ObservableHttpClient implements SoliplexHttpClient {
       );
     });
 
-    // Get the source stream
-    final sourceStream = _client.requestStream(
+    final response = await _client.requestStream(
       method,
       uri,
       headers: headers,
       body: body,
     );
 
-    // Use StreamController (not StreamTransformer) so that onCancel emits
-    // a successful HttpStreamEndEvent when the consumer cancels early
-    // (e.g. RunOrchestrator cancels after RunFinishedEvent).
-    late StreamController<List<int>> controller;
-    StreamSubscription<List<int>>? subscription;
     var emittedEnd = false;
 
     void emitEnd({Object? error, StackTrace? stackTrace}) {
@@ -225,9 +219,12 @@ class ObservableHttpClient implements SoliplexHttpClient {
       });
     }
 
+    late StreamController<List<int>> controller;
+    StreamSubscription<List<int>>? subscription;
+
     controller = StreamController<List<int>>(
       onListen: () {
-        subscription = sourceStream.listen(
+        subscription = response.body.listen(
           (data) {
             bytesReceived += data.length;
             streamBuffer.add(data);
@@ -251,7 +248,12 @@ class ObservableHttpClient implements SoliplexHttpClient {
       },
     );
 
-    return controller.stream;
+    return StreamedHttpResponse(
+      statusCode: response.statusCode,
+      headers: response.headers,
+      reasonPhrase: response.reasonPhrase,
+      body: controller.stream,
+    );
   }
 
   @override

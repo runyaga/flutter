@@ -112,78 +112,46 @@ class DartHttpClient implements SoliplexHttpClient {
   }
 
   @override
-  Stream<List<int>> requestStream(
+  Future<StreamedHttpResponse> requestStream(
     String method,
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
-  }) {
+  }) async {
     _checkNotClosed();
 
     final request = _createRequest(method, uri, headers, body);
 
-    late StreamController<List<int>> controller;
-    StreamSubscription<List<int>>? subscription;
+    try {
+      final streamedResponse = await _client.send(request);
 
-    controller = StreamController<List<int>>(
-      onListen: () async {
-        try {
-          final streamedResponse = await _client.send(request);
-
-          // Check for HTTP errors before streaming
-          if (streamedResponse.statusCode >= 400) {
-            controller.addError(
-              NetworkException(
-                message: 'HTTP ${streamedResponse.statusCode}: '
-                    '${streamedResponse.reasonPhrase}',
-              ),
+      return StreamedHttpResponse(
+        statusCode: streamedResponse.statusCode,
+        headers: _normalizeHeaders(streamedResponse.headers),
+        reasonPhrase: streamedResponse.reasonPhrase,
+        body: streamedResponse.stream.handleError(
+          (Object error, StackTrace stackTrace) {
+            throw NetworkException(
+              message: 'Stream error: $error',
+              originalError: error,
+              stackTrace: stackTrace,
             );
-            await controller.close();
-            return;
-          }
-
-          subscription = streamedResponse.stream.listen(
-            controller.add,
-            onError: (Object error, StackTrace stackTrace) {
-              // Wrap all stream errors as NetworkException
-              controller.addError(
-                NetworkException(
-                  message: 'Stream error: $error',
-                  originalError: error,
-                  stackTrace: stackTrace,
-                ),
-              );
-            },
-            onDone: controller.close,
-            cancelOnError: true,
-          );
-        } on http.ClientException catch (e, stackTrace) {
-          controller.addError(
-            NetworkException(
-              message: 'Client error: ${e.message}',
-              originalError: e,
-              stackTrace: stackTrace,
-            ),
-          );
-          await controller.close();
-        } on Exception catch (e, stackTrace) {
-          // Generic fallback for platform-specific exceptions
-          controller.addError(
-            NetworkException(
-              message: 'Connection failed: $e',
-              originalError: e,
-              stackTrace: stackTrace,
-            ),
-          );
-          await controller.close();
-        }
-      },
-      onCancel: () async {
-        await subscription?.cancel();
-      },
-    );
-
-    return controller.stream;
+          },
+        ),
+      );
+    } on http.ClientException catch (e, stackTrace) {
+      throw NetworkException(
+        message: 'Client error: ${e.message}',
+        originalError: e,
+        stackTrace: stackTrace,
+      );
+    } on Exception catch (e, stackTrace) {
+      throw NetworkException(
+        message: 'Connection failed: $e',
+        originalError: e,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   @override

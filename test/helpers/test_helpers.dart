@@ -353,14 +353,17 @@ class FakeHttpTransport implements HttpTransport {
   }
 
   @override
-  Stream<List<int>> requestStream(
+  Future<StreamedHttpResponse> requestStream(
     String method,
     Uri uri, {
     Object? body,
     Map<String, String>? headers,
     CancelToken? cancelToken,
-  }) async* {
-    yield [];
+  }) async {
+    return const StreamedHttpResponse(
+      statusCode: 200,
+      body: Stream.empty(),
+    );
   }
 
   @override

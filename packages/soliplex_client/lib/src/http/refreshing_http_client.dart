@@ -129,16 +129,16 @@ class RefreshingHttpClient implements SoliplexHttpClient {
   }
 
   @override
-  Stream<List<int>> requestStream(
+  Future<StreamedHttpResponse> requestStream(
     String method,
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
-  }) async* {
+  }) async {
     // Proactive refresh only - can't retry mid-stream on 401
     await _refresher.refreshIfExpiringSoon();
 
-    yield* _inner.requestStream(method, uri, headers: headers, body: body);
+    return _inner.requestStream(method, uri, headers: headers, body: body);
   }
 
   @override

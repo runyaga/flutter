@@ -119,9 +119,11 @@ class HttpTransport {
     return _decodeResponse<T>(response, fromJson);
   }
 
-  /// Performs a streaming HTTP request and returns a byte stream.
+  /// Performs a streaming HTTP request and returns a [StreamedHttpResponse].
   ///
   /// Used for SSE (Server-Sent Events) and other streaming protocols.
+  /// The returned [StreamedHttpResponse] contains the HTTP status code and
+  /// headers, plus a body stream that emits byte chunks.
   ///
   /// Parameters:
   /// - [method]: HTTP method (typically GET or POST)
@@ -130,20 +132,18 @@ class HttpTransport {
   /// - [headers]: Optional request headers
   /// - [cancelToken]: Optional token for cancelling the stream
   ///
-  /// Returns a stream of byte chunks as they arrive from the server.
-  /// The stream can be cancelled by calling [CancelToken.cancel], which
-  /// will cause the stream to emit a [CancelledException] error.
-  ///
   /// Throws:
   /// - [CancelledException] if cancelled before the stream starts
   /// - [NetworkException] for connection failures (from client)
-  Stream<List<int>> requestStream(
+  /// - [AuthException] for 401/403 on stream setup
+  /// - [ApiException] for other 4xx/5xx on stream setup
+  Future<StreamedHttpResponse> requestStream(
     String method,
     Uri uri, {
     Object? body,
     Map<String, String>? headers,
     CancelToken? cancelToken,
-  }) {
+  }) async {
     // Check cancellation before starting
     cancelToken?.throwIfCancelled();
 
@@ -157,21 +157,39 @@ class HttpTransport {
       requestHeaders['content-type'] ??= 'application/json';
     }
 
-    // Get the source stream
-    final sourceStream = _client.requestStream(
+    final response = await _client.requestStream(
       method,
       uri,
       headers: requestHeaders,
       body: requestBody,
     );
 
-    // If no cancel token, return stream as-is
-    if (cancelToken == null) {
-      return sourceStream;
+    try {
+      // Check cancellation after connection established
+      cancelToken?.throwIfCancelled();
+
+      // Map status codes to exceptions (same logic as request())
+      _throwForStreamStatusCode(response, uri);
+    } catch (_) {
+      // Drain the body stream to release the underlying socket.
+      // Without this, a thrown exception (status error or cancellation)
+      // would leave the HTTP connection open indefinitely.
+      unawaited(response.body.listen((_) {}).cancel());
+      rethrow;
     }
 
-    // Wrap stream with cancellation support
-    return _wrapStreamWithCancellation(sourceStream, cancelToken);
+    // If no cancel token, return response as-is
+    if (cancelToken == null) {
+      return response;
+    }
+
+    // Wrap body stream with cancellation support
+    return StreamedHttpResponse(
+      statusCode: response.statusCode,
+      headers: response.headers,
+      reasonPhrase: response.reasonPhrase,
+      body: _wrapStreamWithCancellation(response.body, cancelToken),
+    );
   }
 
   /// Closes the transport and releases resources.
@@ -214,6 +232,31 @@ class HttpTransport {
     );
 
     return controller.stream;
+  }
+
+  /// Throws appropriate exception for HTTP error status codes on streams.
+  ///
+  /// Unlike [_throwForStatusCode], the body is a stream and cannot be read
+  /// for error messages. Uses status code and reason phrase only.
+  void _throwForStreamStatusCode(StreamedHttpResponse response, Uri uri) {
+    final statusCode = response.statusCode;
+
+    if (statusCode >= 200 && statusCode < 300) {
+      return;
+    }
+
+    final message = 'HTTP $statusCode'
+        '${response.reasonPhrase != null ? ': ${response.reasonPhrase}' : ''}';
+
+    if (statusCode == 401 || statusCode == 403) {
+      throw AuthException(message: message, statusCode: statusCode);
+    }
+
+    if (statusCode == 404) {
+      throw NotFoundException(message: message, resource: uri.path);
+    }
+
+    throw ApiException(message: message, statusCode: statusCode);
   }
 
   /// Throws appropriate exception for HTTP error status codes.

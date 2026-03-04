@@ -863,7 +863,7 @@ void main() {
     });
 
     group('requestStream', () {
-      test('returns byte stream from client', () async {
+      test('returns StreamedHttpResponse for 200', () async {
         final controller = StreamController<List<int>>();
 
         when(
@@ -873,17 +873,24 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = transport.requestStream(
+        final response = await transport.requestStream(
           'GET',
           Uri.parse('https://api.example.com/stream'),
         );
 
+        expect(response.statusCode, equals(200));
+
         final chunks = <List<int>>[];
         final completer = Completer<void>();
 
-        stream.listen(chunks.add, onDone: completer.complete);
+        response.body.listen(chunks.add, onDone: completer.complete);
 
         controller
           ..add([1, 2, 3])
@@ -902,7 +909,7 @@ void main() {
       });
 
       test('forwards headers and JSON body to client', () async {
-        final controller = StreamController<List<int>>();
+        final controller = StreamController<List<int>>.broadcast();
 
         when(
           () => mockClient.requestStream(
@@ -911,19 +918,21 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = transport.requestStream(
+        final response = await transport.requestStream(
           'POST',
           Uri.parse('https://api.example.com/stream'),
           headers: {'Authorization': 'Bearer token'},
           body: {'prompt': 'Hello'},
         );
 
-        // Start listening to trigger the request
-        final subscription = stream.listen((_) {});
-
-        await Future<void>.delayed(Duration.zero);
+        expect(response.statusCode, equals(200));
 
         verify(
           () => mockClient.requestStream(
@@ -937,15 +946,107 @@ void main() {
           ),
         ).called(1);
 
-        await subscription.cancel();
-        await controller.close();
+        unawaited(controller.close());
       });
 
-      test('throws CancelledException when token already cancelled', () {
+      test('throws AuthException for 401 status', () async {
+        when(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => const StreamedHttpResponse(
+            statusCode: 401,
+            body: Stream.empty(),
+            reasonPhrase: 'Unauthorized',
+          ),
+        );
+
+        await expectLater(
+          transport.requestStream(
+            'GET',
+            Uri.parse('https://api.example.com/stream'),
+          ),
+          throwsA(
+            isA<AuthException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              401,
+            ),
+          ),
+        );
+      });
+
+      test('throws ApiException for 500 status', () async {
+        when(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => const StreamedHttpResponse(
+            statusCode: 500,
+            body: Stream.empty(),
+            reasonPhrase: 'Internal Server Error',
+          ),
+        );
+
+        await expectLater(
+          transport.requestStream(
+            'GET',
+            Uri.parse('https://api.example.com/stream'),
+          ),
+          throwsA(
+            isA<ApiException>().having(
+              (e) => e.statusCode,
+              'statusCode',
+              500,
+            ),
+          ),
+        );
+      });
+
+      test('throws NotFoundException for 404 status', () async {
+        when(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => const StreamedHttpResponse(
+            statusCode: 404,
+            body: Stream.empty(),
+            reasonPhrase: 'Not Found',
+          ),
+        );
+
+        await expectLater(
+          transport.requestStream(
+            'GET',
+            Uri.parse('https://api.example.com/items/999'),
+          ),
+          throwsA(
+            isA<NotFoundException>().having(
+              (e) => e.resource,
+              'resource',
+              '/items/999',
+            ),
+          ),
+        );
+      });
+
+      test('throws CancelledException when token already cancelled', () async {
         final token = CancelToken()..cancel('Pre-cancelled');
 
-        expect(
-          () => transport.requestStream(
+        await expectLater(
+          transport.requestStream(
             'GET',
             Uri.parse('https://api.example.com/stream'),
             cancelToken: token,
@@ -965,9 +1066,14 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = transport.requestStream(
+        final response = await transport.requestStream(
           'GET',
           Uri.parse('https://api.example.com/stream'),
           cancelToken: token,
@@ -976,7 +1082,7 @@ void main() {
         final errors = <Object>[];
         final completer = Completer<void>();
 
-        stream.listen(
+        response.body.listen(
           (_) {},
           onError: (Object e) {
             errors.add(e);
@@ -1017,9 +1123,14 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = transport.requestStream(
+        final response = await transport.requestStream(
           'GET',
           Uri.parse('https://api.example.com/stream'),
           cancelToken: token,
@@ -1028,7 +1139,7 @@ void main() {
         final chunks = <List<int>>[];
         final completer = Completer<void>();
 
-        stream.listen(chunks.add, onDone: completer.complete);
+        response.body.listen(chunks.add, onDone: completer.complete);
 
         controller
           ..add([1, 2, 3])
@@ -1056,9 +1167,14 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = transport.requestStream(
+        final response = await transport.requestStream(
           'GET',
           Uri.parse('https://api.example.com/stream'),
         );
@@ -1066,7 +1182,7 @@ void main() {
         final chunks = <List<int>>[];
         final completer = Completer<void>();
 
-        stream.listen(chunks.add, onDone: completer.complete);
+        response.body.listen(chunks.add, onDone: completer.complete);
 
         controller.add([1, 2, 3]);
         await controller.close();
@@ -1086,17 +1202,22 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
         final token = CancelToken();
-        final stream = transport.requestStream(
+        final response = await transport.requestStream(
           'GET',
           Uri.parse('https://api.example.com/stream'),
           cancelToken: token,
         );
 
         final chunks = <List<int>>[];
-        final subscription = stream.listen(chunks.add);
+        final subscription = response.body.listen(chunks.add);
 
         // Add first chunk
         controller.add([1, 2, 3]);

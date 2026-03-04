@@ -207,14 +207,19 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'GET',
           Uri.parse('https://example.com/api'),
         );
 
-        final subscription = stream.listen((_) {});
+        final subscription = response.body.listen((_) {});
 
         final captured = verify(
           () => mockClient.requestStream(
@@ -250,15 +255,20 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
 
-        // Start listening to trigger the call
-        final subscription = stream.listen((_) {});
+        // Start listening to consume the stream
+        final subscription = response.body.listen((_) {});
 
         final captured = verify(
           () => mockClient.requestStream(
@@ -289,15 +299,20 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
           headers: {'Accept': 'text/event-stream'},
         );
 
-        final subscription = stream.listen((_) {});
+        final subscription = response.body.listen((_) {});
 
         final captured = verify(
           () => mockClient.requestStream(
@@ -372,15 +387,20 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'POST',
           Uri.parse('https://example.com/stream'),
           body: 'request body',
         );
 
-        final subscription = stream.listen((_) {});
+        final subscription = response.body.listen((_) {});
 
         verify(
           () => mockClient.requestStream(

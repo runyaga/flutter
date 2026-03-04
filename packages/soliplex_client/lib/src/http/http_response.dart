@@ -59,3 +59,42 @@ class HttpResponse {
         'bodyLength: ${bodyBytes.length})';
   }
 }
+
+/// Response from a streaming HTTP request.
+///
+/// Unlike [HttpResponse] which buffers the entire body, this type provides
+/// the HTTP metadata (status code, headers) separately from the body stream.
+/// This allows callers to inspect the status code before consuming bytes.
+///
+/// The [body] stream should be listened to exactly once.
+@immutable
+class StreamedHttpResponse {
+  /// Creates a streamed HTTP response.
+  const StreamedHttpResponse({
+    required this.statusCode,
+    required this.body,
+    this.headers = const {},
+    this.reasonPhrase,
+  });
+
+  /// The HTTP status code (e.g., 200, 401, 500).
+  final int statusCode;
+
+  /// The response body as a byte stream.
+  ///
+  /// Listen to this stream to consume the response data.
+  /// Must be listened to exactly once.
+  final Stream<List<int>> body;
+
+  /// Response headers with lowercase keys.
+  final Map<String, String> headers;
+
+  /// The reason phrase from the server (e.g., "OK", "Not Found").
+  final String? reasonPhrase;
+
+  /// Whether this response indicates success (2xx status code).
+  bool get isSuccess => statusCode >= 200 && statusCode < 300;
+
+  @override
+  String toString() => 'StreamedHttpResponse(statusCode: $statusCode)';
+}

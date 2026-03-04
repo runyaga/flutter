@@ -52,7 +52,7 @@ class AuthenticatedHttpClient implements SoliplexHttpClient {
   }
 
   @override
-  Stream<List<int>> requestStream(
+  Future<StreamedHttpResponse> requestStream(
     String method,
     Uri uri, {
     Map<String, String>? headers,

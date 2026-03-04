@@ -46,11 +46,11 @@ abstract class SoliplexHttpClient {
     Duration? timeout,
   });
 
-  /// Performs an HTTP request and returns a byte stream for streaming
-  /// responses.
+  /// Performs a streaming HTTP request and returns a [StreamedHttpResponse].
   ///
   /// Used for SSE (Server-Sent Events) and other streaming protocols.
-  /// The returned stream emits byte chunks as they arrive from the server.
+  /// The returned [StreamedHttpResponse] contains the HTTP status code and
+  /// headers, plus a body stream that emits byte chunks as they arrive.
   ///
   /// Parameters:
   /// - [method]: HTTP method (typically GET or POST)
@@ -60,7 +60,7 @@ abstract class SoliplexHttpClient {
   ///
   /// Throws `NetworkException` on connection failures.
   /// Throws `CancelledException` if the request was cancelled.
-  Stream<List<int>> requestStream(
+  Future<StreamedHttpResponse> requestStream(
     String method,
     Uri uri, {
     Map<String, String>? headers,

@@ -271,9 +271,14 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
@@ -281,14 +286,11 @@ void main() {
         final chunks = <List<int>>[];
         final completer = Completer<void>();
 
-        stream.listen(
+        response.body.listen(
           chunks.add,
           onDone: completer.complete,
           onError: completer.completeError,
         );
-
-        // Give time for listener setup
-        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Verify stream start event was sent
         expect(recorder.eventsOfType<HttpStreamStartEvent>(), hasLength(1));
@@ -331,15 +333,20 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com'),
         );
 
         final completer = Completer<void>();
-        stream.listen((_) {}, onDone: completer.complete);
+        response.body.listen((_) {}, onDone: completer.complete);
 
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
@@ -370,9 +377,14 @@ void main() {
               headers: any(named: 'headers'),
               body: any(named: 'body'),
             ),
-          ).thenAnswer((_) => controller.stream);
+          ).thenAnswer(
+            (_) async => StreamedHttpResponse(
+              statusCode: 200,
+              body: controller.stream,
+            ),
+          );
 
-          final stream = observableClient.requestStream(
+          final response = await observableClient.requestStream(
             'GET',
             Uri.parse('https://example.com/stream'),
           );
@@ -380,7 +392,7 @@ void main() {
           final errors = <Object>[];
           final completer = Completer<void>();
 
-          stream.listen(
+          response.body.listen(
             (_) {},
             onError: (Object e) {
               errors.add(e);
@@ -390,8 +402,6 @@ void main() {
               if (!completer.isCompleted) completer.complete();
             },
           );
-
-          await Future<void>.delayed(const Duration(milliseconds: 10));
 
           // Add some data before error
           controller.add([1, 2, 3]);
@@ -426,9 +436,14 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
@@ -436,7 +451,7 @@ void main() {
         final errors = <Object>[];
         final completer = Completer<void>();
 
-        stream.listen(
+        response.body.listen(
           (_) {},
           onError: (Object e) {
             errors.add(e);
@@ -446,8 +461,6 @@ void main() {
             if (!completer.isCompleted) completer.complete();
           },
         );
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         // Emit non-SoliplexException error
         controller.addError(Exception('Generic error'));
@@ -476,24 +489,27 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
 
         final completer = Completer<void>();
 
-        stream.listen(
+        response.body.listen(
           (_) {},
           onError: (_) {},
           onDone: () {
             if (!completer.isCompleted) completer.complete();
           },
         );
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         controller
           ..add('data: hello\n\n'.codeUnits)
@@ -520,16 +536,19 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
 
-        final subscription = stream.listen((_) {});
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        final subscription = response.body.listen((_) {});
 
         // Add some data first.
         controller.add('data: hello\n\n'.codeUnits);
@@ -731,9 +750,14 @@ void main() {
               headers: any(named: 'headers'),
               body: any(named: 'body'),
             ),
-          ).thenAnswer((_) => controller.stream);
+          ).thenAnswer(
+            (_) async => StreamedHttpResponse(
+              statusCode: 200,
+              body: controller.stream,
+            ),
+          );
 
-          final stream = observableClient.requestStream(
+          final response = await observableClient.requestStream(
             'GET',
             Uri.parse('https://example.com'),
           );
@@ -741,9 +765,7 @@ void main() {
           final chunks = <List<int>>[];
           final completer = Completer<void>();
 
-          stream.listen(chunks.add, onDone: completer.complete);
-
-          await Future<void>.delayed(const Duration(milliseconds: 10));
+          response.body.listen(chunks.add, onDone: completer.complete);
 
           controller
             ..add([1, 2, 3])
@@ -824,17 +846,21 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com'),
         );
 
         final completer = Completer<void>();
-        stream.listen((_) {}, onDone: completer.complete);
+        response.body.listen((_) {}, onDone: completer.complete);
 
-        await Future<void>.delayed(const Duration(milliseconds: 10));
         await controller.close();
         await completer.future;
 
@@ -962,9 +988,14 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = clientNoObservers.requestStream(
+        final response = await clientNoObservers.requestStream(
           'GET',
           Uri.parse('https://example.com'),
         );
@@ -972,9 +1003,7 @@ void main() {
         final chunks = <List<int>>[];
         final completer = Completer<void>();
 
-        stream.listen(chunks.add, onDone: completer.complete);
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        response.body.listen(chunks.add, onDone: completer.complete);
 
         controller
           ..add([1, 2])
@@ -1290,9 +1319,14 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'POST',
           Uri.parse('https://example.com/api/runs'),
           headers: {
@@ -1302,9 +1336,8 @@ void main() {
         );
 
         final completer = Completer<void>();
-        stream.listen((_) {}, onDone: completer.complete);
+        response.body.listen((_) {}, onDone: completer.complete);
 
-        await Future<void>.delayed(const Duration(milliseconds: 10));
         await controller.close();
         await completer.future;
 
@@ -1323,18 +1356,22 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'POST',
           Uri.parse('https://example.com/api/runs'),
           body: {'thread_id': 't1', 'password': 'secret123'},
         );
 
         final completer = Completer<void>();
-        stream.listen((_) {}, onDone: completer.complete);
+        response.body.listen((_) {}, onDone: completer.complete);
 
-        await Future<void>.delayed(const Duration(milliseconds: 10));
         await controller.close();
         await completer.future;
 
@@ -1355,19 +1392,23 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
         const jsonBody = '{"thread_id": "t1", "token": "secret"}';
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'POST',
           Uri.parse('https://example.com/api/runs'),
           body: jsonBody.codeUnits,
         );
 
         final completer = Completer<void>();
-        stream.listen((_) {}, onDone: completer.complete);
+        response.body.listen((_) {}, onDone: completer.complete);
 
-        await Future<void>.delayed(const Duration(milliseconds: 10));
         await controller.close();
         await completer.future;
 
@@ -1390,17 +1431,20 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com/events'),
         );
 
         final completer = Completer<void>();
-        stream.listen((_) {}, onDone: completer.complete);
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        response.body.listen((_) {}, onDone: completer.complete);
 
         const event =
             'event: message\ndata: {"text": "hello", "token": "secret123"}\n\n';
@@ -1424,17 +1468,20 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'POST',
           Uri.parse('https://example.com/oauth/token'),
         );
 
         final completer = Completer<void>();
-        stream.listen((_) {}, onDone: completer.complete);
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        response.body.listen((_) {}, onDone: completer.complete);
 
         const event = 'data: {"access_token": "secret-jwt"}\n\n';
         controller.add(event.codeUnits);
@@ -1456,23 +1503,26 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com/events'),
         );
 
         final completer = Completer<void>();
-        stream.listen(
+        response.body.listen(
           (_) {},
           onError: (_) => completer.complete(),
           onDone: () {
             if (!completer.isCompleted) completer.complete();
           },
         );
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         const event = 'data: {"message": "test", "password": "secret"}\n\n';
         controller
@@ -1500,17 +1550,20 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com/events'),
         );
 
         final completer = Completer<void>();
-        stream.listen((_) {}, onDone: completer.complete);
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        response.body.listen((_) {}, onDone: completer.complete);
 
         const event1 = 'event: message\ndata: {"text": "hello"}\n\n';
         const event2 = 'event: message\ndata: {"text": "world"}\n\n';
@@ -1537,17 +1590,20 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        final stream = observableClient.requestStream(
+        final response = await observableClient.requestStream(
           'GET',
           Uri.parse('https://example.com/events'),
         );
 
         final completer = Completer<void>();
-        stream.listen((_) {}, onDone: completer.complete);
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        response.body.listen((_) {}, onDone: completer.complete);
 
         // Send more than 500KB of data
         final largeChunk = List.filled(100 * 1024, 65); // 100KB of 'A's
@@ -1609,20 +1665,21 @@ void main() {
             headers: any(named: 'headers'),
             body: any(named: 'body'),
           ),
-        ).thenAnswer((_) => controller.stream);
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
 
-        // Start listening to trigger the request
-        final subscription = observableClient
-            .requestStream(
-              'POST',
-              Uri.parse('https://example.com/stream'),
-              headers: const {'Accept': 'text/event-stream'},
-              body: 'test body',
-            )
-            .listen((_) {});
+        final response = await observableClient.requestStream(
+          'POST',
+          Uri.parse('https://example.com/stream'),
+          headers: const {'Accept': 'text/event-stream'},
+          body: 'test body',
+        );
 
-        // Give time for stream to start
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        final subscription = response.body.listen((_) {});
 
         verify(
           () => mockClient.requestStream(

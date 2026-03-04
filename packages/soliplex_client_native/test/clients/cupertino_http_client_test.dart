@@ -463,7 +463,7 @@ void main() {
           () => mockClient.send(any()),
         ).thenAnswer((_) async => streamedResponse);
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
@@ -471,14 +471,11 @@ void main() {
         final chunks = <List<int>>[];
         final completer = Completer<void>();
 
-        stream.listen(
+        response.body.listen(
           chunks.add,
           onDone: completer.complete,
           onError: completer.completeError,
         );
-
-        // Give time for the listener to be set up
-        await Future<void>.delayed(const Duration(milliseconds: 10));
 
         controller
           ..add([1, 2, 3])
@@ -487,6 +484,7 @@ void main() {
 
         await completer.future;
 
+        expect(response.statusCode, equals(200));
         expect(
           chunks,
           equals([
@@ -496,7 +494,7 @@ void main() {
         );
       });
 
-      test('emits NetworkException on HTTP error status', () async {
+      test('returns status code from server response', () async {
         final streamedResponse = _createStreamedResponse(
           statusCode: 500,
           body: utf8.encode('Internal Server Error'),
@@ -507,25 +505,76 @@ void main() {
           () => mockClient.send(any()),
         ).thenAnswer((_) async => streamedResponse);
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
 
-        await expectLater(stream, emitsError(isA<NetworkException>()));
+        expect(response.statusCode, equals(500));
+        expect(response.reasonPhrase, equals('Internal Server Error'));
+        expect(response.isSuccess, isFalse);
       });
 
-      test('emits NetworkException on client exception', () async {
+      test('returns status code and headers from server response', () async {
+        final streamedResponse = _createStreamedResponse(
+          statusCode: 200,
+          body: utf8.encode('OK'),
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'X-Request-Id': 'abc123',
+          },
+          reasonPhrase: 'OK',
+        );
+
+        when(
+          () => mockClient.send(any()),
+        ).thenAnswer((_) async => streamedResponse);
+
+        final response = await client.requestStream(
+          'GET',
+          Uri.parse('https://example.com/stream'),
+        );
+
+        expect(response.statusCode, equals(200));
+        expect(response.isSuccess, isTrue);
+        expect(response.headers['content-type'], equals('text/event-stream'));
+        expect(response.headers['x-request-id'], equals('abc123'));
+        expect(response.reasonPhrase, equals('OK'));
+      });
+
+      test('returns 401 status code without throwing', () async {
+        final streamedResponse = _createStreamedResponse(
+          statusCode: 401,
+          body: utf8.encode('Unauthorized'),
+          reasonPhrase: 'Unauthorized',
+        );
+
+        when(
+          () => mockClient.send(any()),
+        ).thenAnswer((_) async => streamedResponse);
+
+        final response = await client.requestStream(
+          'GET',
+          Uri.parse('https://example.com/stream'),
+        );
+
+        expect(response.statusCode, equals(401));
+        expect(response.reasonPhrase, equals('Unauthorized'));
+        expect(response.isSuccess, isFalse);
+      });
+
+      test('throws NetworkException on client exception', () async {
         when(
           () => mockClient.send(any()),
         ).thenThrow(http.ClientException('Client error'));
 
-        final stream = client.requestStream(
-          'GET',
-          Uri.parse('https://example.com/stream'),
+        await expectLater(
+          client.requestStream(
+            'GET',
+            Uri.parse('https://example.com/stream'),
+          ),
+          throwsA(isA<NetworkException>()),
         );
-
-        await expectLater(stream, emitsError(isA<NetworkException>()));
       });
 
       test('can be cancelled via subscription', () async {
@@ -540,13 +589,13 @@ void main() {
           () => mockClient.send(any()),
         ).thenAnswer((_) async => streamedResponse);
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'GET',
           Uri.parse('https://example.com/stream'),
         );
 
         final chunks = <List<int>>[];
-        final subscription = stream.listen(chunks.add);
+        final subscription = response.body.listen(chunks.add);
 
         await Future<void>.delayed(const Duration(milliseconds: 10));
 
@@ -583,7 +632,7 @@ void main() {
             () => mockClient.send(any()),
           ).thenAnswer((_) async => streamedResponse);
 
-          final stream = client.requestStream(
+          final response = await client.requestStream(
             'GET',
             Uri.parse('https://example.com/stream'),
           );
@@ -591,7 +640,7 @@ void main() {
           final errors = <Object>[];
           final completer = Completer<void>();
 
-          stream.listen(
+          response.body.listen(
             (_) {},
             onError: (Object e) {
               errors.add(e);
@@ -634,7 +683,7 @@ void main() {
             () => mockClient.send(any()),
           ).thenAnswer((_) async => streamedResponse);
 
-          final stream = client.requestStream(
+          final response = await client.requestStream(
             'GET',
             Uri.parse('https://example.com/stream'),
           );
@@ -642,7 +691,7 @@ void main() {
           final errors = <Object>[];
           final completer = Completer<void>();
 
-          stream.listen(
+          response.body.listen(
             (_) {},
             onError: (Object e) {
               errors.add(e);
@@ -685,7 +734,7 @@ void main() {
           return streamedResponse;
         });
 
-        final stream = client.requestStream(
+        final response = await client.requestStream(
           'POST',
           Uri.parse('https://example.com/stream'),
           body: {'key': 'value'},
@@ -695,9 +744,7 @@ void main() {
         final chunks = <List<int>>[];
         final completer = Completer<void>();
 
-        stream.listen(chunks.add, onDone: completer.complete);
-
-        await Future<void>.delayed(const Duration(milliseconds: 10));
+        response.body.listen(chunks.add, onDone: completer.complete);
 
         controller.add([1, 2, 3]);
         await controller.close();
@@ -715,19 +762,17 @@ void main() {
         );
       });
 
-      test('emits NetworkException on generic connection exception', () async {
+      test('throws NetworkException on generic connection exception', () async {
         when(
           () => mockClient.send(any()),
         ).thenThrow(Exception('platform error'));
 
-        final stream = client.requestStream(
-          'GET',
-          Uri.parse('https://example.com/stream'),
-        );
-
         await expectLater(
-          stream,
-          emitsError(
+          client.requestStream(
+            'GET',
+            Uri.parse('https://example.com/stream'),
+          ),
+          throwsA(
             isA<NetworkException>().having(
               (e) => e.message,
               'message',
@@ -751,7 +796,7 @@ void main() {
             () => mockClient.send(any()),
           ).thenAnswer((_) async => streamedResponse);
 
-          final stream = client.requestStream(
+          final response = await client.requestStream(
             'GET',
             Uri.parse('https://example.com/stream'),
           );
@@ -759,7 +804,7 @@ void main() {
           final errors = <Object>[];
           final completer = Completer<void>();
 
-          stream.listen(
+          response.body.listen(
             (_) {},
             onError: (Object e) {
               errors.add(e);
@@ -815,14 +860,20 @@ void main() {
         );
       });
 
-      test('throws StateError when requestStream called after close', () {
-        client.close();
+      test(
+        'throws StateError when requestStream called after close',
+        () async {
+          client.close();
 
-        expect(
-          () => client.requestStream('GET', Uri.parse('https://example.com')),
-          throwsStateError,
-        );
-      });
+          await expectLater(
+            client.requestStream(
+              'GET',
+              Uri.parse('https://example.com'),
+            ),
+            throwsA(isA<StateError>()),
+          );
+        },
+      );
     });
 
     group('HTTP methods', () {

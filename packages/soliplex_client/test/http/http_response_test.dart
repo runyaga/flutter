@@ -381,4 +381,76 @@ void main() {
       });
     });
   });
+
+  group('StreamedHttpResponse', () {
+    test('isSuccess returns true for 2xx', () {
+      const response = StreamedHttpResponse(
+        statusCode: 200,
+        body: Stream.empty(),
+      );
+
+      expect(response.isSuccess, isTrue);
+    });
+
+    test('isSuccess returns true for 299', () {
+      const response = StreamedHttpResponse(
+        statusCode: 299,
+        body: Stream.empty(),
+      );
+
+      expect(response.isSuccess, isTrue);
+    });
+
+    test('isSuccess returns false for 4xx', () {
+      const response = StreamedHttpResponse(
+        statusCode: 401,
+        body: Stream.empty(),
+      );
+
+      expect(response.isSuccess, isFalse);
+    });
+
+    test('isSuccess returns false for 5xx', () {
+      const response = StreamedHttpResponse(
+        statusCode: 500,
+        body: Stream.empty(),
+      );
+
+      expect(response.isSuccess, isFalse);
+    });
+
+    test('toString includes status code', () {
+      const response = StreamedHttpResponse(
+        statusCode: 200,
+        body: Stream.empty(),
+      );
+
+      expect(
+        response.toString(),
+        equals('StreamedHttpResponse(statusCode: 200)'),
+      );
+    });
+
+    test('headers defaults to empty map', () {
+      const response = StreamedHttpResponse(
+        statusCode: 200,
+        body: Stream.empty(),
+      );
+
+      expect(response.headers, isEmpty);
+    });
+
+    test('stores all fields', () {
+      const response = StreamedHttpResponse(
+        statusCode: 201,
+        body: Stream.empty(),
+        headers: {'content-type': 'text/event-stream'},
+        reasonPhrase: 'Created',
+      );
+
+      expect(response.statusCode, equals(201));
+      expect(response.headers, equals({'content-type': 'text/event-stream'}));
+      expect(response.reasonPhrase, equals('Created'));
+    });
+  });
 }
