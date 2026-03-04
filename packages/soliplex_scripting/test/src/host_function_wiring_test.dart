@@ -1,4 +1,7 @@
-import 'package:soliplex_agent/soliplex_agent.dart' show FakeAgentApi, HostApi;
+import 'dart:async';
+
+import 'package:soliplex_agent/soliplex_agent.dart'
+    show AgentApi, FakeAgentApi, HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
@@ -72,10 +75,7 @@ void main() {
     setUp(() {
       bridge = _RecordingBridge();
       hostApi = _FakeHostApi();
-      wiring = HostFunctionWiring(
-        hostApi: hostApi,
-        dfRegistry: DfRegistry(),
-      );
+      wiring = HostFunctionWiring(hostApi: hostApi, dfRegistry: DfRegistry());
     });
 
     test('registerOnto registers df + chart + platform + introspection', () {
@@ -100,9 +100,7 @@ void main() {
 
       setUp(() {
         wiring.registerOnto(bridge);
-        byName = {
-          for (final f in bridge.registered) f.schema.name: f,
-        };
+        byName = {for (final f in bridge.registered) f.schema.name: f};
       });
 
       test('df_create creates via DfRegistry', () async {
@@ -200,12 +198,7 @@ void main() {
       final names = bridge.registered.map((f) => f.schema.name).toSet();
       expect(
         names,
-        containsAll([
-          'spawn_agent',
-          'wait_all',
-          'get_result',
-          'ask_llm',
-        ]),
+        containsAll(['spawn_agent', 'wait_all', 'get_result', 'ask_llm']),
       );
       // 37 df + 2 chart + 2 platform + 4 agent + 2 introspection = 47
       expect(bridge.registered, hasLength(47));
@@ -216,9 +209,7 @@ void main() {
 
       setUp(() {
         wiring.registerOnto(bridge);
-        byName = {
-          for (final f in bridge.registered) f.schema.name: f,
-        };
+        byName = {for (final f in bridge.registered) f.schema.name: f};
       });
 
       test('spawn_agent delegates to AgentApi.spawnAgent', () async {
@@ -228,10 +219,12 @@ void main() {
         });
 
         expect(result, 10);
-        expect(
-          agentApi.calls['spawnAgent'],
-          ['weather', 'Is it raining?', null, null],
-        );
+        expect(agentApi.calls['spawnAgent'], [
+          'weather',
+          'Is it raining?',
+          null,
+          null,
+        ]);
       });
 
       test('wait_all delegates to AgentApi.waitAll', () async {
@@ -247,9 +240,7 @@ void main() {
       });
 
       test('get_result delegates to AgentApi.getResult', () async {
-        final result = await byName['get_result']!.handler({
-          'handle': 5,
-        });
+        final result = await byName['get_result']!.handler({'handle': 5});
 
         expect(result, 'agent output');
         expect(agentApi.calls['getResult'], [5, null]);
@@ -265,10 +256,12 @@ void main() {
         final map = result! as Map<String, Object?>;
         expect(map['text'], 'agent output');
         expect(map['thread_id'], 'fake-thread-id');
-        expect(
-          agentApi.calls['spawnAgent'],
-          ['math', 'What is 2+2?', null, null],
-        );
+        expect(agentApi.calls['spawnAgent'], [
+          'math',
+          'What is 2+2?',
+          null,
+          null,
+        ]);
         expect(agentApi.calls['getResult'], [10, null]);
       });
 
@@ -330,4 +323,82 @@ void main() {
       });
     });
   });
+
+  group('agent timeout', () {
+    test('ask_llm times out with configured agentTimeout', () async {
+      final slowApi = _NeverResolvingAgentApi();
+      final b = _RecordingBridge();
+      HostFunctionWiring(
+        hostApi: _FakeHostApi(),
+        agentApi: slowApi,
+        agentTimeout: const Duration(milliseconds: 50),
+      ).registerOnto(b);
+
+      final byName = {for (final f in b.registered) f.schema.name: f};
+      await expectLater(
+        byName['ask_llm']!.handler({'prompt': 'slow', 'room': 'general'}),
+        throwsA(isA<TimeoutException>()),
+      );
+    });
+
+    test('get_result times out with configured agentTimeout', () async {
+      final slowApi = _NeverResolvingAgentApi();
+      final b = _RecordingBridge();
+      HostFunctionWiring(
+        hostApi: _FakeHostApi(),
+        agentApi: slowApi,
+        agentTimeout: const Duration(milliseconds: 50),
+      ).registerOnto(b);
+
+      final byName = {for (final f in b.registered) f.schema.name: f};
+      await expectLater(
+        byName['get_result']!.handler({'handle': 1}),
+        throwsA(isA<TimeoutException>()),
+      );
+    });
+
+    test('wait_all times out with configured agentTimeout', () async {
+      final slowApi = _NeverResolvingAgentApi();
+      final b = _RecordingBridge();
+      HostFunctionWiring(
+        hostApi: _FakeHostApi(),
+        agentApi: slowApi,
+        agentTimeout: const Duration(milliseconds: 50),
+      ).registerOnto(b);
+
+      final byName = {for (final f in b.registered) f.schema.name: f};
+      await expectLater(
+        byName['wait_all']!.handler({
+          'handles': <Object?>[1, 2],
+        }),
+        throwsA(isA<TimeoutException>()),
+      );
+    });
+  });
+}
+
+/// Agent API that never resolves any future — for timeout testing.
+class _NeverResolvingAgentApi implements AgentApi {
+  @override
+  Future<int> spawnAgent(
+    String roomId,
+    String prompt, {
+    String? threadId,
+    Duration? timeout,
+  }) =>
+      Completer<int>().future;
+
+  @override
+  String getThreadId(int handle) => 'never';
+
+  @override
+  Future<List<String>> waitAll(List<int> handles, {Duration? timeout}) =>
+      Completer<List<String>>().future;
+
+  @override
+  Future<String> getResult(int handle, {Duration? timeout}) =>
+      Completer<String>().future;
+
+  @override
+  Future<bool> cancelAgent(int handle) => Completer<bool>().future;
 }

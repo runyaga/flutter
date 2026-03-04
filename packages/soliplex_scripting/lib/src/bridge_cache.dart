@@ -1,3 +1,5 @@
+import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
+    show MontyLimits;
 import 'package:soliplex_agent/soliplex_agent.dart' show ThreadKey;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 
@@ -13,14 +15,20 @@ import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 class BridgeCache {
   /// Creates a cache with the given concurrency [limit] and optional
   /// [bridgeFactory] for creating new bridges.
+  ///
+  /// When no [bridgeFactory] is provided, bridges are created as
+  /// `DefaultMontyBridge(useFutures: false, limits: defaultLimits)`.
   BridgeCache({
     required int limit,
     MontyBridge Function()? bridgeFactory,
+    MontyLimits? defaultLimits,
   })  : _limit = limit,
-        _factory = bridgeFactory;
+        _factory = bridgeFactory,
+        _defaultLimits = defaultLimits;
 
   final int _limit;
   final MontyBridge Function()? _factory;
+  final MontyLimits? _defaultLimits;
 
   /// Bridges keyed by thread. Insertion order tracks LRU (oldest first).
   final _bridges = <ThreadKey, MontyBridge>{};
@@ -63,7 +71,8 @@ class BridgeCache {
       _evictLru();
     }
 
-    final bridge = _factory?.call() ?? DefaultMontyBridge(useFutures: false);
+    final bridge = _factory?.call() ??
+        DefaultMontyBridge(useFutures: false, limits: _defaultLimits);
     _bridges[key] = bridge;
     _executing.add(key);
     return bridge;

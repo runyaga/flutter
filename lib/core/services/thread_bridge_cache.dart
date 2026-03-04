@@ -3,11 +3,14 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meta/meta.dart';
 import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_frontend/core/logging/loggers.dart';
 import 'package:soliplex_frontend/core/models/thread_key.dart';
 import 'package:soliplex_frontend/core/providers/api_provider.dart';
 import 'package:soliplex_frontend/core/services/monty_platform_factory.dart';
-import 'package:soliplex_monty/soliplex_monty.dart';
+import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
+import 'package:soliplex_scripting/soliplex_scripting.dart'
+    show buildDfFunctions;
 
 /// Per-thread [MontyBridge] state — maps each (room, thread) to its bridge.
 typedef ThreadBridgeCacheState = Map<ThreadKey, MontyBridge>;

@@ -21,8 +21,8 @@ dart test --coverage
 
 ### Execution
 
-- `MontyToolExecutor` -- acquires bridge from cache, configures host functions, runs code, returns text
-- `BridgeCache` -- LRU pool of `MontyBridge` instances keyed by `ThreadKey`
+- `MontyToolExecutor` -- acquires bridge from cache, configures host functions, runs code, returns text; default 30s execution timeout with evict-on-timeout (not release) to prevent cache poisoning
+- `BridgeCache` -- LRU pool of `MontyBridge` instances keyed by `ThreadKey`; passes `defaultLimits` (default: `MontyLimitsDefaults.tool` = 5s/16MB) to bridges it creates
 
 ### Event Bridging
 
@@ -30,7 +30,7 @@ dart test --coverage
 
 ### Host Wiring
 
-- `HostFunctionWiring` -- registers Dart callbacks onto `MontyBridge` via `HostApi`
+- `HostFunctionWiring` -- registers Dart callbacks onto `MontyBridge` via `HostApi`; agent calls (`ask_llm`, `get_result`, `wait_all`) guarded by `agentTimeout` (default 30s)
 - `HostSchemaAgUi` -- extension converting `HostFunctionSchema` to AG-UI `Tool`
 
 ## Dependencies
@@ -39,6 +39,7 @@ dart test --coverage
 - `soliplex_agent` -- `ThreadKey`, `ToolRegistryResolver`, `ToolRegistry`
 - `soliplex_client` -- `ToolCallInfo`, `ClientTool`
 - `soliplex_interpreter_monty` -- `MontyBridge`, `BridgeEvent`, `HostFunctionRegistry`
+- `dart_monty_platform_interface` -- `MontyLimits` type for bridge resource limits
 - `meta` -- annotations
 
 ## Rules

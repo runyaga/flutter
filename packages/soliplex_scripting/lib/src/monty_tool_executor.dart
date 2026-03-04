@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:soliplex_agent/soliplex_agent.dart' show ThreadKey;
@@ -22,13 +23,16 @@ class MontyToolExecutor {
     required this.threadKey,
     required BridgeCache bridgeCache,
     required HostFunctionWiring hostWiring,
+    Duration executionTimeout = const Duration(seconds: 30),
   })  : _cache = bridgeCache,
-        _wiring = hostWiring;
+        _wiring = hostWiring,
+        _executionTimeout = executionTimeout;
 
   /// Thread identity for bridge acquisition.
   final ThreadKey threadKey;
   final BridgeCache _cache;
   final HostFunctionWiring _wiring;
+  final Duration _executionTimeout;
 
   /// Executes the Python code in [toolCall] and returns the text result.
   ///
@@ -43,8 +47,14 @@ class MontyToolExecutor {
     _wiring.registerOnto(bridge);
     try {
       final events = bridge.execute(code);
-      return await _collectTextResult(events);
+      return await _collectTextResult(events).timeout(_executionTimeout);
+    } on TimeoutException {
+      // The bridge stream may still be producing events. Evict (dispose)
+      // the tainted bridge rather than releasing it back to the pool.
+      _cache.evict(threadKey);
+      rethrow;
     } finally {
+      // Normal path: release back to pool. After evict this is a no-op.
       _cache.release(threadKey);
     }
   }
@@ -72,11 +82,7 @@ class MontyToolExecutor {
 
     final code = decoded['code'];
     if (code is! String || code.isEmpty) {
-      throw ArgumentError.value(
-        code,
-        'code',
-        'Expected a non-empty string.',
-      );
+      throw ArgumentError.value(code, 'code', 'Expected a non-empty string.');
     }
 
     return code;

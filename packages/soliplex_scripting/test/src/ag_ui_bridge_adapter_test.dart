@@ -4,10 +4,7 @@ import 'package:soliplex_scripting/soliplex_scripting.dart';
 import 'package:test/test.dart';
 
 void main() {
-  const adapter = AgUiBridgeAdapter(
-    threadId: 'thread-1',
-    runId: 'run-1',
-  );
+  const adapter = AgUiBridgeAdapter(threadId: 'thread-1', runId: 'run-1');
 
   group('AgUiBridgeAdapter.mapEvent', () {
     test('maps BridgeRunStarted → RunStartedEvent', () {
@@ -75,9 +72,7 @@ void main() {
     });
 
     test('maps BridgeToolCallEnd → ToolCallEndEvent', () {
-      final result = adapter.mapEvent(
-        const BridgeToolCallEnd(callId: 'c1'),
-      );
+      final result = adapter.mapEvent(const BridgeToolCallEnd(callId: 'c1'));
       expect(result, isA<ToolCallEndEvent>());
       expect((result as ToolCallEndEvent).toolCallId, 'c1');
     });
@@ -112,9 +107,7 @@ void main() {
     });
 
     test('maps BridgeTextEnd → TextMessageEndEvent', () {
-      final result = adapter.mapEvent(
-        const BridgeTextEnd(messageId: 'msg-1'),
-      );
+      final result = adapter.mapEvent(const BridgeTextEnd(messageId: 'msg-1'));
       expect(result, isA<TextMessageEndEvent>());
       expect((result as TextMessageEndEvent).messageId, 'msg-1');
     });

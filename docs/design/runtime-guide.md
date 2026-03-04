@@ -135,6 +135,21 @@ The WASM guard prevents deadlocks where a sub-agent tool call would
 require Python execution while Python is already suspended on
 `wait_all()`. Validated in spike testing.
 
+### Execution timeouts
+
+Two layers protect against runaway scripts:
+
+| Layer | Default | Scope | Behavior on timeout |
+|-------|---------|-------|---------------------|
+| Interpreter limits (`MontyLimits`) | 5s / 16 MB (tool), 10s / 32 MB (play button) | Per bridge, cooperative | Interpreter halts between bytecodes |
+| Dart-side timeout (`MontyToolExecutor`) | 30s | Per `execute()` call | **Evicts** tainted bridge (not release) to prevent cache poisoning |
+| Agent call timeout (`HostFunctionWiring`) | 30s | Per `ask_llm` / `get_result` / `wait_all` | `TimeoutException` propagated to Python |
+
+Interpreter limits are set via `MontyLimitsDefaults` presets and
+passed through `BridgeCache.defaultLimits` to every bridge.
+See `packages/soliplex_interpreter_monty/docs/monty_constraints.md`
+for full details.
+
 ## waitAll / waitAny
 
 ```mermaid

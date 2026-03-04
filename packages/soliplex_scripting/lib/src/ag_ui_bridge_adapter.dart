@@ -9,10 +9,7 @@ import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 class AgUiBridgeAdapter {
   /// Creates an adapter that injects the given [threadId] and [runId]
   /// into run-level events.
-  const AgUiBridgeAdapter({
-    required this.threadId,
-    required this.runId,
-  });
+  const AgUiBridgeAdapter({required this.threadId, required this.runId});
 
   /// Thread identifier injected into [RunStartedEvent] / [RunFinishedEvent].
   final String threadId;
@@ -25,23 +22,13 @@ class AgUiBridgeAdapter {
 
   /// Maps a single [BridgeEvent] to its ag-ui [BaseEvent] equivalent.
   BaseEvent mapEvent(BridgeEvent event) => switch (event) {
-        BridgeRunStarted() => RunStartedEvent(
-            threadId: threadId,
-            runId: runId,
-          ),
-        BridgeRunFinished() => RunFinishedEvent(
-            threadId: threadId,
-            runId: runId,
-          ),
-        BridgeRunError(:final message) => RunErrorEvent(
-            message: message,
-          ),
-        BridgeStepStarted(:final stepId) => StepStartedEvent(
-            stepName: stepId,
-          ),
-        BridgeStepFinished(:final stepId) => StepFinishedEvent(
-            stepName: stepId,
-          ),
+        BridgeRunStarted() => RunStartedEvent(threadId: threadId, runId: runId),
+        BridgeRunFinished() =>
+          RunFinishedEvent(threadId: threadId, runId: runId),
+        BridgeRunError(:final message) => RunErrorEvent(message: message),
+        BridgeStepStarted(:final stepId) => StepStartedEvent(stepName: stepId),
+        BridgeStepFinished(:final stepId) =>
+          StepFinishedEvent(stepName: stepId),
         BridgeToolCallStart(:final callId, :final name) => ToolCallStartEvent(
             toolCallId: callId,
             toolCallName: name,
@@ -50,9 +37,8 @@ class AgUiBridgeAdapter {
             toolCallId: callId,
             delta: delta,
           ),
-        BridgeToolCallEnd(:final callId) => ToolCallEndEvent(
-            toolCallId: callId,
-          ),
+        BridgeToolCallEnd(:final callId) =>
+          ToolCallEndEvent(toolCallId: callId),
         BridgeToolCallResult(:final callId, :final result) =>
           ToolCallResultEvent(
             messageId: callId,
@@ -63,10 +49,7 @@ class AgUiBridgeAdapter {
             messageId: messageId,
           ),
         BridgeTextContent(:final messageId, :final delta) =>
-          TextMessageContentEvent(
-            messageId: messageId,
-            delta: delta,
-          ),
+          TextMessageContentEvent(messageId: messageId, delta: delta),
         BridgeTextEnd(:final messageId) => TextMessageEndEvent(
             messageId: messageId,
           ),

@@ -11,7 +11,6 @@ import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 /// handler closure that delegates to [DfRegistry] / [DataFrame] methods.
 List<HostFunction> buildDfFunctions(DfRegistry registry) => [
       // -- Create (3) --------------------------------------------------------
-
       HostFunction(
         schema: const HostFunctionSchema(
           name: 'df_create',
@@ -31,10 +30,8 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
             ),
           ],
         ),
-        handler: (args) async => registry.create(
-          args['data'],
-          _castStringList(args['columns']),
-        ),
+        handler: (args) async =>
+            registry.create(args['data'], _castStringList(args['columns'])),
       ),
 
       HostFunction(
@@ -78,7 +75,6 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
       ),
 
       // -- Inspect (9) -------------------------------------------------------
-
       HostFunction(
         schema: const HostFunctionSchema(
           name: 'df_shape',
@@ -192,7 +188,6 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
       ),
 
       // -- Transform (15) ----------------------------------------------------
-
       HostFunction(
         schema: const HostFunctionSchema(
           name: 'df_select',
@@ -296,8 +291,7 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
           registry.get(_handle(args)).groupAgg(
                 _castStringList(args['group_cols'])!,
                 Map<String, String>.from(
-                  args['agg_map']! as Map<String, Object?>,
-                ),
+                    args['agg_map']! as Map<String, Object?>),
               ),
         ),
       ),
@@ -362,8 +356,7 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
         handler: (args) async => registry.register(
           registry.get(_handle(args)).rename(
                 Map<String, String>.from(
-                  args['mapping']! as Map<String, Object?>,
-                ),
+                    args['mapping']! as Map<String, Object?>),
               ),
         ),
       ),
@@ -438,9 +431,8 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
             ),
           ],
         ),
-        handler: (args) async => registry.register(
-          registry.get(_handle(args)).fillna(args['value']),
-        ),
+        handler: (args) async => registry
+            .register(registry.get(_handle(args)).fillna(args['value'])),
       ),
 
       HostFunction(
@@ -500,10 +492,9 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
           ],
         ),
         handler: (args) async => registry.register(
-          registry.get(_handle(args)).nlargest(
-                (args['n']! as num).toInt(),
-                args['column']! as String,
-              ),
+          registry
+              .get(_handle(args))
+              .nlargest((args['n']! as num).toInt(), args['column']! as String),
         ),
       ),
 
@@ -527,14 +518,11 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
         ),
         handler: (args) async => registry.register(
           registry.get(_handle(args)).nsmallest(
-                (args['n']! as num).toInt(),
-                args['column']! as String,
-              ),
+              (args['n']! as num).toInt(), args['column']! as String),
         ),
       ),
 
       // -- Aggregate (8) -----------------------------------------------------
-
       HostFunction(
         schema: const HostFunctionSchema(
           name: 'df_mean',
@@ -672,7 +660,6 @@ List<HostFunction> buildDfFunctions(DfRegistry registry) => [
       ),
 
       // -- Lifecycle (2) -----------------------------------------------------
-
       HostFunction(
         schema: const HostFunctionSchema(
           name: 'df_dispose',
