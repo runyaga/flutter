@@ -60,7 +60,10 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
   @override
   void initState() {
     super.initState();
-    _bridgeCache = ref.read(bridgeCacheProvider);
+    _bridgeCache = BridgeCache(
+      limit: ref.read(platformConstraintsProvider).maxConcurrentBridges,
+      defaultLimits: MontyLimitsDefaults.showcase,
+    );
     _streamRegistry = StreamRegistry();
     _initExecutor();
   }
@@ -164,7 +167,7 @@ class _MontyShowcaseScreenState extends ConsumerState<MontyShowcaseScreen> {
     _drawingController?.close();
     _formController?.close();
     _tttController?.close();
-    _bridgeCache.evict(_threadKey);
+    _bridgeCache.disposeAll();
     super.dispose();
   }
 
