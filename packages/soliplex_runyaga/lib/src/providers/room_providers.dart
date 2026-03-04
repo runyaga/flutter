@@ -58,14 +58,26 @@ class _ThreadSelection extends Notifier<Map<String, String?>> {
   void select(String roomId, String? threadId) {
     state = {...state, roomId: threadId};
   }
+
+  void remove(String roomId) {
+    final next = {...state}..remove(roomId);
+    state = next;
+  }
 }
 
 /// Currently selected thread ID (derived from room + selection map).
+///
+/// When no explicit selection exists for a room, auto-selects the most recent
+/// thread (if any are loaded). Use `threadSelectionProvider.notifier.select(
+/// roomId, null)` to explicitly request a new thread.
 final currentThreadIdProvider = Provider<String?>((ref) {
   final roomId = ref.watch(currentRoomIdProvider);
   if (roomId == null) return null;
   final selections = ref.watch(threadSelectionProvider);
-  return selections[roomId];
+  if (selections.containsKey(roomId)) return selections[roomId];
+  // Auto-select first thread when entering a room for the first time.
+  final threads = ref.watch(threadsProvider(roomId)).value;
+  return threads?.firstOrNull?.id;
 });
 
 /// Nicknames/users in the current room (placeholder).

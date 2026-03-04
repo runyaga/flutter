@@ -8,14 +8,35 @@ import 'package:soliplex_client/soliplex_client.dart';
 /// message is forwarded to the model.
 typedef ToolExecutor = Future<String> Function(ToolCallInfo toolCall);
 
+/// Default JSON Schema for tools that take no parameters.
+const Map<String, Object> emptyToolParameters = {
+  'type': 'object',
+  'properties': <String, Object>{},
+};
+
 /// A client-side tool definition paired with its executor.
 @immutable
 class ClientTool {
-  /// Creates a client-side tool.
+  /// Creates a client-side tool from a pre-built [Tool] definition.
   const ClientTool({
     required this.definition,
     required this.executor,
   });
+
+  /// Creates a client-side tool with sensible defaults.
+  ///
+  /// [parameters] defaults to an empty JSON Schema object so servers that
+  /// require a non-null schema don't reject the tool.
+  ClientTool.simple({
+    required String name,
+    required String description,
+    required this.executor,
+    dynamic parameters = emptyToolParameters,
+  }) : definition = Tool(
+          name: name,
+          description: description,
+          parameters: parameters,
+        );
 
   /// AG-UI [Tool] definition sent to the backend so the model knows this
   /// tool exists.

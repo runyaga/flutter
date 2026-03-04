@@ -6,12 +6,25 @@ import 'agent_providers.dart';
 import 'room_providers.dart';
 import 'signal_bridge.dart';
 
+final _log = LogManager.instance.getLogger('runyaga.session');
+
+/// Client-side tool: `secret_code` — always returns 42.
+final _secretCodeTool = ClientTool.simple(
+  name: 'secret_code',
+  description: 'Returns the secret code.',
+  executor: (toolCall) async {
+    _log.info('secret_code tool called');
+    return '42';
+  },
+);
+
 /// Shared [AgentRuntime] — one per server connection lifetime.
 final runtimeProvider = Provider<AgentRuntime>((ref) {
   final connection = ref.watch(connectionProvider);
   final runtime = AgentRuntime.fromConnection(
     connection: connection,
-    toolRegistryResolver: (_) async => const ToolRegistry(),
+    toolRegistryResolver: (_) async =>
+        const ToolRegistry().register(_secretCodeTool),
     platform: const NativePlatformConstraints(),
     logger: LogManager.instance.getLogger('runyaga.runtime'),
   );
@@ -19,38 +32,58 @@ final runtimeProvider = Provider<AgentRuntime>((ref) {
   return runtime;
 });
 
-/// The active [AgentSession] for the current chat interaction.
-final activeSessionProvider =
-    NotifierProvider<_ActiveSession, AgentSession?>(_ActiveSession.new);
+/// Per-room active sessions: `roomId → AgentSession?`.
+///
+/// Multiple rooms can stream concurrently. Each room tracks its own
+/// active session independently.
+final roomSessionsProvider =
+    NotifierProvider<_RoomSessions, Map<String, AgentSession?>>(
+  _RoomSessions.new,
+);
 
-class _ActiveSession extends Notifier<AgentSession?> {
+class _RoomSessions extends Notifier<Map<String, AgentSession?>> {
   @override
-  AgentSession? build() => null;
+  Map<String, AgentSession?> build() => {};
 
-  void set(AgentSession? session) => state = session;
+  void set(String roomId, AgentSession? session) {
+    state = {...state, roomId: session};
+  }
+
+  void remove(String roomId) {
+    final next = {...state}..remove(roomId);
+    state = next;
+  }
 }
 
-/// Run state stream bridged from the active session's signal.
+/// The active session for the **current** room (derived).
+final activeSessionProvider = Provider<AgentSession?>((ref) {
+  final roomId = ref.watch(currentRoomIdProvider);
+  if (roomId == null) return null;
+  final sessions = ref.watch(roomSessionsProvider);
+  return sessions[roomId];
+});
+
+/// Run state stream bridged from the current room's active session signal.
 final activeRunStateProvider = StreamProvider<RunState>((ref) {
   final session = ref.watch(activeSessionProvider);
   if (session == null) return Stream.value(const IdleState());
   return session.runState.toStream();
 });
 
-/// Session lifecycle state stream bridged from the active session's signal.
+/// Session lifecycle state stream for the current room.
 final activeSessionStateProvider = StreamProvider<AgentSessionState>((ref) {
   final session = ref.watch(activeSessionProvider);
   if (session == null) return Stream.value(AgentSessionState.spawning);
   return session.sessionState.toStream();
 });
 
-/// Whether the system is currently streaming.
+/// Whether the **current room** is streaming.
 final isStreamingProvider = Provider<bool>((ref) {
   final runState = ref.watch(activeRunStateProvider).value;
   return runState is RunningState;
 });
 
-/// Whether the user can send a message right now.
+/// Whether the user can send a message in the current room.
 final canSendMessageProvider = Provider<bool>((ref) {
   final roomId = ref.watch(currentRoomIdProvider);
   final isStreaming = ref.watch(isStreamingProvider);
@@ -67,11 +100,10 @@ final messagesProvider = FutureProvider<List<ChatMessage>>((ref) async {
   return (await api.getThreadHistory(roomId, threadId)).messages;
 });
 
-/// Sends a message via [AgentRuntime.spawn], setting the active session.
+/// Sends a message via [AgentRuntime.spawn], setting the room's session.
 ///
-/// Creates a new thread if [threadId] is null. After spawning, the session
-/// is set as active and its thread is auto-selected. When the run completes,
-/// messages are refreshed and the thread list is invalidated.
+/// Creates a new thread if [threadId] is null. Multiple rooms can have
+/// concurrent sessions — each room tracks its own independently.
 Future<void> sendMessage(
   WidgetRef ref, {
   required String roomId,
@@ -79,6 +111,8 @@ Future<void> sendMessage(
   String? threadId,
 }) async {
   final runtime = ref.read(runtimeProvider);
+
+  _log.info('sendMessage: roomId=$roomId threadId=$threadId');
 
   final AgentSession session;
   try {
@@ -88,12 +122,17 @@ Future<void> sendMessage(
       threadId: threadId,
       ephemeral: false,
     );
-  } on Object {
-    // spawn failed (network error, thread creation, etc.) — stay idle.
+  } on Object catch (e, st) {
+    _log.warning('spawn failed', error: e, stackTrace: st);
     return;
   }
 
-  ref.read(activeSessionProvider.notifier).set(session);
+  _log.info(
+    'spawned session ${session.id} '
+    'thread=${session.threadKey.threadId}',
+  );
+
+  ref.read(roomSessionsProvider.notifier).set(roomId, session);
 
   // Auto-select the thread created by spawn.
   final newThreadId = session.threadKey.threadId;
@@ -101,13 +140,17 @@ Future<void> sendMessage(
 
   // Wait for completion (success or failure), then refresh.
   session.result.whenComplete(() {
+    _log.info('session complete for room=$roomId');
     ref.invalidate(messagesProvider);
     ref.invalidate(threadsProvider(roomId));
-    ref.read(activeSessionProvider.notifier).set(null);
+    ref.read(roomSessionsProvider.notifier).remove(roomId);
   });
 }
 
-/// Cancels the active session, if any.
+/// Cancels the active session in the current room, if any.
 void cancelActiveSession(WidgetRef ref) {
-  ref.read(activeSessionProvider)?.cancel();
+  final roomId = ref.read(currentRoomIdProvider);
+  if (roomId == null) return;
+  final sessions = ref.read(roomSessionsProvider);
+  sessions[roomId]?.cancel();
 }

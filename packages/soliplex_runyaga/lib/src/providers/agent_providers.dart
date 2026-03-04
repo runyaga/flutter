@@ -7,7 +7,7 @@ final baseUrlProvider = NotifierProvider<_BaseUrl, String>(_BaseUrl.new);
 
 class _BaseUrl extends Notifier<String> {
   @override
-  String build() => 'https://demo.toughserv.com';
+  String build() => 'http://localhost:8000';
 
   void set(String url) => state = url;
 }

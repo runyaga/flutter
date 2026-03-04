@@ -10,6 +10,9 @@ import '../painters/steel_plate_painter.dart';
 import '../providers/room_providers.dart';
 import '../providers/session_providers.dart';
 
+String _shortId(String? id) =>
+    id == null ? 'NONE' : (id.length > 8 ? id.substring(0, 8) : id);
+
 /// Bottom status bar — industrial instrument panel.
 class StatusBar extends ConsumerWidget {
   const StatusBar({super.key});
@@ -18,13 +21,15 @@ class StatusBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sp = SteampunkTheme.of(context);
     final roomId = ref.watch(currentRoomIdProvider);
+    final threadId = ref.watch(currentThreadIdProvider);
     final runState = ref.watch(activeRunStateProvider).value;
     final isActive = runState is RunningState || runState is ToolYieldingState;
 
     final statusText = switch (runState) {
       null || IdleState() => 'IDLE',
       RunningState() => 'STREAMING',
-      ToolYieldingState() => 'TOOL EXEC',
+      ToolYieldingState(:final pendingToolCalls) =>
+        'TOOL: ${pendingToolCalls.map((t) => t.name).join(', ')}',
       CompletedState() => 'COMPLETE',
       CancelledState() => 'CANCELLED',
       FailedState(:final error) => 'ERROR: $error',
@@ -76,7 +81,7 @@ class StatusBar extends ConsumerWidget {
             ),
             _StatusDivider(sp: sp),
             Text(
-              'PRESSURE: NOMINAL',
+              'THREAD: ${_shortId(threadId)}',
               style: BoilerTypography.statusBar,
             ),
             const Spacer(),

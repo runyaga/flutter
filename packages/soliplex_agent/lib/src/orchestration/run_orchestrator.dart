@@ -355,6 +355,12 @@ class RunOrchestrator {
     SimpleRunAgentInput input,
     RunningState initialState,
   ) {
+    // Cancel stale subscription from the previous run. The old stream already
+    // emitted RunFinishedEvent so cancelling it won't trigger a backend
+    // CancelledError. Without this, the old stream's onDone races with the
+    // new subscription and can fire a spurious FailedState.
+    unawaited(_subscription?.cancel());
+    _subscription = null;
     _cancelToken = CancelToken();
     _receivedTerminalEvent = false;
     final stream = _agUiClient.runAgent(

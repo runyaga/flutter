@@ -64,7 +64,10 @@ class ServerTreePanel extends ConsumerWidget {
                     isSelected: isSelected,
                     onTap: () {
                       ref.read(currentRoomIdProvider.notifier).select(room.id);
-                      // Select first thread when room changes
+                      // Clear thread selection so auto-select kicks in.
+                      ref
+                          .read(threadSelectionProvider.notifier)
+                          .remove(room.id);
                       ref.invalidate(threadsProvider);
                     },
                   );
@@ -89,6 +92,38 @@ class ServerTreePanel extends ConsumerWidget {
                     color: BoilerColors.furnaceRed,
                   ),
                 ),
+              ),
+            ),
+          ),
+
+          // Logout
+          Container(height: 1, color: sp.borderColor),
+          InkWell(
+            onTap: () {
+              ref.read(currentRoomIdProvider.notifier).select(null);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: BoilerSpacing.s3,
+                vertical: BoilerSpacing.s2,
+              ),
+              color: BoilerColors.surface,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.logout,
+                    size: 14,
+                    color: sp.steamMuted,
+                  ),
+                  const SizedBox(width: BoilerSpacing.s2),
+                  Text(
+                    'DISCONNECT',
+                    style: BoilerTypography.barlowCondensed(
+                      fontSize: 12,
+                      color: sp.steamMuted,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
