@@ -4,7 +4,8 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
-import 'package:soliplex_client/soliplex_client.dart';
+import 'package:soliplex_client/soliplex_client.dart' hide CancelToken;
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 import 'package:test/test.dart';
 
 class MockSoliplexHttpClient extends Mock implements SoliplexHttpClient {}
@@ -15,6 +16,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(Uri.parse('https://example.com'));
+    registerFallbackValue(CancelToken());
   });
 
   setUp(() {
@@ -142,6 +144,7 @@ void main() {
             any(),
             headers: any(named: 'headers'),
             body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) async => StreamedHttpResponse(
@@ -193,6 +196,7 @@ void main() {
             any(),
             headers: any(named: 'headers'),
             body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) async => StreamedHttpResponse(
@@ -235,6 +239,7 @@ void main() {
             any(),
             headers: any(named: 'headers'),
             body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).thenAnswer(
           (_) async => StreamedHttpResponse(
@@ -256,10 +261,150 @@ void main() {
             any(),
             headers: any(named: 'headers'),
             body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
           ),
         ).called(1);
 
         unawaited(controller.close());
+      });
+    });
+
+    group('activeStreamToken', () {
+      test('SSE request forwards activeStreamToken to requestStream', () async {
+        final token = CancelToken();
+        final controller = StreamController<List<int>>.broadcast();
+
+        when(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
+
+        httpClient.activeStreamToken = token;
+
+        final request = http.Request('GET', Uri.parse('https://api.test/sse'))
+          ..headers['accept'] = 'text/event-stream';
+        await httpClient.send(request);
+
+        verify(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            cancelToken: token,
+          ),
+        ).called(1);
+
+        unawaited(controller.close());
+      });
+
+      test('activeStreamToken is consumed after SSE request', () async {
+        final token = CancelToken();
+        final controller = StreamController<List<int>>.broadcast();
+
+        when(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).thenAnswer(
+          (_) async => StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          ),
+        );
+
+        httpClient.activeStreamToken = token;
+        expect(httpClient.activeStreamToken, isNotNull);
+
+        final request = http.Request('GET', Uri.parse('https://api.test/sse'))
+          ..headers['accept'] = 'text/event-stream';
+        await httpClient.send(request);
+
+        expect(httpClient.activeStreamToken, isNull);
+
+        unawaited(controller.close());
+      });
+
+      test('SSE request works without activeStreamToken', () async {
+        final controller = StreamController<List<int>>.broadcast();
+        CancelToken? capturedToken;
+
+        when(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).thenAnswer((invocation) async {
+          capturedToken =
+              invocation.namedArguments[#cancelToken] as CancelToken?;
+          return StreamedHttpResponse(
+            statusCode: 200,
+            body: controller.stream,
+          );
+        });
+
+        // No activeStreamToken set — should pass null.
+        final request = http.Request('GET', Uri.parse('https://api.test/sse'))
+          ..headers['accept'] = 'text/event-stream';
+        await httpClient.send(request);
+
+        expect(capturedToken, isNull);
+
+        unawaited(controller.close());
+      });
+
+      test('regular request ignores activeStreamToken', () async {
+        final token = CancelToken();
+        final response = HttpResponse(
+          statusCode: 200,
+          bodyBytes: Uint8List.fromList('ok'.codeUnits),
+        );
+
+        when(
+          () => mockClient.request(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            timeout: any(named: 'timeout'),
+          ),
+        ).thenAnswer((_) async => response);
+
+        httpClient.activeStreamToken = token;
+
+        final request = http.Request('GET', Uri.parse('https://api.test/data'));
+        await httpClient.send(request);
+
+        // Token should NOT be consumed by a regular request.
+        expect(httpClient.activeStreamToken, equals(token));
+
+        // requestStream should NOT have been called.
+        verifyNever(
+          () => mockClient.requestStream(
+            any(),
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        );
       });
     });
 

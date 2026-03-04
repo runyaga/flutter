@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:http/http.dart' as http;
 import 'package:soliplex_client/src/http/soliplex_http_client.dart';
+import 'package:soliplex_client/src/utils/cancel_token.dart';
 
 /// Bridges [SoliplexHttpClient] to Dart's [http.Client] interface.
 ///
@@ -34,6 +35,14 @@ class HttpClientAdapter extends http.BaseClient {
   /// The underlying client that handles HTTP requests.
   final SoliplexHttpClient client;
 
+  /// Cancel token for the next streaming request.
+  ///
+  /// Set this before triggering an SSE request
+  /// (e.g. via `AgUiClient.runAgent`).
+  /// The token is consumed (set to `null`) after use so that stale tokens do
+  /// not affect subsequent requests. Regular (non-SSE) requests ignore this.
+  CancelToken? activeStreamToken;
+
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final bodyBytes = await _extractBody(request);
@@ -56,11 +65,16 @@ class HttpClientAdapter extends http.BaseClient {
     Map<String, String> headers,
     List<int>? bodyBytes,
   ) async {
+    // Consume the active token (single-use per request).
+    final token = activeStreamToken;
+    activeStreamToken = null;
+
     final response = await client.requestStream(
       request.method,
       request.url,
       headers: headers,
       body: bodyBytes,
+      cancelToken: token,
     );
 
     return http.StreamedResponse(
