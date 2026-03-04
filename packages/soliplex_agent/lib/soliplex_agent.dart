@@ -46,6 +46,7 @@ export 'src/models/failure_reason.dart';
 export 'src/models/thread_key.dart';
 
 // ── Orchestration ──
+export 'src/orchestration/error_classifier.dart';
 export 'src/orchestration/run_orchestrator.dart';
 export 'src/orchestration/run_state.dart';
 
