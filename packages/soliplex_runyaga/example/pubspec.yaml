@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  soliplex_logging:
+    path: ../../soliplex_logging
   soliplex_runyaga:
     path: ..
 

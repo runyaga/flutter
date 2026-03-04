@@ -50,6 +50,12 @@ class ChannelTabBar extends ConsumerWidget {
                             .read(threadSelectionProvider.notifier)
                             .select(roomId!, thread.id);
                       },
+                      onClose: () {
+                        // Deselect: fall back to auto-select or new thread.
+                        ref
+                            .read(threadSelectionProvider.notifier)
+                            .remove(roomId!);
+                      },
                     );
                   },
                 ),
@@ -88,12 +94,14 @@ class _PipeTab extends StatelessWidget {
     required this.isSelected,
     required this.sp,
     required this.onTap,
+    this.onClose,
   });
 
   final String label;
   final bool isSelected;
   final SteampunkTheme sp;
   final VoidCallback onTap;
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -116,13 +124,29 @@ class _PipeTab extends StatelessWidget {
               ),
             ),
           ),
-          child: Text(
-            label.toUpperCase(),
-            style: BoilerTypography.barlowCondensed(
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              color: isSelected ? sp.furnaceOrange : sp.steamMuted,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: BoilerTypography.barlowCondensed(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? sp.furnaceOrange : sp.steamMuted,
+                ),
+              ),
+              if (onClose != null && isSelected) ...[
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: onClose,
+                  child: Icon(
+                    Icons.close,
+                    size: 12,
+                    color: sp.steamMuted,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),
