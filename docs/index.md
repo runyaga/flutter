@@ -24,6 +24,11 @@ The current frontend focuses on core chat functionality with essential features 
 - [Logging Quickstart](logging-quickstart.md) - How to use loggers, log levels, and troubleshooting
 - [Logging Architecture](guides/logging.md) - DiskQueue, BackendLogSink, and testing patterns
 
+### Architecture
+
+- [HTTP Networking Stack](architecture/http-stack.md) - Decorator chain, stream lifecycle, CancelToken flow
+- [HTTP Extension Guide](architecture/http-extension-guide.md) - Adding decorators, platform clients, observers
+
 ### Rules & Standards
 
 - [Flutter Rules](rules/flutter_rules.md) - Flutter development conventions and best practices
