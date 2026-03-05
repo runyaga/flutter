@@ -42,8 +42,8 @@ class CupertinoHttpClient implements SoliplexHttpClient {
     URLSessionConfiguration? configuration,
     this.defaultTimeout = defaultHttpTimeout,
   }) : _client = CupertinoClient.fromSessionConfiguration(
-          configuration ?? _createConfiguration(defaultTimeout),
-        );
+         configuration ?? _createConfiguration(defaultTimeout),
+       );
 
   /// Creates a Cupertino HTTP client with a custom client for testing.
   ///
@@ -81,15 +81,17 @@ class CupertinoHttpClient implements SoliplexHttpClient {
     final request = _createRequest(method, uri, headers, body);
 
     try {
-      final streamedResponse = await _client.send(request).timeout(
-        effectiveTimeout,
-        onTimeout: () {
-          throw TimeoutException(
-            'Request timed out after ${effectiveTimeout.inSeconds}s',
+      final streamedResponse = await _client
+          .send(request)
+          .timeout(
             effectiveTimeout,
+            onTimeout: () {
+              throw TimeoutException(
+                'Request timed out after ${effectiveTimeout.inSeconds}s',
+                effectiveTimeout,
+              );
+            },
           );
-        },
-      );
 
       final bodyBytes = await streamedResponse.stream.toBytes().timeout(
         effectiveTimeout,
@@ -146,21 +148,28 @@ class CupertinoHttpClient implements SoliplexHttpClient {
     try {
       final streamedResponse = await _client.send(request);
 
-      cancelToken?.throwIfCancelled();
+      try {
+        cancelToken?.throwIfCancelled();
+      } on CancelledException {
+        // Drain the stream to release the underlying TCP socket.
+        unawaited(streamedResponse.stream.listen((_) {}).cancel());
+        rethrow;
+      }
 
       return StreamedHttpResponse(
         statusCode: streamedResponse.statusCode,
         headers: _normalizeHeaders(streamedResponse.headers),
         reasonPhrase: streamedResponse.reasonPhrase,
-        body: streamedResponse.stream.handleError(
-          (Object error, StackTrace stackTrace) {
-            throw NetworkException(
-              message: 'Stream error: $error',
-              originalError: error,
-              stackTrace: stackTrace,
-            );
-          },
-        ),
+        body: streamedResponse.stream.handleError((
+          Object error,
+          StackTrace stackTrace,
+        ) {
+          throw NetworkException(
+            message: 'Stream error: $error',
+            originalError: error,
+            stackTrace: stackTrace,
+          );
+        }),
       );
     } on CancelledException {
       rethrow;
