@@ -3,6 +3,7 @@ library;
 
 export 'src/bridge/bridge_event.dart';
 export 'src/bridge/default_monty_bridge.dart';
+export 'src/bridge/event_loop_bridge.dart';
 export 'src/bridge/host_function.dart';
 export 'src/bridge/host_function_registry.dart';
 export 'src/bridge/host_function_schema.dart';
