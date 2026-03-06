@@ -1,0 +1,8 @@
+Use the execute_python tool to run Python code that:
+1. Spawns a worker in "chat" with prompt "Write a very short haiku about the sea"
+2. Polls agent_status() in a bounded loop (max 60 iterations, sleep(500) each)
+3. If the loop exhausts without reaching a terminal state, cancel the worker and print "TIMEOUT"
+4. If completed, print the result and how many polls it took
+5. If failed, print the failure status
+
+Available functions (pre-loaded, no imports): spawn_agent(room, prompt), agent_status(handle), get_result(handle), cancel_agent(handle), sleep(ms), print()

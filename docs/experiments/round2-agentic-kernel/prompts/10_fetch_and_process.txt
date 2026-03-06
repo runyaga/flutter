@@ -1,0 +1,8 @@
+Use the execute_python tool to run Python code that:
+1. Calls fetch("http://localhost:8000/api/ok") — returns {"status": N, "body": "...", "headers": {...}}
+2. Prints the HTTP status and body
+3. Passes the result to ask_llm() asking it to summarize what the API returned
+4. Prints the LLM summary
+5. Writes the summary to blackboard
+
+Available functions (pre-loaded, no imports): fetch(url, method="GET", headers=None, body=None), ask_llm(prompt, room="chat"), blackboard_write(key, value), print()

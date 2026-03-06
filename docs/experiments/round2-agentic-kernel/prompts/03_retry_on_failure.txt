@@ -1,0 +1,9 @@
+Use the execute_python tool to run Python code that:
+1. Implements a retry loop (max 2 retries)
+2. Each attempt: spawn a worker in "chat" with prompt "Say the word 'success'"
+3. Poll agent_status() until terminal
+4. If completed, get result and break
+5. If failed, cancel the handle and retry
+6. Print the attempt number and outcome each time
+
+Available functions (pre-loaded, no imports): spawn_agent(room, prompt), agent_status(handle), get_result(handle), cancel_agent(handle), sleep(ms), print()

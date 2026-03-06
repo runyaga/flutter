@@ -1,0 +1,19 @@
+Use the execute_python tool to run Python code that implements a map-reduce pattern:
+
+MAP PHASE:
+1. Define 3 questions: "Name one planet", "Name one ocean", "Name one continent" (each asking for just the name)
+2. Spawn a worker in "chat" for each question
+3. Use log() to record each spawn
+
+COLLECT PHASE:
+4. For each worker, poll agent_status() until terminal
+5. If completed, write the result to blackboard as "answer_0", "answer_1", etc.
+6. If failed, write "FAILED:<status>" to blackboard
+7. Use log() to record outcomes
+
+REDUCE PHASE:
+8. Read all answers from blackboard
+9. Join them with "; " and write as "all_answers"
+10. Print the combined result and all blackboard keys
+
+Available functions (pre-loaded, no imports): spawn_agent(room, prompt), agent_status(handle), get_result(handle), sleep(ms), blackboard_write(key, value), blackboard_read(key), blackboard_keys(), log(message, level="info"), print()

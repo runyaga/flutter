@@ -1,0 +1,10 @@
+Use the execute_python tool to run Python code that:
+1. Calls ask_llm("What is 2+2? Reply with just the number.", room="chat")
+   — this spawns an agent and waits for the result in one call
+   — returns {"text": "...", "thread_id": "..."}
+2. Prints the response text and thread_id
+3. Makes a follow-up call on the SAME thread: ask_llm("Now multiply that by 3. Reply with just the number.", room="chat", thread_id=<thread_id from step 1>)
+4. Prints the follow-up response
+5. Writes the final answer to blackboard
+
+Available functions (pre-loaded, no imports): ask_llm(prompt, room="chat", thread_id=None), blackboard_write(key, value), print()

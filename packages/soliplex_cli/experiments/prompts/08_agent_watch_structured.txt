@@ -1,0 +1,10 @@
+Use the execute_python tool to run Python code that:
+1. Spawns 2 workers in "chat" — one "Say hello", one "Say goodbye"
+2. For each, calls agent_watch(handle) which returns a dict with 'status' key
+3. If status is "success", prints the output and writes to blackboard
+4. If status is "failed", prints the reason and error
+5. If status is "timed_out", prints elapsed and cancels the agent
+
+agent_watch() returns: {"status": "success", "output": "..."} or {"status": "failed", "reason": "...", "error": "..."} or {"status": "timed_out", "elapsed_seconds": N}
+
+Available functions (pre-loaded, no imports): spawn_agent(room, prompt), agent_watch(handle), cancel_agent(handle), blackboard_write(key, value), print()

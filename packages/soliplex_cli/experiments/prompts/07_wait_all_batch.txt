@@ -1,0 +1,8 @@
+Use the execute_python tool to run Python code that:
+1. Spawns 3 workers in "chat" with prompts "Say 'alpha'", "Say 'beta'", "Say 'gamma'"
+2. Uses wait_all([h1, h2, h3]) to block until all complete (no manual polling)
+3. Prints the results
+4. Writes each result to blackboard as "batch_0", "batch_1", "batch_2"
+5. Prints blackboard keys
+
+Available functions (pre-loaded, no imports): spawn_agent(room, prompt), wait_all(handles), sleep(ms), blackboard_write(key, value), blackboard_keys(), print()

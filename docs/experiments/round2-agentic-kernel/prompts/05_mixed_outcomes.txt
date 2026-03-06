@@ -1,0 +1,9 @@
+Use the execute_python tool to run Python code that:
+1. Spawns 3 workers in "chat" with prompts "Say 'alpha'", "Say 'beta'", "Say 'gamma'"
+2. For each worker, polls agent_status() with a timeout (max 60 polls, 500ms each)
+3. Classifies each worker as: success (completed), failure (failed/cancelled), or timeout (poll exhausted)
+4. For timeouts, cancels the worker
+5. Writes counts to blackboard: successes, failures, timeouts
+6. Prints results, failures, timeouts, and blackboard state
+
+Available functions (pre-loaded, no imports): spawn_agent(room, prompt), agent_status(handle), get_result(handle), cancel_agent(handle), sleep(ms), blackboard_write(key, value), blackboard_read(key), print()

@@ -1,0 +1,8 @@
+Use the execute_python tool to run Python code that:
+1. Spawns a "sub-supervisor" agent in "chat" with prompt: "Summarize these two facts in one sentence: Fact 1: The sky is blue. Fact 2: Water is wet."
+2. Polls agent_status() in a loop (max 120 polls, 500ms each)
+3. If completed, gets the result, writes it to blackboard as "l2_result", prints it
+4. If timed out, cancels and prints timeout message
+5. If failed, prints failure status
+
+Available functions (pre-loaded, no imports): spawn_agent(room, prompt), agent_status(handle), get_result(handle), cancel_agent(handle), sleep(ms), blackboard_write(key, value), blackboard_read(key), print()

@@ -1,0 +1,15 @@
+Use the execute_python tool to run Python code that tests multi-turn conversations:
+
+1. Call ask_llm("Remember this word: elephant. Just say 'OK'.", room="chat")
+   — this returns {"text": "...", "thread_id": "..."}
+2. Print the response and thread_id
+
+3. On the SAME thread, call ask_llm("What word did I ask you to remember? Reply with just the word.", room="chat", thread_id=<thread_id>)
+4. Print the recall response
+
+5. On the SAME thread again, call ask_llm("Spell that word backwards. Reply with just the reversed word.", room="chat", thread_id=<thread_id>)
+6. Print the spelling response
+
+7. Write both the recall and reverse results to blackboard
+
+Available functions (pre-loaded, no imports): ask_llm(prompt, room="chat", thread_id=None), blackboard_write(key, value), print()

@@ -1,0 +1,7 @@
+Use the execute_python tool to run Python code that:
+1. Spawns 2 worker agents into the "chat" room — one with prompt "say hello", one with "say goodbye"
+2. Polls agent_status() for each in a loop with sleep(500) until both reach a terminal state
+3. Collects results with get_result()
+4. Prints both results
+
+Available functions (pre-loaded, no imports): spawn_agent(room, prompt), agent_status(handle), get_result(handle), sleep(ms), print()
