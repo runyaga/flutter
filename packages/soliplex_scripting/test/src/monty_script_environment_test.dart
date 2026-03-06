@@ -153,7 +153,7 @@ void main() {
 
         final result = await env.tools.first.executor(_toolCall('x = 1'), _ctx);
 
-        expect(result, isEmpty);
+        expect(result, equals('(ok)'));
       });
     });
 

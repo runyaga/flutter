@@ -49,7 +49,8 @@ class MontyScriptEnvironment implements ScriptEnvironment {
   Future<String> _executePython(ToolCallInfo toolCall, _) async {
     final code = extractCode(toolCall);
     final events = _bridge.execute(code);
-    return collectTextResult(events).timeout(_executionTimeout);
+    final result = await collectTextResult(events).timeout(_executionTimeout);
+    return result.isEmpty ? '(ok)' : result;
   }
 
   @override
