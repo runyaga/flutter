@@ -133,13 +133,6 @@ Future<void> _runSession(ArgResults parsed) async {
         agentApi: agentApi,
         blackboardApi: blackboardApi,
         limits: MontyLimitsDefaults.tool,
-        platformFactory: () async {
-          final native = MontyNative(
-            bindings: NativeIsolateBindingsImpl(),
-          );
-          await native.initialize();
-          return native;
-        },
       );
       final env = await factory();
       return [ScriptEnvironmentExtension(env)];
