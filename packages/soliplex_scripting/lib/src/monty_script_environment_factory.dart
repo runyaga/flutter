@@ -48,10 +48,12 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
   MontyPlatformFactory? platformFactory,
   MontyLimits? limits,
   Duration executionTimeout = const Duration(seconds: 30),
+  void Function(StreamRegistry)? streamSetup,
 }) {
   return () async {
     final dfRegistry = DfRegistry();
     final streamRegistry = StreamRegistry();
+    streamSetup?.call(streamRegistry);
     final platform = platformFactory != null ? await platformFactory() : null;
     final bridge = DefaultMontyBridge(
       platform: platform,

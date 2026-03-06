@@ -114,15 +114,15 @@ class StreamRegistry {
     if (handles.isEmpty) {
       throw ArgumentError.value(handles, 'handles', 'Must not be empty.');
     }
-    for (final h in handles) {
-      if (!_iterators.containsKey(h)) {
-        throw ArgumentError.value(h, 'handle', 'Unknown stream handle.');
-      }
-    }
+    // Filter out handles that have already been exhausted and cleaned up,
+    // rather than throwing — the caller's loop may naturally retry with
+    // stale handles after a previous select() exhausted them.
+    final liveHandles = handles.where(_iterators.containsKey).toList();
+    if (liveHandles.isEmpty) return null;
 
-    // peek() on every handle — starts or returns a cached fetch.
+    // peek() on every live handle — starts or returns a cached fetch.
     final pending = <Future<(int, bool, Object?)>>[];
-    for (final h in handles) {
+    for (final h in liveHandles) {
       final iterator = _iterators[h]!;
       pending.add(
         iterator.peek().then((result) => (h, result.$1, result.$2)),

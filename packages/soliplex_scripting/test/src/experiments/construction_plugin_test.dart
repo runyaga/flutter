@@ -6,7 +6,6 @@ import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
 import 'package:test/test.dart';
 
-import 'construction_plugin.dart';
 import 'homebuilder_disruption_test.dart'
     show DisruptionHostApi, ScriptableBridge;
 
@@ -867,7 +866,7 @@ void main() {
         );
         final plugin = ConstructionPlugin(state: state);
 
-        expect(plugin.functions, hasLength(18));
+        expect(plugin.functions, hasLength(20));
       });
     });
 

@@ -230,7 +230,7 @@ class DefaultMontyBridge implements MontyBridge {
         ..add(BridgeStepFinished(stepId: stepName));
 
       return _platform.resume(result);
-    } on Exception catch (e) {
+    } on Object catch (e) {
       controller
         ..add(BridgeToolCallResult(callId: callId, result: 'Error: $e'))
         ..add(BridgeStepFinished(stepId: stepName));
@@ -309,7 +309,7 @@ class DefaultMontyBridge implements MontyBridge {
             ),
           )
           ..add(BridgeStepFinished(stepId: pending.stepName));
-      } on Exception catch (e) {
+      } on Object catch (e) {
         errors[id] = e.toString();
         controller
           ..add(

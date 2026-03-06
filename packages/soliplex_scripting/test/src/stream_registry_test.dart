@@ -154,11 +154,9 @@ void main() {
         );
       });
 
-      test('throws on unknown handle', () async {
-        expect(
-          () => registry.select([999]),
-          throwsA(isA<ArgumentError>()),
-        );
+      test('returns null for unknown handles', () async {
+        final result = await registry.select([999]);
+        expect(result, isNull);
       });
 
       test('works with single handle', () async {
