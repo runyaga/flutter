@@ -1,7 +1,15 @@
 import 'dart:async';
 
 import 'package:soliplex_agent/soliplex_agent.dart'
-    show AgentApi, FakeAgentApi, HostApi;
+    show
+        AgentApi,
+        AgentFailure,
+        AgentResult,
+        AgentSuccess,
+        AgentTimedOut,
+        FailureReason,
+        FakeAgentApi,
+        HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
@@ -198,10 +206,16 @@ void main() {
       final names = bridge.registered.map((f) => f.schema.name).toSet();
       expect(
         names,
-        containsAll(['spawn_agent', 'wait_all', 'get_result', 'ask_llm']),
+        containsAll([
+          'spawn_agent',
+          'wait_all',
+          'get_result',
+          'agent_watch',
+          'ask_llm',
+        ]),
       );
-      // 37 df + 2 chart + 2 platform + 4 agent + 2 introspection = 47
-      expect(bridge.registered, hasLength(47));
+      // 37 df + 2 chart + 2 platform + 5 agent + 2 introspection = 48
+      expect(bridge.registered, hasLength(48));
     });
 
     group('agent handler delegation', () {
@@ -265,6 +279,60 @@ void main() {
         expect(agentApi.calls['getResult'], [10, null]);
       });
 
+      test('agent_watch returns success dict', () async {
+        agentApi.watchResult = const AgentSuccess(
+          threadKey: (serverId: 's', roomId: 'r', threadId: 't'),
+          output: 'done!',
+          runId: 'run-1',
+        );
+
+        final result = await byName['agent_watch']!.handler({'handle': 10});
+
+        expect(result, isA<Map<String, Object?>>());
+        final map = result! as Map<String, Object?>;
+        expect(map['status'], 'success');
+        expect(map['output'], 'done!');
+        expect(agentApi.calls['watchAgent']![0], 10);
+      });
+
+      test('agent_watch returns failed dict', () async {
+        agentApi.watchResult = const AgentFailure(
+          threadKey: (serverId: 's', roomId: 'r', threadId: 't'),
+          reason: FailureReason.serverError,
+          error: 'boom',
+          partialOutput: 'partial',
+        );
+
+        final result = await byName['agent_watch']!.handler({'handle': 5});
+
+        final map = result! as Map<String, Object?>;
+        expect(map['status'], 'failed');
+        expect(map['reason'], 'serverError');
+        expect(map['error'], 'boom');
+        expect(map['partial_output'], 'partial');
+      });
+
+      test('agent_watch returns timed_out dict', () async {
+        agentApi.watchResult = const AgentTimedOut(
+          threadKey: (serverId: 's', roomId: 'r', threadId: 't'),
+          elapsed: Duration(seconds: 15),
+        );
+
+        final result = await byName['agent_watch']!.handler({'handle': 3});
+
+        final map = result! as Map<String, Object?>;
+        expect(map['status'], 'timed_out');
+        expect(map['elapsed_seconds'], 15);
+      });
+
+      test('agent_watch delegates to AgentApi.watchAgent', () async {
+        await byName['agent_watch']!.handler({
+          'handle': 7,
+        });
+
+        expect(agentApi.calls['watchAgent']![0], 7);
+      });
+
       test('ask_llm uses "general" as default room', () async {
         await byName['ask_llm']!.handler({
           'prompt': 'Hello',
@@ -305,6 +373,17 @@ void main() {
         expect(schema.params, hasLength(1));
         expect(schema.params[0].name, 'handle');
         expect(schema.params[0].type, HostParamType.integer);
+      });
+
+      test('agent_watch schema has handle and optional timeout', () {
+        final schema = byName['agent_watch']!.schema;
+        expect(schema.params, hasLength(2));
+        expect(schema.params[0].name, 'handle');
+        expect(schema.params[0].type, HostParamType.integer);
+        expect(schema.params[0].isRequired, isTrue);
+        expect(schema.params[1].name, 'timeout_seconds');
+        expect(schema.params[1].type, HostParamType.number);
+        expect(schema.params[1].isRequired, isFalse);
       });
 
       test('ask_llm schema has prompt, room, and thread_id', () {
@@ -357,6 +436,22 @@ void main() {
       );
     });
 
+    test('agent_watch times out with configured agentTimeout', () async {
+      final slowApi = _NeverResolvingAgentApi();
+      final b = _RecordingBridge();
+      HostFunctionWiring(
+        hostApi: _FakeHostApi(),
+        agentApi: slowApi,
+        agentTimeout: const Duration(milliseconds: 50),
+      ).registerOnto(b);
+
+      final byName = {for (final f in b.registered) f.schema.name: f};
+      await expectLater(
+        byName['agent_watch']!.handler({'handle': 1}),
+        throwsA(isA<TimeoutException>()),
+      );
+    });
+
     test('wait_all times out with configured agentTimeout', () async {
       final slowApi = _NeverResolvingAgentApi();
       final b = _RecordingBridge();
@@ -398,6 +493,10 @@ class _NeverResolvingAgentApi implements AgentApi {
   @override
   Future<String> getResult(int handle, {Duration? timeout}) =>
       Completer<String>().future;
+
+  @override
+  Future<AgentResult> watchAgent(int handle, {Duration? timeout}) =>
+      Completer<AgentResult>().future;
 
   @override
   Future<bool> cancelAgent(int handle) => Completer<bool>().future;

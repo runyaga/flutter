@@ -1,3 +1,5 @@
+import 'package:soliplex_agent/src/models/agent_result.dart';
+
 /// Interface for spawning and managing L2 sub-agents from Python.
 ///
 /// Parallel to `HostApi` (which handles platform/UI concerns), this
@@ -25,6 +27,14 @@ abstract interface class AgentApi {
 
   /// Returns the thread ID for a given agent [handle].
   String getThreadId(int handle);
+
+  /// Watches an agent and returns its [AgentResult] without evicting the
+  /// handle.
+  ///
+  /// Unlike [getResult] which throws on failure and evicts the handle,
+  /// this returns the full result status so callers can implement
+  /// supervision logic (retry, escalation, quality checks).
+  Future<AgentResult> watchAgent(int handle, {Duration? timeout});
 
   /// Cancels the agent identified by [handle].
   ///

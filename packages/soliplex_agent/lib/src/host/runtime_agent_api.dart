@@ -56,6 +56,12 @@ class RuntimeAgentApi implements AgentApi {
   }
 
   @override
+  Future<AgentResult> watchAgent(int handle, {Duration? timeout}) {
+    final session = _lookupSession(handle);
+    return session.awaitResult(timeout: timeout);
+  }
+
+  @override
   Future<bool> cancelAgent(int handle) async {
     _lookupSession(handle).cancel();
     _handles.remove(handle);
