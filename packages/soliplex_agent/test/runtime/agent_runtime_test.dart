@@ -376,11 +376,19 @@ void main() {
       final controller = StreamController<BaseEvent>.broadcast();
       stubRunAgent(stream: controller.stream);
 
-      await runtime.spawn(roomId: _roomId, prompt: 'A');
+      await runtime.spawn(
+        roomId: _roomId,
+        prompt: 'A',
+        autoDispose: true,
+      );
       expect(runtime.pendingSpawnCount, 0);
 
       // Second spawn should queue, not throw.
-      final spawnFuture = runtime.spawn(roomId: _roomId, prompt: 'B');
+      final spawnFuture = runtime.spawn(
+        roomId: _roomId,
+        prompt: 'B',
+        autoDispose: true,
+      );
       // Let microtask run so _waitForSlot enqueues.
       await Future<void>.delayed(Duration.zero);
       expect(runtime.pendingSpawnCount, 1);
@@ -647,6 +655,43 @@ void main() {
     });
   });
 
+  group('autoDispose', () {
+    test('false keeps session in activeSessions after completion', () async {
+      stubCreateThread();
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      final session = await runtime.spawn(
+        roomId: _roomId,
+        prompt: 'Hello',
+      );
+
+      await session.result;
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Session should still be tracked — autoDispose defaults to false.
+      expect(runtime.activeSessions, contains(session));
+    });
+
+    test('true removes session from activeSessions after completion', () async {
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      final session = await runtime.spawn(
+        roomId: _roomId,
+        prompt: 'Hello',
+        autoDispose: true,
+      );
+
+      await session.result;
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(runtime.activeSessions, isEmpty);
+    });
+  });
+
   group('ephemeral', () {
     test('deletes thread on completion', () async {
       stubCreateThread();
@@ -658,6 +703,7 @@ void main() {
         roomId: _roomId,
         prompt: 'Hello',
         ephemeral: true,
+        autoDispose: true,
       );
 
       await session.result;

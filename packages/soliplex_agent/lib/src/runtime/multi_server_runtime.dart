@@ -65,6 +65,7 @@ class MultiServerRuntime {
     String? threadId,
     Duration? timeout,
     bool ephemeral = true,
+    bool autoDispose = false,
   }) {
     return runtimeFor(serverId).spawn(
       roomId: roomId,
@@ -72,6 +73,7 @@ class MultiServerRuntime {
       threadId: threadId,
       timeout: timeout,
       ephemeral: ephemeral,
+      autoDispose: autoDispose,
     );
   }
 

@@ -67,7 +67,6 @@ class _ChatPageState extends State<ChatPage> {
       final session = await component.runtime.spawn(
         roomId: component.roomId,
         prompt: prompt,
-        autoDispose: false,
       );
       Loggers.app.info(
         'Session spawned: thread=${session.threadKey.threadId}',
@@ -114,7 +113,6 @@ class _ChatPageState extends State<ChatPage> {
         roomId: tab.roomId,
         prompt: text,
         threadId: tab.threadId,
-        autoDispose: false,
       );
       Loggers.app.info(
         'Follow-up session spawned: id=${session.id}',
