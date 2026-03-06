@@ -42,6 +42,20 @@ Future<void> main(List<String> arguments) async {
       negatable: false,
       help: 'Print run state events to stderr',
     )
+    ..addFlag(
+      'monty',
+      negatable: false,
+      help: 'Enable Monty Python execution (wires execute_python tool).',
+    )
+    ..addFlag(
+      'no-tools',
+      negatable: false,
+      help: 'Do not advertise client tools.',
+    )
+    ..addOption(
+      'tools',
+      help: 'Comma-separated tool names to advertise (default: all).',
+    )
     ..addFlag('help', abbr: 'h', negatable: false, help: 'Show usage');
 
   final ArgResults results;
@@ -71,6 +85,10 @@ Future<void> main(List<String> arguments) async {
   }
 
   final verbose = results.flag('verbose');
+  final montyEnabled = results.flag('monty');
+  final noTools = results.flag('no-tools');
+  final toolsFilter = results.option('tools');
+  final enabledTools = toolsFilter?.split(',').map((s) => s.trim()).toSet();
 
   final prompts = results.multiOption('prompt');
   if (prompts.isNotEmpty) {
@@ -81,6 +99,9 @@ Future<void> main(List<String> arguments) async {
       roomId: results.option('room'),
       threadId: results.option('thread'),
       verbose: verbose,
+      montyEnabled: montyEnabled,
+      noTools: noTools,
+      enabledTools: enabledTools,
     );
     return;
   }
@@ -102,6 +123,9 @@ Future<void> main(List<String> arguments) async {
       roomId: results.option('room'),
       threadId: results.option('thread'),
       verbose: verbose,
+      montyEnabled: montyEnabled,
+      noTools: noTools,
+      enabledTools: enabledTools,
     );
     return;
   }
@@ -110,5 +134,8 @@ Future<void> main(List<String> arguments) async {
     serverUrl: results.option('server')!,
     roomId: results.option('room'),
     logFile: results.option('log-file')!,
+    montyEnabled: montyEnabled,
+    noTools: noTools,
+    enabledTools: enabledTools,
   );
 }
