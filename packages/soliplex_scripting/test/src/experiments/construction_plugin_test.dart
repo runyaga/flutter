@@ -1490,6 +1490,160 @@ void main() {
         );
       });
 
+      test('H+: generic reactive handler loop (LLM-style)', () async {
+        // THIS is what the LLM would generate: a generic event loop that
+        // dispatches on event type. No hardcoded worker names or days —
+        // the handler reads the event payload and reacts dynamically.
+        //
+        // Uses independent jobs (no deps) to isolate the reactive pattern
+        // from scheduling complexity.
+        final harness = createPluginHarness(
+          jobs: [
+            const Job(
+              id: 'J1',
+              house: 'H1',
+              task: 'Interior Paint',
+              trade: 'framer',
+              material: 'paint',
+              deps: [],
+              outdoor: false,
+            ),
+            const Job(
+              id: 'J2',
+              house: 'H1',
+              task: 'Exterior Paint',
+              trade: 'concrete_crew',
+              material: 'paint',
+              deps: [],
+              outdoor: true,
+            ),
+            const Job(
+              id: 'J3',
+              house: 'H2',
+              task: 'Landscaping',
+              trade: 'roofer',
+              material: 'soil',
+              deps: [],
+              outdoor: true,
+            ),
+          ],
+          // All sunny at setup time — weather disruption changes day 3 later.
+          weather: {
+            1: 'sunny',
+            2: 'sunny',
+            3: 'sunny',
+            4: 'sunny',
+            5: 'sunny',
+          },
+        );
+
+        // Build initial schedule.
+        harness.state
+          ..assign('Alice', 'J1', 2) // indoor, framer
+          ..assign('Bob', 'J2', 3) // outdoor, concrete_crew, day 3 = rain!
+          ..assign('Charlie', 'J3', 2); // outdoor, roofer, day 2 = sunny
+
+        // Push disruptions across 2 streams.
+        harness.streams
+          ..registerFactory(
+            'crew_events',
+            () => Stream.fromIterable([
+              <String, Object?>{
+                'day': 2,
+                'type': 'crew_noshow',
+                'worker': 'Alice',
+              },
+            ]),
+          )
+          ..registerFactory(
+            'weather_events',
+            () => Stream.fromIterable([
+              <String, Object?>{
+                'day': 3,
+                'type': 'weather_change',
+                'new_weather': 'rain',
+              },
+            ]),
+          );
+
+        final hCrew = harness.streams.subscribe('crew_events');
+        final hWeather = harness.streams.subscribe('weather_events');
+        final liveHandles = {hCrew, hWeather};
+
+        // === GENERIC REACTIVE HANDLER (what the LLM writes) ===
+        // The LLM generates this loop — it doesn't know what events
+        // will arrive or in what order. It dispatches on event type.
+        final actions = <String>[];
+
+        while (liveHandles.isNotEmpty) {
+          Map<String, Object?>? selectResult;
+          try {
+            selectResult = await harness.streams.select(
+              liveHandles.toList(),
+            );
+          } catch (e) {
+            if (e is! ArgumentError) rethrow;
+            if (e case final ArgumentError ae) {
+              liveHandles.remove(ae.invalidValue);
+            }
+            continue;
+          }
+          if (selectResult == null) break;
+
+          final event = selectResult['data']! as Map<String, Object?>;
+          final day = event['day']! as int;
+          final type = event['type']! as String;
+
+          // Dynamic dispatch based on event content.
+          switch (type) {
+            case 'crew_noshow':
+              final worker = event['worker']! as String;
+              harness.state.unassign(worker, day);
+              // Find what job they were on and reschedule.
+              final nextSunny = [day + 1, day + 2, day + 3].firstWhere(
+                (d) => harness.state.getWeather(d) != 'rain',
+              );
+              // Re-query ready jobs to find what needs doing.
+              final readyJobs = harness.state.getReadyJobs();
+              for (final job in readyJobs) {
+                if (harness.state.staff
+                    .any((s) => s.name == worker && s.trade == job.trade)) {
+                  harness.state.assign(worker, job.id, nextSunny);
+                  actions
+                      .add('rescheduled $worker to ${job.id} day $nextSunny');
+                  break;
+                }
+              }
+            case 'weather_change':
+              // Update weather state, then unassign outdoor jobs.
+              final newWeather = event['new_weather']! as String;
+              harness.state.weather[day] = newWeather;
+              final daySchedule = harness.state.getDaySchedule(day);
+              for (final assignment in daySchedule) {
+                final jobId = assignment['job_id']! as String;
+                final job = harness.state.findJob(jobId);
+                if (job != null && job.outdoor) {
+                  final worker = assignment['worker']! as String;
+                  harness.state.unassign(worker, day);
+                  final nextSunny = [day + 1, day + 2, day + 3].firstWhere(
+                    (d) => harness.state.getWeather(d) != 'rain',
+                  );
+                  harness.state.assign(worker, jobId, nextSunny);
+                  actions.add('moved outdoor $jobId to day $nextSunny');
+                }
+              }
+          }
+        }
+
+        // Verify: handler took dynamic actions based on event content.
+        expect(actions, hasLength(2));
+        expect(actions[0], contains('rescheduled Alice'));
+        expect(actions[1], contains('moved outdoor J2'));
+
+        // Schedule is valid after reactive adjustments.
+        expect(harness.state.detectConflicts(), isEmpty);
+      });
+
       test('H: disruption stream exhaustion handled gracefully', () async {
         final harness = createPluginHarness();
 
@@ -1515,6 +1669,182 @@ void main() {
           () => harness.streams.next(handle),
           throwsA(isA<ArgumentError>()),
         );
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Tier 4: Error Recovery (Pattern J / J+)
+    //
+    // construction_assign returns {ok: false, error: "reason"} when
+    // constraints are violated. The LLM must parse the error, understand
+    // the violation, and adjust its approach. Tests escalate from single
+    // error to cascading errors to infeasibility detection.
+    // -----------------------------------------------------------------------
+
+    group('Tier 4: error recovery (Pattern J/J+)', () {
+      test('J: parse trade mismatch error → fix → retry', () async {
+        final harness = createPluginHarness();
+
+        // LLM tries Alice (framer) on a concrete_crew job.
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Alice", "job_id": "H1_FND", "day": 2})',
+            )
+            .drain<void>();
+
+        // assign() returned {ok: false} — LLM reads error.
+        final result = harness.state.assign('Alice', 'H1_FND', 2);
+        expect(result['ok'], isFalse);
+        expect(result['error']! as String, contains('framer'));
+
+        // LLM queries workers_for_trade to find the right worker.
+        await harness.bridge
+            .execute(
+              'construction_workers_for_trade({"trade": "concrete_crew"})',
+            )
+            .drain<void>();
+
+        // LLM retries with Bob (concrete_crew).
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Bob", "job_id": "H1_FND", "day": 2})',
+            )
+            .drain<void>();
+
+        expect(harness.state.getSchedule(), hasLength(1));
+        expect(harness.state.getSchedule().first['worker'], 'Bob');
+      });
+
+      test('J: parse dependency error → complete prereq → retry', () async {
+        final harness = createPluginHarness();
+
+        // LLM tries framing before foundation.
+        final failResult = harness.state.assign('Alice', 'H1_FRM', 2);
+        expect(failResult['ok'], isFalse);
+        expect(failResult['error']! as String, contains('Dependencies'));
+
+        // LLM reads error, sees H1_FND is the missing dep.
+        // Completes the prerequisite first.
+        harness.state
+          ..assign('Bob', 'H1_FND', 2)
+          ..advanceDay(2);
+
+        // Retry — now deps are met.
+        final retryResult = harness.state.assign('Alice', 'H1_FRM', 3);
+        expect(retryResult['ok'], isTrue);
+        expect(harness.state.detectConflicts(), isEmpty);
+      });
+
+      test('J: parse rain error → reschedule to sunny day', () async {
+        final harness = createPluginHarness();
+
+        // LLM tries outdoor work on rain day 1.
+        final failResult = harness.state.assign('Bob', 'H1_FND', 1);
+        expect(failResult['ok'], isFalse);
+        expect(failResult['error']! as String, contains('rain'));
+
+        // LLM reads error, queries weather for next days.
+        expect(harness.state.getWeather(2), 'sunny');
+
+        // Retry on sunny day 2.
+        final retryResult = harness.state.assign('Bob', 'H1_FND', 2);
+        expect(retryResult['ok'], isTrue);
+      });
+
+      test('J: parse double-booking → pick different day', () async {
+        final harness = createPluginHarness();
+
+        harness.state.assign('Bob', 'H1_FND', 2);
+
+        // LLM tries Bob again on day 2.
+        final failResult = harness.state.assign('Bob', 'H2_FND', 2);
+        expect(failResult['ok'], isFalse);
+        expect(failResult['error']! as String, contains('already assigned'));
+
+        // LLM reads error, picks day 3 instead.
+        final retryResult = harness.state.assign('Bob', 'H2_FND', 3);
+        expect(retryResult['ok'], isTrue);
+      });
+
+      test('J+: cascading errors — fix one, hit another', () async {
+        final harness = createPluginHarness();
+
+        // Error 1: wrong trade.
+        final err1 = harness.state.assign('Charlie', 'H1_FND', 2);
+        expect(err1['ok'], isFalse);
+        expect(err1['error']! as String, contains('roofer'));
+
+        // Fix: use Bob (concrete_crew). But day 2 rain? No — day 2 sunny.
+        harness.state
+          ..assign('Bob', 'H1_FND', 2)
+          ..advanceDay(2);
+
+        // Error 2: try to assign framing on rain day.
+        // H1_FRM is indoor (outdoor: false), so this actually succeeds.
+        // Let's try roofing instead — it's outdoor and depends on framing.
+        final err2 = harness.state.assign('Charlie', 'H1_ROF', 3);
+        expect(err2['ok'], isFalse);
+        expect(err2['error']! as String, contains('Dependencies'));
+
+        // Fix: complete framing first.
+        harness.state
+          ..assign('Alice', 'H1_FRM', 3)
+          ..advanceDay(3);
+
+        // Now roofing deps met — assign.
+        final ok = harness.state.assign('Charlie', 'H1_ROF', 4);
+        expect(ok['ok'], isTrue);
+        expect(harness.state.detectConflicts(), isEmpty);
+      });
+
+      test('J+: three consecutive errors before success', () async {
+        // LLM makes three mistakes, corrects each one.
+        final harness = createPluginHarness();
+
+        // Mistake 1: wrong trade (Alice=framer on concrete_crew job).
+        final err1 = harness.state.assign('Alice', 'H1_FND', 2);
+        expect(err1['ok'], isFalse);
+
+        // Mistake 2: right worker (Bob), wrong day (rain).
+        final err2 = harness.state.assign('Bob', 'H1_FND', 1);
+        expect(err2['ok'], isFalse);
+
+        // Mistake 3: right worker, right day, but try H1_FRM (deps unmet).
+        final err3 = harness.state.assign('Bob', 'H1_FRM', 2);
+        expect(err3['ok'], isFalse);
+
+        // Finally correct: Bob on H1_FND on day 2.
+        final ok = harness.state.assign('Bob', 'H1_FND', 2);
+        expect(ok['ok'], isTrue);
+      });
+
+      test('I: infeasibility detection — not enough workers', () async {
+        // Only 1 concrete_crew worker, but 2 foundation jobs need
+        // to be done by day 2 — impossible with 1 worker.
+        final harness = createPluginHarness();
+
+        harness.state.assign('Bob', 'H1_FND', 2);
+
+        // Bob busy day 2, try H2_FND same day — fails.
+        final err = harness.state.assign('Bob', 'H2_FND', 2);
+        expect(err['ok'], isFalse);
+        expect(err['error']! as String, contains('already assigned'));
+
+        // No other concrete_crew workers exist.
+        final concreteWorkers = harness.state.staff
+            .where((s) => s.trade == 'concrete_crew')
+            .toList();
+        expect(concreteWorkers, hasLength(1));
+
+        // LLM should detect: "Cannot parallelize two foundation jobs
+        // with only 1 concrete_crew worker. Must serialize."
+        // This is infeasibility detection at the reasoning level.
+        final available = harness.state.availableWorkers(2);
+        final canDoConcrete =
+            available.where((w) => w.trade == 'concrete_crew');
+        expect(canDoConcrete, isEmpty);
       });
     });
   });
