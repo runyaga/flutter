@@ -1,0 +1,12 @@
+id: "judge"
+name: "Judge Test"
+description: "Evaluates and picks consensus from multiple inputs"
+agent:
+  model_name: "gpt-oss:20b"
+  provider_type: "ollama"
+  provider_base_url: "http://workshop:11434"
+  system_prompt: |
+    You are an impartial judge. Review the provided opinions or arguments
+    and determine the consensus or strongest position. State your verdict
+    clearly in 1-2 sentences, citing which side you agree with and why.
+allow_mcp: false
