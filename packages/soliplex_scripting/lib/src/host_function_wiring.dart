@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:http/http.dart' as http;
 import 'package:soliplex_agent/soliplex_agent.dart'
     show
         AgentApi,
@@ -10,6 +9,7 @@ import 'package:soliplex_agent/soliplex_agent.dart'
         BlackboardApi,
         FormApi,
         HostApi;
+import 'package:soliplex_client/soliplex_client.dart' show SoliplexHttpClient;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/src/df_functions.dart';
@@ -31,6 +31,8 @@ class HostFunctionWiring {
     required HostApi hostApi,
     AgentApi? agentApi,
     BlackboardApi? blackboardApi,
+    SoliplexHttpClient? httpClient,
+    String? Function()? getAuthToken,
     DfRegistry? dfRegistry,
     StreamRegistry? streamRegistry,
     FormApi? formApi,
@@ -39,6 +41,8 @@ class HostFunctionWiring {
   })  : _hostApi = hostApi,
         _agentApi = agentApi,
         _blackboardApi = blackboardApi,
+        _httpClient = httpClient,
+        _getAuthToken = getAuthToken,
         _dfRegistry = dfRegistry ?? DfRegistry(),
         _streamRegistry = streamRegistry,
         _formApi = formApi,
@@ -48,6 +52,8 @@ class HostFunctionWiring {
   final HostApi _hostApi;
   final AgentApi? _agentApi;
   final BlackboardApi? _blackboardApi;
+  final SoliplexHttpClient? _httpClient;
+  final String? Function()? _getAuthToken;
   final DfRegistry _dfRegistry;
   final StreamRegistry? _streamRegistry;
   final FormApi? _formApi;
@@ -212,6 +218,13 @@ class HostFunctionWiring {
             ],
           ),
           handler: (args) async {
+            final client = _httpClient;
+            if (client == null) {
+              throw StateError(
+                'fetch() requires an httpClient. '
+                'Pass SoliplexHttpClient to HostFunctionWiring.',
+              );
+            }
             final url = Uri.parse(args['url']! as String);
             final method = (args['method']! as String).toUpperCase();
             final rawHeaders = args['headers'] as Map?;
@@ -220,17 +233,12 @@ class HostFunctionWiring {
                 : <String, String>{};
             final body = args['body'] as String?;
 
-            final http.Response response;
-            switch (method) {
-              case 'POST':
-                response = await http.post(url, headers: headers, body: body);
-              case 'PUT':
-                response = await http.put(url, headers: headers, body: body);
-              case 'DELETE':
-                response = await http.delete(url, headers: headers);
-              default:
-                response = await http.get(url, headers: headers);
-            }
+            final response = await client.request(
+              method,
+              url,
+              headers: headers,
+              body: body,
+            );
 
             return <String, Object?>{
               'status': response.statusCode,
@@ -267,6 +275,18 @@ class HostFunctionWiring {
               'log',
               <String, Object?>{'level': level, 'message': message},
             );
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'get_auth_token',
+            description: 'Get the current OIDC bearer token, '
+                'or null if not authenticated. Use this to add '
+                'Authorization headers to fetch() calls that need '
+                'Soliplex backend authentication.',
+          ),
+          handler: (args) async {
+            return _getAuthToken?.call();
           },
         ),
       ];

@@ -11,14 +11,14 @@ package.
 | DataFrame | 37 | soliplex\_scripting |
 | Chart | 2 | soliplex\_scripting |
 | Form | 2 | soliplex\_scripting |
-| Platform | 4 | soliplex\_scripting |
+| Platform | 5 | soliplex\_scripting |
 | Streams | 3 | soliplex\_scripting |
 | Blackboard | 3 | soliplex\_scripting |
 | Agent | 7 | soliplex\_scripting |
 | Isolate | 5 | dart\_monty\_bridge |
 | Event Loop | 2 | dart\_monty\_bridge |
 | Introspection | 2 | dart\_monty\_bridge |
-| **Total** | **67** | |
+| **Total** | **68** | |
 
 ## DataFrame (`df_*`)
 
@@ -91,8 +91,9 @@ General platform bridge functions.
 |----------|--------|-------------|
 | `host_invoke` | `name: string`, `args: map` | Invoke an arbitrary platform callback |
 | `sleep` | `ms: int` | Pause execution for N milliseconds |
-| `fetch` | `url: string`, `method?: string`, `headers?: map`, `body?: string` | HTTP request. Returns `{status, body, headers}` |
+| `fetch` | `url: string`, `method?: string`, `headers?: map`, `body?: string` | HTTP request via bare `SoliplexHttpClient` (no auto-auth). Returns `{status, body, headers}` |
 | `log` | `message: string`, `level?: string` | Log a message. Levels: debug, info, warning, error |
+| `get_auth_token` | | Get the current OIDC bearer token, or null if not authenticated |
 
 ## Streams (`stream_*`)
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:soliplex_agent/soliplex_agent.dart'
     show
@@ -11,6 +12,8 @@ import 'package:soliplex_agent/soliplex_agent.dart'
         FakeAgentApi,
         FakeBlackboardApi,
         HostApi;
+import 'package:soliplex_client/soliplex_client.dart'
+    show CancelToken, HttpResponse, SoliplexHttpClient, StreamedHttpResponse;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
@@ -91,8 +94,8 @@ void main() {
       wiring.registerOnto(bridge);
 
       final names = bridge.registered.map((f) => f.schema.name).toSet();
-      // 37 df + 2 chart + 4 platform + 2 introspection = 45
-      expect(bridge.registered, hasLength(45));
+      // 37 df + 2 chart + 5 platform + 2 introspection = 46
+      expect(bridge.registered, hasLength(46));
       expect(names, contains('df_create'));
       expect(names, contains('df_head'));
       expect(names, contains('df_filter'));
@@ -102,6 +105,7 @@ void main() {
       expect(names, contains('sleep'));
       expect(names, contains('fetch'));
       expect(names, contains('log'));
+      expect(names, contains('get_auth_token'));
       expect(names, contains('list_functions'));
       expect(names, contains('help'));
     });
@@ -200,6 +204,26 @@ void main() {
         expect(schema.params[3].name, 'body');
         expect(schema.params[3].isRequired, isFalse);
       });
+
+      test('fetch throws StateError when httpClient is null', () async {
+        await expectLater(
+          byName['fetch']!.handler({
+            'url': 'https://example.com',
+            'method': 'GET',
+          }),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('get_auth_token schema has no params', () {
+        final schema = byName['get_auth_token']!.schema;
+        expect(schema.params, isEmpty);
+      });
+
+      test('get_auth_token returns null when callback not provided', () async {
+        final result = await byName['get_auth_token']!.handler({});
+        expect(result, isNull);
+      });
     });
 
     group('agent category absent when agentApi is null', () {
@@ -214,8 +238,8 @@ void main() {
         expect(names, isNot(contains('ask_llm')));
         expect(
           b.registered,
-          hasLength(45),
-        ); // 37 df + 2 chart + 4 platform + 2 introspection
+          hasLength(46),
+        ); // 37 df + 2 chart + 5 platform + 2 introspection
       });
     });
   });
@@ -253,8 +277,8 @@ void main() {
           'ask_llm',
         ]),
       );
-      // 37 df + 2 chart + 4 platform + 7 agent + 2 introspection = 52
-      expect(bridge.registered, hasLength(52));
+      // 37 df + 2 chart + 5 platform + 7 agent + 2 introspection = 53
+      expect(bridge.registered, hasLength(53));
     });
 
     group('agent handler delegation', () {
@@ -511,8 +535,8 @@ void main() {
         names,
         containsAll(['blackboard_write', 'blackboard_read', 'blackboard_keys']),
       );
-      // 37 df + 2 chart + 4 platform + 3 blackboard + 2 introspection = 48
-      expect(bridge.registered, hasLength(48));
+      // 37 df + 2 chart + 5 platform + 3 blackboard + 2 introspection = 49
+      expect(bridge.registered, hasLength(49));
     });
 
     test('blackboard category absent when blackboardApi is null', () {
@@ -613,6 +637,63 @@ void main() {
     });
   });
 
+  group('HostFunctionWiring with httpClient and getAuthToken', () {
+    late _RecordingBridge bridge;
+    late _FakeHostApi hostApi;
+    late _FakeHttpClient httpClient;
+    late Map<String, HostFunction> byName;
+
+    setUp(() {
+      bridge = _RecordingBridge();
+      hostApi = _FakeHostApi();
+      httpClient = _FakeHttpClient();
+      HostFunctionWiring(
+        hostApi: hostApi,
+        httpClient: httpClient,
+        getAuthToken: () => 'oidc-token-123',
+      ).registerOnto(bridge);
+      byName = {for (final f in bridge.registered) f.schema.name: f};
+    });
+
+    test('fetch delegates to SoliplexHttpClient.request', () async {
+      final result = await byName['fetch']!.handler({
+        'url': 'https://api.example.com/data',
+        'method': 'POST',
+        'headers': <String, Object?>{'X-Custom': 'yes'},
+        'body': '{"a":1}',
+      });
+
+      expect(result, isA<Map<String, Object?>>());
+      final map = result! as Map<String, Object?>;
+      expect(map['status'], 200);
+      expect(map['body'], 'ok');
+      expect(httpClient.lastMethod, 'POST');
+      expect(httpClient.lastUri.toString(), 'https://api.example.com/data');
+      expect(httpClient.lastHeaders!['X-Custom'], 'yes');
+      expect(httpClient.lastBody, '{"a":1}');
+    });
+
+    test('fetch bare GET with no headers or body', () async {
+      final result = await byName['fetch']!.handler({
+        'url': 'https://public.api/data',
+        'method': 'GET',
+        'headers': null,
+        'body': null,
+      });
+
+      final map = result! as Map<String, Object?>;
+      expect(map['status'], 200);
+      expect(httpClient.lastMethod, 'GET');
+      expect(httpClient.lastHeaders, isEmpty);
+      expect(httpClient.lastBody, isNull);
+    });
+
+    test('get_auth_token returns token from callback', () async {
+      final result = await byName['get_auth_token']!.handler({});
+      expect(result, 'oidc-token-123');
+    });
+  });
+
   group('agent timeout', () {
     test('ask_llm times out with configured agentTimeout', () async {
       final slowApi = _NeverResolvingAgentApi();
@@ -680,6 +761,46 @@ void main() {
       );
     });
   });
+}
+
+/// Minimal fake HTTP client for testing fetch().
+class _FakeHttpClient implements SoliplexHttpClient {
+  String? lastMethod;
+  late Uri lastUri;
+  Map<String, String>? lastHeaders;
+  Object? lastBody;
+
+  @override
+  Future<HttpResponse> request(
+    String method,
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+    Duration? timeout,
+  }) async {
+    lastMethod = method;
+    lastUri = uri;
+    lastHeaders = headers;
+    lastBody = body;
+    return HttpResponse(
+      statusCode: 200,
+      bodyBytes: Uint8List.fromList('ok'.codeUnits),
+      headers: const {'content-type': 'text/plain'},
+    );
+  }
+
+  @override
+  Future<StreamedHttpResponse> requestStream(
+    String method,
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+    CancelToken? cancelToken,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  void close() {}
 }
 
 /// Agent API that never resolves any future — for timeout testing.
