@@ -356,12 +356,23 @@ class HostFunctionWiring {
                 type: HostParamType.string,
                 description: 'Prompt for the agent.',
               ),
+              HostParam(
+                name: 'thread_id',
+                type: HostParamType.string,
+                isRequired: false,
+                description: 'Thread ID to continue an existing conversation.',
+              ),
             ],
           ),
           handler: (args) async {
             final room = args['room']! as String;
             final prompt = args['prompt']! as String;
-            return _agentApi!.spawnAgent(room, prompt);
+            final threadId = args['thread_id'] as String?;
+            return _agentApi!.spawnAgent(
+              room,
+              prompt,
+              threadId: threadId,
+            );
           },
         ),
         HostFunction(
