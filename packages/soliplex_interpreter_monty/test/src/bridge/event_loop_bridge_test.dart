@@ -122,6 +122,61 @@ void main() {
       expect(waitResult['type'], 'early_click');
     });
 
+    test('multiple queued events delivered in FIFO order', () async {
+      mock
+        // First wait_for_event — will consume first queued event.
+        ..enqueueProgress(
+          const MontyPending(
+            functionName: 'wait_for_event',
+            arguments: [],
+            callId: 1,
+          ),
+        )
+        ..enqueueProgress(
+          const MontyResolveFutures(pendingCallIds: [1]),
+        )
+        // Second wait_for_event — will consume second queued event.
+        ..enqueueProgress(
+          const MontyPending(
+            functionName: 'wait_for_event',
+            arguments: [],
+            callId: 2,
+          ),
+        )
+        ..enqueueProgress(
+          const MontyResolveFutures(pendingCallIds: [2]),
+        )
+        // Third wait_for_event — will consume third queued event.
+        ..enqueueProgress(
+          const MontyPending(
+            functionName: 'wait_for_event',
+            arguments: [],
+            callId: 3,
+          ),
+        )
+        ..enqueueProgress(
+          const MontyResolveFutures(pendingCallIds: [3]),
+        )
+        ..enqueueProgress(
+          const MontyComplete(result: MontyResult(usage: _usage)),
+        );
+
+      // Queue 3 events BEFORE execution starts.
+      bridge
+        ..dispatchUiEvent({'order': 1})
+        ..dispatchUiEvent({'order': 2})
+        ..dispatchUiEvent({'order': 3});
+
+      await bridge.execute('loop').toList();
+
+      // All three resolves should contain events in FIFO order.
+      final results = mock.resolveFuturesResultsList;
+      expect(results, hasLength(3));
+      expect((results[0][1]! as Map)['order'], 1);
+      expect((results[1][2]! as Map)['order'], 2);
+      expect((results[2][3]! as Map)['order'], 3);
+    });
+
     test('multiple sequential wait/dispatch cycles', () async {
       mock
         // First wait_for_event
@@ -254,6 +309,50 @@ void main() {
         () => bridge.dispatchUiEvent({'type': 'click'}),
         throwsStateError,
       );
+    });
+
+    test('script error while waiting cleans up orphaned Completer', () async {
+      mock
+        ..enqueueProgress(
+          const MontyPending(
+            functionName: 'wait_for_event',
+            arguments: [],
+            callId: 1,
+          ),
+        )
+        ..enqueueProgress(
+          const MontyResolveFutures(pendingCallIds: [1]),
+        )
+        ..enqueueProgress(
+          const MontyComplete(
+            result: MontyResult(
+              error: MontyException(message: 'kaboom'),
+              usage: _usage,
+            ),
+          ),
+        );
+
+      final events = <BridgeEvent>[];
+      final stream = bridge.execute('wait_for_event()');
+      final sub = stream.listen(events.add);
+
+      // Let bridge reach wait_for_event.
+      await Future<void>.delayed(Duration.zero);
+      expect(bridge.isWaitingForEvent, isTrue);
+
+      // Simulate the pending Completer being resolved with an error by the
+      // bridge when the script errors — we dispatch to unblock the mock's
+      // ResolveFutures step so the Complete(error) event can flow through.
+      bridge.dispatchUiEvent({'type': 'unblock'});
+
+      await sub.asFuture<void>();
+      await sub.cancel();
+
+      // Bridge should be completed, not stuck in waitingForEvent.
+      expect(bridge.loopState, EventLoopState.completed);
+
+      // Verify a BridgeRunError was emitted.
+      expect(events.whereType<BridgeRunError>(), isNotEmpty);
     });
 
     test('dispose while waiting completes with error', () async {

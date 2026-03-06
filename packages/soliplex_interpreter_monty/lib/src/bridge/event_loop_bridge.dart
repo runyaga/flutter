@@ -106,6 +106,14 @@ class EventLoopBridge extends DefaultMontyBridge {
         if (_loopState != EventLoopState.disposed) {
           _loopState = EventLoopState.completed;
         }
+        // Clean up any orphaned Completer (e.g. script errored while waiting).
+        final completer = _pendingCompleter;
+        if (completer != null && !completer.isCompleted) {
+          completer.completeError(
+            StateError('Script finished while waiting for event'),
+          );
+          _pendingCompleter = null;
+        }
       }
       return event;
     });
