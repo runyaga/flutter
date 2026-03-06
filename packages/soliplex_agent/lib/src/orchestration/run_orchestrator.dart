@@ -271,7 +271,12 @@ class RunOrchestrator {
     _cancelToken?.cancel();
     _cancelToken = null;
     _completeTerminalOnDispose();
-    unawaited(_subscription?.cancel());
+    // After a terminal event (RunFinishedEvent) the server closes the stream
+    // naturally. Eagerly cancelling the subscription races that clean close
+    // and can poison the server's DB connection pool (issue #60).
+    if (!_receivedTerminalEvent) {
+      unawaited(_subscription?.cancel());
+    }
     _subscription = null;
     if (!_controller.isClosed) {
       unawaited(_controller.close());
@@ -618,7 +623,12 @@ class RunOrchestrator {
 
   void _handleRunFinished(RunningState previous, Conversation conversation) {
     _receivedTerminalEvent = true;
-    _cleanup();
+    // Do NOT call _cleanup() here. RunFinishedEvent means the server is done
+    // sending events and will close the stream naturally. Eagerly cancelling
+    // the subscription races the server's clean close and can poison its DB
+    // connection pool (see issue #60).
+    _subscription = null;
+    _cancelToken = null;
     final pendingTools = _extractPendingTools(conversation);
     if (pendingTools.isNotEmpty) {
       _setState(
