@@ -1275,5 +1275,247 @@ void main() {
         expect(harness.state.detectConflicts(), isEmpty);
       });
     });
+
+    // -----------------------------------------------------------------------
+    // Tier 3: Reactive Disruption (Pattern H / H+)
+    //
+    // Event streams push disruptions. The LLM subscribes, reacts, and
+    // re-plans dynamically. Tests escalate from single disruption to
+    // cascading disruptions to multi-stream select.
+    // -----------------------------------------------------------------------
+
+    group('Tier 3: reactive disruption (Pattern H/H+)', () {
+      test('H: single disruption → unassign → reassign via stream', () async {
+        final harness = createPluginHarness(
+          askLlmResponse: 'Move Alice to day 4.',
+        );
+
+        // Build initial schedule: day 2 foundation, day 3 framing.
+        harness.state
+          ..assign('Bob', 'H1_FND', 2)
+          ..completeJob('H1_FND')
+          ..assign('Alice', 'H1_FRM', 3);
+
+        // Register and subscribe to disruption stream.
+        harness.streams.registerFactory(
+          'disruptions',
+          () => Stream.fromIterable([
+            <String, Object?>{
+              'day': 3,
+              'type': 'crew_noshow',
+              'worker': 'Alice',
+            },
+          ]),
+        );
+        final handle = harness.streams.subscribe('disruptions');
+        final event = await harness.streams.next(handle);
+
+        expect(event, isNotNull);
+        expect((event! as Map)['type'], 'crew_noshow');
+
+        // LLM reacts: unassign Alice day 3, reassign day 4.
+        await harness.bridge
+            .execute(
+              'construction_unassign({"worker": "Alice", "day": 3})',
+            )
+            .drain<void>();
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Alice", "job_id": "H1_FRM", "day": 4})',
+            )
+            .drain<void>();
+
+        expect(harness.state.getDaySchedule(3), isEmpty);
+        expect(harness.state.getDaySchedule(4), hasLength(1));
+        expect(harness.state.detectConflicts(), isEmpty);
+      });
+
+      test('H+: cascading disruptions on same day', () async {
+        // Two disruptions on day 3: Alice sick AND weather turns to rain.
+        // LLM must handle both — crew + weather.
+        final harness = createPluginHarness(
+          weather: {1: 'rain', 2: 'sunny', 3: 'rain', 4: 'sunny', 5: 'sunny'},
+        );
+
+        // Build schedule that will be disrupted.
+        harness.state
+          ..assign('Bob', 'H1_FND', 2)
+          ..completeJob('H1_FND')
+          ..assign('Alice', 'H1_FRM', 3) // indoor, ok in rain
+          ..assign('Bob', 'H2_FND', 3); // outdoor, blocked by rain!
+
+        // Two disruptions on one stream.
+        harness.streams.registerFactory(
+          'disruptions',
+          () => Stream.fromIterable([
+            <String, Object?>{
+              'day': 3,
+              'type': 'crew_noshow',
+              'worker': 'Alice',
+            },
+            <String, Object?>{
+              'day': 3,
+              'type': 'weather_change',
+              'new_weather': 'rain',
+            },
+          ]),
+        );
+
+        final handle = harness.streams.subscribe('disruptions');
+
+        // Pull first disruption: Alice sick.
+        final event1 = await harness.streams.next(handle);
+        expect((event1! as Map)['type'], 'crew_noshow');
+
+        // React: unassign Alice.
+        harness.state.unassign('Alice', 3);
+
+        // Pull second disruption: weather change.
+        final event2 = await harness.streams.next(handle);
+        expect((event2! as Map)['type'], 'weather_change');
+
+        // React: unassign Bob (outdoor blocked by rain).
+        harness.state.unassign('Bob', 3);
+
+        // Day 3 now empty — reschedule both to day 4.
+        expect(harness.state.getDaySchedule(3), isEmpty);
+
+        harness.state
+          ..assign('Alice', 'H1_FRM', 4)
+          ..assign('Bob', 'H2_FND', 4);
+
+        expect(harness.state.getDaySchedule(4), hasLength(2));
+        expect(harness.state.detectConflicts(), isEmpty);
+      });
+
+      test('H+: multi-stream select races weather + crew', () async {
+        // Two independent streams: weather alerts and crew updates.
+        // select() picks whichever fires first.
+        final harness = createPluginHarness();
+
+        harness.streams
+          ..registerFactory(
+            'weather',
+            () => Stream.fromIterable([
+              <String, Object?>{
+                'day': 2,
+                'type': 'weather_change',
+                'new_weather': 'rain',
+              },
+            ]),
+          )
+          ..registerFactory(
+            'crew',
+            () async* {
+              await Future<void>.delayed(const Duration(milliseconds: 50));
+              yield <String, Object?>{
+                'day': 2,
+                'type': 'crew_noshow',
+                'worker': 'Bob',
+              };
+            },
+          );
+
+        final hWeather = harness.streams.subscribe('weather');
+        final hCrew = harness.streams.subscribe('crew');
+
+        // select races both — weather is sync, crew is delayed.
+        final result = await harness.streams.select([hWeather, hCrew]);
+        expect(result, isNotNull);
+        expect(result!['handle'], hWeather);
+        expect((result['data']! as Map)['type'], 'weather_change');
+
+        // Crew event is NOT lost — still available via next().
+        final crewEvent = await harness.streams.next(hCrew);
+        expect(crewEvent, isNotNull);
+        expect((crewEvent! as Map)['type'], 'crew_noshow');
+      });
+
+      test('H+: drain all events from multiple streams via select', () async {
+        // Three streams with 2 events each = 6 total. select must
+        // deliver all without data loss.
+        final harness = createPluginHarness();
+
+        harness.streams
+          ..registerFactory(
+            'weather',
+            () => Stream.fromIterable([
+              <String, Object?>{'id': 'w1'},
+              <String, Object?>{'id': 'w2'},
+            ]),
+          )
+          ..registerFactory(
+            'crew',
+            () => Stream.fromIterable([
+              <String, Object?>{'id': 'c1'},
+              <String, Object?>{'id': 'c2'},
+            ]),
+          )
+          ..registerFactory(
+            'material',
+            () => Stream.fromIterable([
+              <String, Object?>{'id': 'm1'},
+              <String, Object?>{'id': 'm2'},
+            ]),
+          );
+
+        final hW = harness.streams.subscribe('weather');
+        final hC = harness.streams.subscribe('crew');
+        final hM = harness.streams.subscribe('material');
+
+        final collected = <String>[];
+        final liveHandles = {hW, hC, hM};
+
+        while (liveHandles.isNotEmpty) {
+          try {
+            final result = await harness.streams.select(
+              liveHandles.toList(),
+            );
+            if (result == null) break;
+            collected.add((result['data']! as Map)['id']! as String);
+          } catch (e) {
+            if (e is! ArgumentError) rethrow;
+            if (e case final ArgumentError ae) {
+              liveHandles.remove(ae.invalidValue);
+            }
+          }
+        }
+
+        // All 6 events collected, no data loss.
+        collected.sort();
+        expect(
+          collected,
+          containsAll(['c1', 'c2', 'm1', 'm2', 'w1', 'w2']),
+        );
+      });
+
+      test('H: disruption stream exhaustion handled gracefully', () async {
+        final harness = createPluginHarness();
+
+        harness.streams.registerFactory(
+          'disruptions',
+          () => Stream.fromIterable([
+            <String, Object?>{'day': 2, 'type': 'crew_noshow'},
+          ]),
+        );
+
+        final handle = harness.streams.subscribe('disruptions');
+
+        // One event.
+        final event = await harness.streams.next(handle);
+        expect(event, isNotNull);
+
+        // Stream done.
+        final done = await harness.streams.next(handle);
+        expect(done, isNull);
+
+        // Handle cleaned up — cannot use again.
+        expect(
+          () => harness.streams.next(handle),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
+    });
   });
 }
