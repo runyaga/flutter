@@ -150,6 +150,127 @@ const _rooms = <_RoomRun>[
 ];
 
 // ---------------------------------------------------------------------------
+// Correctness validation
+// ---------------------------------------------------------------------------
+
+/// Structured verdict for a single room run.
+class _Verdict {
+  _Verdict(this.checks);
+
+  final List<_Check> checks;
+
+  bool get passed => checks.every((c) => c.passed);
+  int get passCount => checks.where((c) => c.passed).length;
+  int get totalCount => checks.length;
+
+  String get summary => passed
+      ? 'CORRECT ($passCount/$totalCount)'
+      : 'INCORRECT ($passCount/$totalCount)';
+
+  String get details =>
+      checks.map((c) => '  ${c.passed ? "OK" : "FAIL"}: ${c.label}').join('\n');
+}
+
+class _Check {
+  const _Check(this.label, {required this.passed});
+  final String label;
+  final bool passed;
+}
+
+bool _hasAssignment(ConstructionState s, String worker, String jobId, int day) {
+  return s.getSchedule().any(
+        (a) => a['worker'] == worker && a['job_id'] == jobId && a['day'] == day,
+      );
+}
+
+int _maxDay(ConstructionState s) {
+  var max = 0;
+  for (final a in s.getSchedule()) {
+    final day = a['day']! as int;
+    if (day > max) max = day;
+  }
+  return max;
+}
+
+bool _hasOutdoorOnDay(ConstructionState s, int day) {
+  final dayAssigns = s.getDaySchedule(day);
+  for (final a in dayAssigns) {
+    final job = s.findJob(a['job_id']! as String);
+    if (job != null && job.outdoor) return true;
+  }
+  return false;
+}
+
+bool _workerOnDay(ConstructionState s, String worker, int day) {
+  return s.getDaySchedule(day).any((a) => a['worker'] == worker);
+}
+
+_Verdict _validateT1(ConstructionState s) => _Verdict([
+      _Check('3 assignments', passed: s.getSchedule().length == 3),
+      _Check('0 conflicts', passed: s.detectConflicts().isEmpty),
+      _Check(
+        'Bob→H1_FND day 2',
+        passed: _hasAssignment(s, 'Bob', 'H1_FND', 2),
+      ),
+      _Check(
+        'Alice→H1_FRM day 3',
+        passed: _hasAssignment(s, 'Alice', 'H1_FRM', 3),
+      ),
+      _Check(
+        'Charlie→H1_ROF day 4',
+        passed: _hasAssignment(s, 'Charlie', 'H1_ROF', 4),
+      ),
+      _Check(
+        'all 3 jobs completed',
+        passed: ['H1_FND', 'H1_FRM', 'H1_ROF']
+            .every((id) => s.jobStatus(id) == 'completed'),
+      ),
+    ]);
+
+_Verdict _validateT2(ConstructionState s) => _Verdict([
+      _Check('5 assignments', passed: s.getSchedule().length == 5),
+      _Check('0 conflicts', passed: s.detectConflicts().isEmpty),
+      _Check(
+        'all 5 jobs completed',
+        passed: s.jobs.every((j) => s.jobStatus(j.id) == 'completed'),
+      ),
+      _Check('no outdoor work day 1', passed: !_hasOutdoorOnDay(s, 1)),
+      _Check('optimal span ≤ 4 days', passed: _maxDay(s) <= 4),
+    ]);
+
+_Verdict _validateT3(ConstructionState s) => _Verdict([
+      _Check('0 conflicts', passed: s.detectConflicts().isEmpty),
+      _Check('Alice NOT on day 3', passed: !_workerOnDay(s, 'Alice', 3)),
+      _Check('no outdoor work day 4', passed: !_hasOutdoorOnDay(s, 4)),
+      _Check(
+        'Bob→H1_FND day 2 preserved',
+        passed: _hasAssignment(s, 'Bob', 'H1_FND', 2),
+      ),
+      _Check(
+        'Bob→H2_FND day 3 preserved',
+        passed: _hasAssignment(s, 'Bob', 'H2_FND', 3),
+      ),
+    ]);
+
+_Verdict _validateT4(ConstructionState s) => _Verdict([
+      _Check('5 assignments', passed: s.getSchedule().length == 5),
+      _Check('0 conflicts', passed: s.detectConflicts().isEmpty),
+      _Check(
+        'all 5 jobs completed',
+        passed: s.jobs.every((j) => s.jobStatus(j.id) == 'completed'),
+      ),
+      _Check('no outdoor work day 1', passed: !_hasOutdoorOnDay(s, 1)),
+    ]);
+
+_Verdict _validate(_RoomRun run, ConstructionState state) => switch (run.tier) {
+      'T1' => _validateT1(state),
+      'T2' => _validateT2(state),
+      'T3' => _validateT3(state),
+      'T4' => _validateT4(state),
+      _ => _Verdict([]),
+    };
+
+// ---------------------------------------------------------------------------
 // Code-capturing extension wrapper
 // ---------------------------------------------------------------------------
 
@@ -344,12 +465,22 @@ Future<void> main(List<String> args) async {
         final output = formatResult(result);
         stderr.writeln(output);
 
-        // Write result + state + captured python to file.
+        // Validate correctness.
+        final verdict = _validate(run, state);
+        stderr
+          ..writeln('VERDICT: ${verdict.summary}')
+          ..writeln(verdict.details);
+
+        // Write result + state + captured python + verdict to file.
         final file = File('$outputDir/${run.roomId}.txt');
         final sink = file.openWrite()
           ..writeln('Room: ${run.roomId}')
           ..writeln('Tier: ${run.tier}  Model: ${run.modelSize}')
           ..writeln('Duration: ${stopwatch.elapsed}')
+          ..writeln()
+          ..writeln('=== Verdict ===')
+          ..writeln(verdict.summary)
+          ..writeln(verdict.details)
           ..writeln()
           ..writeln('=== LLM Result ===')
           ..writeln(output)
@@ -380,14 +511,16 @@ Future<void> main(List<String> args) async {
         stderr.writeln(
           'Saved to ${file.path}  '
           '(${stopwatch.elapsed}, '
-          '${state.getSchedule().length} assignments, '
-          '${state.detectConflicts().length} conflicts, '
+          '${verdict.summary}, '
           '${pythonCalls.length} python calls)',
         );
       } on Object catch (e, st) {
         stopwatch.stop();
+        final verdict = _validate(run, state);
         stderr
           ..writeln('FAILED (${stopwatch.elapsed}): $e')
+          ..writeln('VERDICT: ${verdict.summary}')
+          ..writeln(verdict.details)
           ..writeln(st);
 
         final file = File('$outputDir/${run.roomId}.txt');
@@ -402,6 +535,9 @@ Future<void> main(List<String> args) async {
           'Room: ${run.roomId}\n'
           'Tier: ${run.tier}  Model: ${run.modelSize}\n'
           'Duration: ${stopwatch.elapsed}\n\n'
+          '=== Verdict ===\n'
+          '${verdict.summary}\n'
+          '${verdict.details}\n\n'
           '$pythonSection\n'
           '=== ERROR ===\n$e\n$st\n',
         );

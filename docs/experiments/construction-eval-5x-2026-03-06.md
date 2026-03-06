@@ -1,4 +1,4 @@
-# Construction Scheduling Experiment: 5-Run Eval Summary
+# Construction Scheduling Experiment: 5-Run Validated Eval
 
 **Date:** 2026-03-06
 **Server:** localhost:8000 (Ollama)
@@ -7,14 +7,29 @@
 **Static reference:** See `docs/experiments/construction-scheduling-2026-03-06.md` for
 prompts, host functions, test data, and system architecture.
 
-## Scoring Criteria
+## Methodology
 
-| Tier | PASS | PARTIAL | FAIL |
-|------|------|---------|------|
-| T1 (Prescriptive) | 3 assigns, 0 conflicts, SUCCESS | n/a | server error or wrong assigns |
-| T2 (Scheduler) | 5 assigns, 0 conflicts, optimal 4 days | <5 assigns but SUCCESS | error/crash |
-| T3 (Dispatcher) | Streams processed, unassign + weather handled | Streams processed, incomplete reaction | crash/hang |
-| T4 (Recovery) | 5 assigns, 5/5 completed, errors tracked | <5 completed but SUCCESS | crash/tool depth exceeded |
+### Previous eval (smoke test)
+
+The first 5-run eval only checked whether the agent returned `SUCCESS` vs
+crashed. This produced false positives: a model could report SUCCESS with an
+incomplete or incorrect schedule.
+
+### This eval (correctness validation)
+
+Each tier now has per-check validation against the actual `ConstructionState`
+after the agent finishes. The verdict is **CORRECT** (all checks pass) or
+**INCORRECT** (at least one check fails), independent of the agent's
+self-reported SUCCESS/FAIL status.
+
+### Scoring Criteria
+
+| Tier | Checks | CORRECT | INCORRECT |
+|------|--------|---------|-----------|
+| T1 (Prescriptive) | 3 assigns, 0 conflicts, Bob->H1_FND d2, Alice->H1_FRM d3, Charlie->H1_ROF d4, all completed | 6/6 | <6/6 |
+| T2 (Scheduler) | 5 assigns, 0 conflicts, all completed, no outdoor d1, span <= 4 days | 5/5 | <5/5 |
+| T3 (Dispatcher) | 0 conflicts, Alice NOT on d3, no outdoor d4, Bob->H1_FND d2, Bob->H2_FND d3 | 5/5 | <5/5 |
+| T4 (Recovery) | 5 assigns, 0 conflicts, all completed, no outdoor d1 | 4/4 | <4/4 |
 
 ## Results Matrix
 
@@ -22,121 +37,141 @@ prompts, host functions, test data, and system architecture.
 
 | Run | 20B | 120B |
 |-----|-----|------|
-| 1 | PASS (10s, 3/3, 4 py) | PASS (15s, 3/3, 4 py) |
-| 2 | PASS (6s, 3/3, 2 py) | FAIL server 400 (14s, 2/3, 8 py) |
-| 3 | PASS (5s, 3/3, 2 py) | PASS (6s, 3/3, 4 py) |
-| 4 | PASS (27s, 3/3, 5 py) | FAIL server 400 (10s, 2/3, 6 py) |
-| 5 | PASS (8s, 3/3, 2 py) | FAIL server 400 (8s, 2/3, 4 py) |
-| **Total** | **5/5 PASS** | **2/5 PASS, 3/5 FAIL** |
+| 1 | CORRECT 6/6 (6s, 4 py) | CORRECT 6/6 (12s, 7 py) |
+| 2 | CORRECT 6/6 (8s, 4 py) | INCORRECT 3/6 server 400 (8s, 4 py) |
+| 3 | CORRECT 6/6 (5s, 2 py) | INCORRECT 3/6 server 400 (6s, 5 py) |
+| 4 | CORRECT 6/6 (4s, 1 py) | CORRECT 6/6 (8s, 2 py) |
+| 5 | CORRECT 6/6 (4s, 2 py) | INCORRECT 2/6 server 500 (14s, 6 py) |
+| **Total** | **5/5 CORRECT** | **2/5 CORRECT, 3/5 INCORRECT** |
 
 **Notes:**
 
-- 20B is 100% reliable on T1.
-- 120B failures are all `server 400 nil content` — a known flaky Ollama provider issue, not a model capability problem. The 120B model completed 2/3 assignments before the server error each time.
+- 20B is 100% reliable on T1 across all 5 runs.
+- All 120B failures are Ollama server errors (400/500), not model capability. The model completed 2-3/3 assignments before the server died each time.
+- 120B run 5 is a server 500 with a tool-call parse error: the model emitted reasoning text before its JSON tool call, which the server rejected.
 
 ### T2: Scheduler (build optimal schedule from constraints)
 
 | Run | 20B | 120B |
 |-----|-----|------|
-| 1 | PASS (11s, 5/5, 2 py) | PASS (22s, 5/5, 3 py) |
-| 2 | PASS (5s, 5/5, 1 py) | PASS (19s, 5/5, 3 py) |
-| 3 | PASS (13s, 5/5, 2 py) | PASS (22s, 5/5, 3 py) |
-| 4 | PASS (5s, 5/5, 1 py) | PASS (18s, 5/5, 2 py) |
-| 5 | PASS (8s, 5/5, 1 py) | PASS (27s, 5/5, 4 py) |
-| **Total** | **5/5 PASS** | **5/5 PASS** |
+| 1 | CORRECT 5/5 (8s, 2 py) | CORRECT 5/5 (18s, 3 py) |
+| 2 | CORRECT 5/5 (8s, 1 py) | CORRECT 5/5 (13s, 3 py) |
+| 3 | CORRECT 5/5 (12s, 2 py) | CORRECT 5/5 (18s, 4 py) |
+| 4 | CORRECT 5/5 (7s, 1 py) | CORRECT 5/5 (16s, 2 py) |
+| 5 | CORRECT 5/5 (15s, 2 py) | CORRECT 5/5 (15s, 2 py) |
+| **Total** | **5/5 CORRECT** | **5/5 CORRECT** |
 
 **Notes:**
 
 - Both models achieve optimal 4-day schedule every run.
-- 20B often solves it in a single python call (1 py); 120B takes 2-4 calls.
-- Both models correctly skip day 1 (rain) for outdoor foundation work.
-- 120B sometimes hits Monty parser errors (multi-module imports, `?` operator) on first attempt but self-corrects.
+- 20B averages 1.6 python calls; 120B averages 2.8.
+- Both correctly skip day 1 (rain) for outdoor foundation work.
 
 ### T3: Dispatcher (stream subscription + reactive scheduling)
 
 | Run | 20B | 120B |
 |-----|-----|------|
-| 1 | PASS (17s, 2 remain, 2 py) | PASS (9s, 2 remain, 1 py) |
-| 2 | PASS (19s, 2 remain, 2 py) | PASS (8s, 2 remain, 1 py) |
-| 3 | PASS (7s, 2 remain, 1 py) | PASS (10s, 2 remain, 1 py) |
-| 4 | PASS (8s, 2 remain, 1 py) | PASS (9s, 2 remain, 1 py) |
-| 5 | PASS (6s, 2 remain, 1 py) | PASS (8s, 2 remain, 1 py) |
-| **Total** | **5/5 PASS** | **5/5 PASS** |
+| 1 | CORRECT 5/5 (12s, 1 py) | CORRECT 5/5 (10s, 1 py) |
+| 2 | CORRECT 5/5 (11s, 1 py) | CORRECT 5/5 (10s, 1 py) |
+| 3 | CORRECT 5/5 (8s, 1 py) | CORRECT 5/5 (10s, 1 py) |
+| 4 | CORRECT 5/5 (7s, 1 py) | CORRECT 5/5 (9s, 1 py) |
+| 5 | CORRECT 5/5 (3s, 0 py) | CORRECT 5/5 (10s, 1 py) |
+| **Total** | **5/5 CORRECT** | **5/5 CORRECT** |
 
 **Notes:**
 
-- 100% pass rate for both models across all 5 runs.
-- Both correctly: subscribe to crew_updates + weather_updates, unassign Alice on day 3 (crew_noshow), update weather to rain on day 4, exhaust streams, report 0 conflicts.
-- Final schedule consistently: Bob day 2 H1_FND, Bob day 3 H2_FND (the two un-unassigned jobs).
-- Stream fix (from earlier in this session) is solid — no hangs or crashes.
+- 100% correctness for both models across all 5 runs.
+- Both correctly: subscribe to streams, unassign Alice on day 3 (crew_noshow), handle rain on day 4.
+- **False positive warning:** T3 20B run 5 hit server 400 with 0 python calls. The pre-seeded state (Bob's assignments only, no Alice) passes validation vacuously. The model did not actually process any stream events. This is a known limitation of end-state validation — it cannot distinguish "correctly reacted" from "initial state happens to pass."
 
 ### T4: Recovery (error handling + retry logic)
 
 | Run | 20B | 120B |
 |-----|-----|------|
-| 1 | PASS (31s, 5/5, 5 py) | PASS (33s, 5/5, 3 py) |
-| 2 | PARTIAL (7s, 2/5, 1 py) | PARTIAL (19s, 2/5, 1 py) |
-| 3 | PARTIAL (10s, 2/5, 1 py) | PASS (66s, 5/5, 8 py) |
-| 4 | PARTIAL (5s, 2/5, 1 py) | PASS (26s, 5/5, 3 py) |
-| 5 | PARTIAL (9s, 2/5, 1 py) | FAIL tool depth (76s, 1/5, 11 py) |
-| **Total** | **1/5 PASS, 4/5 PARTIAL** | **3/5 PASS, 1/5 PARTIAL, 1/5 FAIL** |
+| 1 | INCORRECT 2/4 (7s, 1 py) | CORRECT 4/4 (39s, 6 py) |
+| 2 | INCORRECT 2/4 (8s, 1 py) | CORRECT 4/4 (51s, 7 py) |
+| 3 | INCORRECT 2/4 (7s, 1 py) | CORRECT 4/4 (106s, 11 py)* |
+| 4 | INCORRECT 2/4 (10s, 1 py) | CORRECT 4/4 (36s, 4 py) |
+| 5 | INCORRECT 2/4 (5s, 0 py) | CORRECT 4/4 (117s, 11 py)* |
+| **Total** | **0/5 CORRECT** | **5/5 CORRECT** |
+
+*Hit tool depth limit (10 calls) but completed all work before the limit was reached.
 
 **Notes:**
 
-- **20B PARTIAL pattern:** Handles foundation weather errors correctly (rain day 1 -> move to days 2-3), but stops after foundations. Does not continue to schedule framing/roofing in subsequent calls. Reports SUCCESS with only 2 assignments.
-- **120B** is much more capable at multi-phase scheduling — 3/5 full completion vs 1/5 for 20B.
-- **120B FAIL (run 5):** Hit tool depth limit (10 calls). Model got confused about scheduling state, started unassigning and reassigning in circles. Demonstrates that 120B can over-think and waste tool calls.
-- **120B PARTIAL (run 2):** Same pattern as 20B — only scheduled foundations, stopped early.
+- **20B is 0% on T4** — consistently schedules only foundations (2/5 assignments), never continues to framing/roofing. Every run stops after handling the weather error for day 1, reports SUCCESS with only 2 jobs done.
+- **120B is 100% on T4** — even when hitting the tool depth limit (runs 3, 5), the model completed all 5 assignments before running out of calls. The "FAILED: tool depth exceeded" status is misleading — the schedule is fully correct.
+- 120B run 5 also hit server 400 on the 20B side, but 120B itself was unaffected.
 
-## Aggregate Pass Rates
+## Aggregate Correctness Rates
 
 | Tier | 20B | 120B |
 |------|-----|------|
 | T1 Prescriptive | 5/5 (100%) | 2/5 (40%)* |
 | T2 Scheduler | 5/5 (100%) | 5/5 (100%) |
-| T3 Dispatcher | 5/5 (100%) | 5/5 (100%) |
-| T4 Recovery | 1/5 (20%) | 3/5 (60%) |
+| T3 Dispatcher | 5/5 (100%)** | 5/5 (100%) |
+| T4 Recovery | 0/5 (0%) | 5/5 (100%) |
 
-*120B T1 failures are server 400 (Ollama flaky), not model capability.
+*120B T1 failures are server 400/500 (Ollama infrastructure), not model capability.
 
-## Adjusted Pass Rates (excluding infra failures)
+**T3 20B includes one false positive (run 5: server 400, 0 py calls, pre-seeded state passes vacuously).
 
-Removing server 400 errors (not model failures):
+## Adjusted Correctness Rates (excluding infra failures)
+
+Removing runs where server 400/500 prevented the model from executing:
 
 | Tier | 20B | 120B |
 |------|-----|------|
 | T1 Prescriptive | 5/5 (100%) | 2/2 (100%) |
 | T2 Scheduler | 5/5 (100%) | 5/5 (100%) |
-| T3 Dispatcher | 5/5 (100%) | 5/5 (100%) |
-| T4 Recovery | 1/5 (20%) | 3/4 (75%) |
+| T3 Dispatcher | 4/4 (100%) | 5/5 (100%) |
+| T4 Recovery | 0/4 (0%) | 5/5 (100%) |
+
+## Comparison: Smoke Test vs Validated Eval
+
+The correctness validation fundamentally changed two conclusions:
+
+| Finding | Smoke Test (v1) | Validated (v2) | Delta |
+|---------|----------------|----------------|-------|
+| T4 20B | 1/5 PASS (20%) | 0/5 CORRECT (0%) | **Worse** — the "PASS" was a false positive |
+| T4 120B | 3/5 PASS (60%) | 5/5 CORRECT (100%) | **Better** — "FAIL" runs had correct schedules |
+
+**T4 20B false positive (v1):** The smoke test counted the agent's self-reported SUCCESS. But 20B only scheduled 2/5 jobs and declared victory. Correctness validation caught this.
+
+**T4 120B false negatives (v1):** Two runs hit the tool depth limit and were scored FAIL. But the model had already completed all 5 assignments before running out of calls. Correctness validation revealed the schedule was perfect.
 
 ## Key Findings
 
-### 1. T1-T3 are solved problems
+### 1. Correctness validation is essential
 
-Both models handle prescriptive, scheduling, and stream-reactive tasks reliably. The infrastructure (Monty bridge, stream registry, error recovery) is solid.
+Self-reported SUCCESS is not trustworthy. 20B consistently reports SUCCESS on T4 with only 2/5 jobs scheduled. Without per-check validation, we would have rated 20B at 20% on T4 instead of the true 0%.
 
-### 2. T4 reveals the 20B capability boundary
+### 2. T1-T3 are solved problems
 
-20B consistently fails to plan multi-phase scheduling. It handles the immediate error recovery (weather -> move to next sunny day) but doesn't continue to schedule dependent jobs. This is the planning horizon limit of the 20B model.
+Both models handle prescriptive, scheduling, and stream-reactive tasks with 100% correctness (excluding infra failures). The infrastructure (Monty bridge, stream registry, error recovery) is solid.
 
-### 3. 120B has deeper planning but can over-think
+### 3. T4 reveals a hard 20B capability boundary
 
-120B completes T4 3/5 times (60%, or 75% excluding infra failures) but when it fails, it fails spectacularly — hitting tool depth limits by going in circles. The 20B fails gracefully (stops early), while 120B can fail ungracefully (burns all tool calls).
+20B cannot plan multi-phase scheduling. It handles the immediate error recovery (weather rain on day 1 -> move foundations to days 2-3) but never continues to schedule framing and roofing. This is consistent across all 5 runs (0% correct). This is the planning horizon limit of the 20B model.
 
-### 4. Ollama server 400 is a real reliability concern
+### 4. 120B has deep planning and is robust at T4
 
-3/5 runs of T1 120B hit server 400. This is a provider-level issue (`invalid message content type: <nil>`) that occurs when the model generates a nil content response. Not actionable from the client side.
+120B completes T4 5/5 times (100%). Even when it hits the tool depth limit by taking extra calls, it has already finished the work. The concern from the smoke test that 120B "over-thinks and wastes tool calls" is still true — but the schedule is correct regardless.
 
-### 5. Python code generation is reliable
+### 5. End-state validation has a known blind spot
 
-Both models generate valid Monty-compatible Python. The occasional Monty parser errors (multi-module imports, ternary `?` operator) are self-corrected by the models on retry. The code capture shows clean, well-structured Python using the construction host functions correctly.
+T3 validation checks the final schedule state, not whether the model actually processed stream events. When the model crashes before executing any code, the pre-seeded state can pass validation vacuously (T3 20B run 5). Process validation (checking that streams were subscribed and events processed) would close this gap.
+
+### 6. Ollama server errors remain a reliability concern
+
+3/5 T1 120B runs hit server 400/500. One T3 20B run and one T4 20B run also hit server 400. These are provider-level issues (`invalid message content type: <nil>`) not actionable from the client side.
 
 ## Data Files
 
-All raw data is in `/tmp/construction-experiment-eval/run{1-5}/`. Each file contains:
+All raw data is in `/tmp/construction-eval-v2/run{1-5}/`. Each file contains:
 
 - Room ID, tier, model, duration
+- Verdict with per-check OK/FAIL detail
 - LLM result text
 - All generated Python code (per execute_python call)
 - Final schedule state
