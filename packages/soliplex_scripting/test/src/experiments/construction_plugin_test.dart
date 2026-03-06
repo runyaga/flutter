@@ -1002,5 +1002,278 @@ void main() {
         expect(harness.state.depsMet('H1_FRM'), isTrue);
       });
     });
+
+    // -----------------------------------------------------------------------
+    // Tier 2: Goal-Oriented Autonomous Planning (Pattern G)
+    //
+    // These tests simulate what an LLM would generate when given ONLY a goal
+    // ("schedule all jobs ASAP") with no step-by-step instructions. The LLM
+    // must invent the query→check→assign→advance loop using the construction_*
+    // API. We simulate the generated code via bridge calls.
+    // -----------------------------------------------------------------------
+
+    group('Tier 2: autonomous planning (Pattern G)', () {
+      test('LLM-invented scheduling loop completes all jobs', () async {
+        // Simulates the code an LLM would generate for Pattern G:
+        // "Create a valid schedule that finishes as early as possible."
+        //
+        // The LLM must invent this loop:
+        //   for each day:
+        //     ready = get_ready_jobs()
+        //     for each ready job:
+        //       workers = workers_for_trade(job.trade)
+        //       available = available_workers(day)
+        //       pick worker in both lists
+        //       if outdoor and rain: skip
+        //       assign(worker, job, day)
+        //     advance_day(day)
+        final harness = createPluginHarness();
+
+        // Day 1: rain — skip outdoor. Only indoor ready jobs (none, since
+        // foundations are outdoor). LLM should query and skip.
+        await harness.bridge
+            .execute('construction_get_ready_jobs({})')
+            .drain<void>();
+        await harness.bridge
+            .execute('construction_get_weather({"day": 1})')
+            .drain<void>();
+        // LLM sees: ready=[H1_FND, H2_FND], weather=rain, both outdoor → skip
+        await harness.bridge
+            .execute('construction_advance_day({"day": 1})')
+            .drain<void>();
+
+        // Day 2: sunny. Assign Bob to H1_FND (outdoor ok).
+        await harness.bridge
+            .execute('construction_get_ready_jobs({})')
+            .drain<void>();
+        await harness.bridge
+            .execute('construction_get_weather({"day": 2})')
+            .drain<void>();
+        await harness.bridge
+            .execute('construction_available_workers({"day": 2})')
+            .drain<void>();
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Bob", "job_id": "H1_FND", "day": 2})',
+            )
+            .drain<void>();
+        // Bob busy, but H2_FND also needs concrete_crew — no one else.
+        await harness.bridge
+            .execute('construction_advance_day({"day": 2})')
+            .drain<void>();
+
+        // Day 3: H1_FND complete → H1_FRM ready. H2_FND still ready.
+        await harness.bridge
+            .execute('construction_get_ready_jobs({})')
+            .drain<void>();
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Bob", "job_id": "H2_FND", "day": 3})',
+            )
+            .drain<void>();
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Alice", "job_id": "H1_FRM", "day": 3})',
+            )
+            .drain<void>();
+        await harness.bridge
+            .execute('construction_advance_day({"day": 3})')
+            .drain<void>();
+
+        // Day 4: H2_FND + H1_FRM complete → H2_FRM + H1_ROF ready.
+        await harness.bridge
+            .execute('construction_get_ready_jobs({})')
+            .drain<void>();
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Alice", "job_id": "H2_FRM", "day": 4})',
+            )
+            .drain<void>();
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Charlie", "job_id": "H1_ROF", "day": 4})',
+            )
+            .drain<void>();
+        await harness.bridge
+            .execute('construction_advance_day({"day": 4})')
+            .drain<void>();
+
+        // Verify: all 5 jobs complete, zero conflicts, optimal 4-day schedule.
+        expect(harness.state.getReadyJobs(), isEmpty);
+        expect(harness.state.detectConflicts(), isEmpty);
+        expect(harness.state.getSchedule(), hasLength(5));
+        for (final job in testJobs) {
+          expect(harness.state.jobStatus(job.id), 'completed');
+        }
+      });
+
+      test('LLM queries deps before assigning dependent jobs', () async {
+        // Pattern G requires the LLM to check deps_met before assigning.
+        // If it skips this, assign() returns {ok: false}.
+        final harness = createPluginHarness();
+
+        // Try to assign framing before foundation — should fail.
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Alice", "job_id": "H1_FRM", "day": 2})',
+            )
+            .drain<void>();
+
+        // LLM reads error, checks deps_met, realizes H1_FND not done.
+        await harness.bridge
+            .execute('construction_deps_met({"job_id": "H1_FRM"})')
+            .drain<void>();
+        expect(harness.state.depsMet('H1_FRM'), isFalse);
+
+        // LLM pivots to foundation first.
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Bob", "job_id": "H1_FND", "day": 2})',
+            )
+            .drain<void>();
+        await harness.bridge
+            .execute('construction_advance_day({"day": 2})')
+            .drain<void>();
+
+        // Now framing deps are met.
+        expect(harness.state.depsMet('H1_FRM'), isTrue);
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Alice", "job_id": "H1_FRM", "day": 3})',
+            )
+            .drain<void>();
+
+        expect(harness.state.getSchedule(), hasLength(2));
+        expect(harness.state.detectConflicts(), isEmpty);
+      });
+
+      test('LLM weather-aware: skips outdoor on rain, assigns indoor',
+          () async {
+        // Pattern G with rain on day 1: LLM must skip outdoor work.
+        final harness = createPluginHarness(
+          // Add an indoor job with no deps so day 1 isn't wasted.
+          jobs: [
+            ...testJobs,
+            const Job(
+              id: 'H1_PLB',
+              house: 'H1',
+              task: 'Plumbing',
+              trade: 'plumber',
+              material: 'pipes',
+              deps: [],
+              outdoor: false,
+            ),
+          ],
+          staff: [
+            ...testStaff,
+            const Worker(name: 'Dave', trade: 'plumber', level: 'master'),
+          ],
+        );
+
+        // Day 1 rain: LLM checks weather, skips outdoor H1_FND/H2_FND.
+        await harness.bridge
+            .execute('construction_get_weather({"day": 1})')
+            .drain<void>();
+        expect(harness.state.getWeather(1), 'rain');
+
+        // But H1_PLB is indoor — can be scheduled.
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Dave", "job_id": "H1_PLB", "day": 1})',
+            )
+            .drain<void>();
+
+        expect(harness.state.getDaySchedule(1), hasLength(1));
+        expect(harness.state.getDaySchedule(1).first['job_id'], 'H1_PLB');
+      });
+
+      test('LLM uses ask_llm for planning sub-decisions', () async {
+        // Pattern G+: supervisor delegates sub-decisions to ask_llm.
+        final harness = createPluginHarness(
+          askLlmResponse: 'Assign Bob to H1_FND on day 2, then Alice '
+              'to H1_FRM on day 3.',
+        );
+
+        // Supervisor queries ready jobs, then asks LLM for planning.
+        await harness.bridge
+            .execute('construction_get_ready_jobs({})')
+            .drain<void>();
+        await harness.bridge
+            .execute(
+              'ask_llm({"prompt": "Given ready jobs H1_FND and H2_FND, '
+              'staff Bob (concrete), Alice (framer), Charlie (roofer), '
+              'and rain on day 1, what is the optimal assignment?", '
+              '"room": "planner"})',
+            )
+            .drain<void>();
+
+        // Verify supervisor called ask_llm.
+        expect(harness.agentApi.calls, contains('spawnAgent'));
+        expect(harness.agentApi.calls['spawnAgent']![0], 'planner');
+
+        // Supervisor follows LLM advice.
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Bob", "job_id": "H1_FND", "day": 2})',
+            )
+            .drain<void>();
+        await harness.bridge
+            .execute('construction_advance_day({"day": 2})')
+            .drain<void>();
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Alice", "job_id": "H1_FRM", "day": 3})',
+            )
+            .drain<void>();
+
+        expect(harness.state.getSchedule(), hasLength(2));
+        expect(harness.state.detectConflicts(), isEmpty);
+      });
+
+      test('LLM maximizes parallelism across houses', () async {
+        // Optimal schedule assigns workers to different houses in parallel.
+        final harness = createPluginHarness();
+
+        // Day 2: Bob on H1_FND (only concrete_crew).
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Bob", "job_id": "H1_FND", "day": 2})',
+            )
+            .drain<void>();
+        await harness.bridge
+            .execute('construction_advance_day({"day": 2})')
+            .drain<void>();
+
+        // Day 3: Bob on H2_FND + Alice on H1_FRM (parallel!).
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Bob", "job_id": "H2_FND", "day": 3})',
+            )
+            .drain<void>();
+        await harness.bridge
+            .execute(
+              'construction_assign('
+              '{"worker": "Alice", "job_id": "H1_FRM", "day": 3})',
+            )
+            .drain<void>();
+
+        // Both assigned on day 3 — max parallelism.
+        expect(harness.state.getDaySchedule(3), hasLength(2));
+        expect(harness.state.detectConflicts(), isEmpty);
+      });
+    });
   });
 }
