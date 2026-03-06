@@ -447,6 +447,42 @@ class HostFunctionWiring {
         ),
         HostFunction(
           schema: const HostFunctionSchema(
+            name: 'cancel_agent',
+            description: 'Cancel a spawned agent. Evicts the handle.',
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Agent handle from spawn_agent.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = (args['handle']! as num).toInt();
+            return _agentApi!.cancelAgent(handle);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'agent_status',
+            description: 'Non-blocking poll of agent lifecycle state. '
+                "Returns 'spawning', 'running', 'completed', 'failed', "
+                "or 'cancelled'.",
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Agent handle from spawn_agent.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = (args['handle']! as num).toInt();
+            return _agentApi!.agentStatus(handle);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
             name: 'ask_llm',
             description: 'Send a prompt to an LLM and return the response text '
                 'and thread ID. Pass thread_id to continue a conversation.',

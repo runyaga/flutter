@@ -40,4 +40,10 @@ abstract interface class AgentApi {
   ///
   /// Returns `true` if the agent was successfully cancelled.
   Future<bool> cancelAgent(int handle);
+
+  /// Returns the current lifecycle status of the agent as a string.
+  ///
+  /// Non-blocking — does not wait for the agent to complete. Returns one of:
+  /// `"spawning"`, `"running"`, `"completed"`, `"failed"`, `"cancelled"`.
+  String agentStatus(int handle);
 }
