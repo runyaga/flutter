@@ -470,6 +470,98 @@ void main() {
     });
   });
 
+  group('spawn depth guard', () {
+    test('root session has depth 0', () async {
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      final session = await runtime.spawn(roomId: _roomId, prompt: 'Root');
+
+      expect(session.depth, 0);
+    });
+
+    test('blocks spawn when depth exceeds maxSpawnDepth', () async {
+      runtime = createRuntime();
+      // maxSpawnDepth defaults to 10, create a root session at depth 0
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      final controller = StreamController<BaseEvent>.broadcast();
+      stubRunAgent(stream: controller.stream);
+
+      // Spawn a root at depth 0
+      final root = await runtime.spawn(roomId: _roomId, prompt: 'Root');
+      expect(root.depth, 0);
+
+      // Now create a runtime with maxSpawnDepth=1 to test the guard
+      await runtime.dispose();
+      runtime = AgentRuntime(
+        connection: mockConnection(),
+        toolRegistryResolver: (_) async => const ToolRegistry(),
+        platform: const NativePlatformConstraints(),
+        logger: logger,
+        maxSpawnDepth: 1,
+      );
+
+      final controller2 = StreamController<BaseEvent>.broadcast();
+      stubRunAgent(stream: controller2.stream);
+
+      final parent = await runtime.spawn(roomId: _roomId, prompt: 'Parent');
+      expect(parent.depth, 0);
+
+      expect(
+        () => runtime.spawn(
+          roomId: _roomId,
+          prompt: 'Child',
+          parent: parent,
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('Spawn depth limit'),
+          ),
+        ),
+      );
+
+      // Clean up
+      _happyPathEvents().forEach(controller2.add);
+      await controller2.close();
+    });
+
+    test('allows spawn when depth is disabled (maxSpawnDepth=0)', () async {
+      runtime = AgentRuntime(
+        connection: mockConnection(),
+        toolRegistryResolver: (_) async => const ToolRegistry(),
+        platform: const NativePlatformConstraints(),
+        logger: logger,
+        maxSpawnDepth: 0,
+      );
+
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      final controller = StreamController<BaseEvent>.broadcast();
+      stubRunAgent(stream: controller.stream);
+
+      final parent = await runtime.spawn(roomId: _roomId, prompt: 'Parent');
+
+      // Should not throw even with a parent at depth 0
+      final child = await runtime.spawn(
+        roomId: _roomId,
+        prompt: 'Child',
+        parent: parent,
+      );
+      expect(child.depth, 1);
+
+      // Clean up
+      _happyPathEvents().forEach(controller.add);
+      await controller.close();
+    });
+  });
+
   group('ephemeral', () {
     test('deletes thread on completion', () async {
       stubCreateThread();
