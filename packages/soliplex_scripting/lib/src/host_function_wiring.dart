@@ -9,6 +9,7 @@ import 'package:soliplex_agent/soliplex_agent.dart'
         BlackboardApi,
         FormApi,
         HostApi;
+import 'package:soliplex_client/soliplex_client.dart' show SoliplexHttpClient;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/src/df_functions.dart';
@@ -30,6 +31,8 @@ class HostFunctionWiring {
     required HostApi hostApi,
     AgentApi? agentApi,
     BlackboardApi? blackboardApi,
+    SoliplexHttpClient? httpClient,
+    String? Function()? getAuthToken,
     DfRegistry? dfRegistry,
     StreamRegistry? streamRegistry,
     FormApi? formApi,
@@ -38,6 +41,8 @@ class HostFunctionWiring {
   })  : _hostApi = hostApi,
         _agentApi = agentApi,
         _blackboardApi = blackboardApi,
+        _httpClient = httpClient,
+        _getAuthToken = getAuthToken,
         _dfRegistry = dfRegistry ?? DfRegistry(),
         _streamRegistry = streamRegistry,
         _formApi = formApi,
@@ -47,6 +52,8 @@ class HostFunctionWiring {
   final HostApi _hostApi;
   final AgentApi? _agentApi;
   final BlackboardApi? _blackboardApi;
+  final SoliplexHttpClient? _httpClient;
+  final String? Function()? _getAuthToken;
   final DfRegistry _dfRegistry;
   final StreamRegistry? _streamRegistry;
   final FormApi? _formApi;
@@ -176,6 +183,110 @@ class HostFunctionWiring {
             final ms = (args['ms']! as num).toInt();
             await Future<void>.delayed(Duration(milliseconds: ms));
             return null;
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'fetch',
+            description: 'Make an HTTP request and return the response. '
+                'Returns a dict with status, body, and headers.',
+            params: [
+              HostParam(
+                name: 'url',
+                type: HostParamType.string,
+                description: 'Request URL.',
+              ),
+              HostParam(
+                name: 'method',
+                type: HostParamType.string,
+                isRequired: false,
+                defaultValue: 'GET',
+                description: 'HTTP method (GET, POST, PUT, DELETE).',
+              ),
+              HostParam(
+                name: 'headers',
+                type: HostParamType.map,
+                isRequired: false,
+                description: 'Request headers.',
+              ),
+              HostParam(
+                name: 'body',
+                type: HostParamType.string,
+                isRequired: false,
+                description: 'Request body (for POST/PUT).',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final client = _httpClient;
+            if (client == null) {
+              throw StateError(
+                'fetch() requires an httpClient. '
+                'Pass SoliplexHttpClient to HostFunctionWiring.',
+              );
+            }
+            final url = Uri.parse(args['url']! as String);
+            final method = (args['method']! as String).toUpperCase();
+            final rawHeaders = args['headers'] as Map?;
+            final headers = rawHeaders != null
+                ? Map<String, String>.from(rawHeaders)
+                : <String, String>{};
+            final body = args['body'] as String?;
+
+            final response = await client.request(
+              method,
+              url,
+              headers: headers,
+              body: body,
+            );
+
+            return <String, Object?>{
+              'status': response.statusCode,
+              'body': response.body,
+              'headers': response.headers,
+            };
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'log',
+            description: 'Log a message at the specified level. '
+                'Visible in host debug output.',
+            params: [
+              HostParam(
+                name: 'message',
+                type: HostParamType.string,
+                description: 'Log message.',
+              ),
+              HostParam(
+                name: 'level',
+                type: HostParamType.string,
+                isRequired: false,
+                defaultValue: 'info',
+                description:
+                    "Log level: 'debug', 'info', 'warning', or 'error'.",
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final level = args['level']! as String;
+            final message = args['message']! as String;
+            return _hostApi.invoke(
+              'log',
+              <String, Object?>{'level': level, 'message': message},
+            );
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'get_auth_token',
+            description: 'Get the current OIDC bearer token, '
+                'or null if not authenticated. Use this to add '
+                'Authorization headers to fetch() calls that need '
+                'Soliplex backend authentication.',
+          ),
+          handler: (args) async {
+            return _getAuthToken?.call();
           },
         ),
       ];
