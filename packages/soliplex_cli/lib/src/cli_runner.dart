@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:dart_monty_ffi/dart_monty_ffi.dart';
+import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_cli/src/client_factory.dart';
 import 'package:soliplex_cli/src/result_printer.dart';
@@ -9,6 +11,7 @@ import 'package:soliplex_cli/src/tool_definitions.dart';
 import 'package:soliplex_client/soliplex_client.dart'
     show DartHttpClient, SoliplexApi;
 import 'package:soliplex_logging/soliplex_logging.dart';
+import 'package:soliplex_scripting/soliplex_scripting.dart';
 
 Future<void> runCli(List<String> args) async {
   final parser = ArgParser()
@@ -41,6 +44,23 @@ Future<void> runCli(List<String> args) async {
       'tools',
       abbr: 't',
       help: 'Comma-separated tool names to advertise (default: all).',
+    )
+    ..addFlag(
+      'monty',
+      negatable: false,
+      help: 'Enable Monty Python execution (wires execute_python tool).',
+    )
+    ..addFlag(
+      'wasm-mode',
+      negatable: false,
+      help: 'Simulate WASM constraints (single bridge, no re-entrancy).',
+    )
+    ..addMultiOption(
+      'prompt',
+      abbr: 'p',
+      splitCommas: false,
+      help: 'Send prompt(s) non-interactively and exit. '
+          'Multiple --prompt flags run sequentially in the same thread.',
     );
 
   final parsed = parser.parse(args);
@@ -95,11 +115,29 @@ Future<void> _runSession(ArgResults parsed) async {
   final toolRegistry = noTools
       ? const ToolRegistry()
       : buildDemoToolRegistry(enabledTools: enabledTools);
+
+  final montyEnabled = parsed.flag('monty');
+  final wasmMode = parsed.flag('wasm-mode');
+
+  SessionExtensionFactory? extensionFactory;
+  if (montyEnabled) {
+    MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
+    final hostApi = FakeHostApi();
+    final envFactory = createMontyScriptEnvironmentFactory(
+      hostApi: hostApi,
+      limits: MontyLimitsDefaults.tool,
+    );
+    extensionFactory = wrapScriptEnvironmentFactory(envFactory);
+  }
+
   final runtime = AgentRuntime(
     connection: connection,
     toolRegistryResolver: (_) async => toolRegistry,
-    platform: const NativePlatformConstraints(),
+    platform: wasmMode
+        ? const WebPlatformConstraints()
+        : const NativePlatformConstraints(),
     logger: logger,
+    extensionFactory: extensionFactory,
   );
 
   final ctx = _CliContext(
@@ -110,14 +148,32 @@ Future<void> _runSession(ArgResults parsed) async {
   );
 
   if (verbose) stderr.writeln('[verbose mode]');
+  final toolNames = toolRegistry.toolDefinitions.map((t) => t.name).toList();
+  if (montyEnabled) toolNames.add('execute_python');
+
+  final prompts = parsed.multiOption('prompt');
+  if (prompts.isNotEmpty) {
+    // Non-interactive mode: run prompts sequentially, then exit.
+    if (verbose) {
+      stderr.writeln(
+        'soliplex-cli connected to $host (room: $room)  '
+        'tools: [${toolNames.join(', ')}]',
+      );
+    }
+    await _runPrompts(ctx, prompts);
+    await runtime.dispose();
+    await connection.close();
+    return;
+  }
+
   stdout
     ..writeln('soliplex-cli connected to $host (room: $room)')
     ..writeln(
-      toolRegistry.isEmpty
+      toolNames.isEmpty
           ? 'tools: (none)'
-          : 'tools: [${toolRegistry.toolDefinitions.map(
-                (t) => t.name,
-              ).join(', ')}]',
+          : 'tools: [${toolNames.join(', ')}]'
+              '${montyEnabled ? '  (monty: enabled)' : ''}'
+              '${wasmMode ? '  (wasm-mode)' : ''}',
     )
     ..writeln();
   _printHelp();
@@ -135,6 +191,21 @@ Future<void> _runSession(ArgResults parsed) async {
 
   await runtime.dispose();
   await connection.close();
+}
+
+/// Runs prompts sequentially in the same thread, then exits.
+Future<void> _runPrompts(_CliContext ctx, List<String> prompts) async {
+  for (var i = 0; i < prompts.length; i++) {
+    final prompt = prompts[i];
+    if (ctx.verbose) {
+      stderr.writeln('[${i + 1}/${prompts.length}] $prompt');
+    }
+    await _sendAndWait(ctx, ctx.defaultRoom, prompt);
+    // Allow session cleanup (SSE teardown) to complete before next spawn.
+    if (i < prompts.length - 1) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+  }
 }
 
 class _CliContext {
@@ -307,16 +378,22 @@ Future<void> _sendAndWait(
     ctx.setThread(room, session.threadKey.threadId);
 
     StreamSubscription<RunState>? traceSub;
+    void Function()? eventUnsub;
     if (ctx.verbose) {
       traceSub = session.stateChanges.listen(
         _traceState,
       );
+      eventUnsub = session.lastExecutionEvent.subscribe((event) {
+        if (event == null) return;
+        _traceExecutionEvent(event);
+      });
     }
 
     final result = await session.awaitResult(
       timeout: const Duration(seconds: 120),
     );
     await traceSub?.cancel();
+    eventUnsub?.call();
     stdout.writeln(formatResult(result));
   } on Object catch (e) {
     stdout.writeln('Error: $e');
@@ -494,6 +571,24 @@ void _traceState(RunState state) {
     case CancelledState():
       stderr.writeln('[AGUI] Cancelled');
     case IdleState():
+      break;
+  }
+}
+
+void _traceExecutionEvent(ExecutionEvent event) {
+  switch (event) {
+    case ClientToolExecuting(:final toolName, :final toolCallId):
+      stderr.writeln(
+        '[TOOL] Executing $toolName  id=${_short(toolCallId)}',
+      );
+    case ClientToolCompleted(:final toolCallId, :final result, :final status):
+      final preview =
+          result.length > 200 ? '${result.substring(0, 200)}...' : result;
+      stderr.writeln(
+        '[TOOL] Completed ${_short(toolCallId)}  '
+        'status=$status  result=$preview',
+      );
+    default:
       break;
   }
 }

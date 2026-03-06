@@ -757,7 +757,12 @@ The cleanest consumer. Demonstrates:
 - `waitAll` / `waitAny` for multi-session coordination
 - Verbose state tracing via `stateChanges` stream
 - SIGINT signal handling for graceful cancellation
+- Headless Monty execution via `--monty` flag
+- Non-interactive batch mode via `--prompt` (multiple allowed)
 - No stubs, no workarounds
+
+For CLI-specific setup, Monty integration, and troubleshooting, see
+[cli-monty-guide.md](cli-monty-guide.md).
 
 ### TUI (`soliplex_tui`)
 
