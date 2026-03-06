@@ -68,6 +68,9 @@ class RuntimeAgentApi implements AgentApi {
     return true;
   }
 
+  @override
+  String agentStatus(int handle) => _lookupSession(handle).state.name;
+
   AgentSession _lookupSession(int handle) {
     final session = _handles[handle];
     if (session == null) {

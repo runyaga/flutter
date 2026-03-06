@@ -212,11 +212,13 @@ void main() {
           'wait_all',
           'get_result',
           'agent_watch',
+          'cancel_agent',
+          'agent_status',
           'ask_llm',
         ]),
       );
-      // 37 df + 2 chart + 2 platform + 5 agent + 2 introspection = 48
-      expect(bridge.registered, hasLength(48));
+      // 37 df + 2 chart + 2 platform + 7 agent + 2 introspection = 50
+      expect(bridge.registered, hasLength(50));
     });
 
     group('agent handler delegation', () {
@@ -332,6 +334,36 @@ void main() {
         });
 
         expect(agentApi.calls['watchAgent']![0], 7);
+      });
+
+      test('cancel_agent delegates to AgentApi.cancelAgent', () async {
+        final result = await byName['cancel_agent']!.handler({'handle': 8});
+
+        expect(result, isTrue);
+        expect(agentApi.calls['cancelAgent'], [8]);
+      });
+
+      test('cancel_agent schema has handle param', () {
+        final schema = byName['cancel_agent']!.schema;
+        expect(schema.params, hasLength(1));
+        expect(schema.params[0].name, 'handle');
+        expect(schema.params[0].type, HostParamType.integer);
+      });
+
+      test('agent_status delegates to AgentApi.agentStatus', () async {
+        agentApi.statusResult = 'completed';
+
+        final result = await byName['agent_status']!.handler({'handle': 3});
+
+        expect(result, 'completed');
+        expect(agentApi.calls['agentStatus'], [3]);
+      });
+
+      test('agent_status schema has handle param', () {
+        final schema = byName['agent_status']!.schema;
+        expect(schema.params, hasLength(1));
+        expect(schema.params[0].name, 'handle');
+        expect(schema.params[0].type, HostParamType.integer);
       });
 
       test('ask_llm uses "general" as default room', () async {
@@ -627,4 +659,7 @@ class _NeverResolvingAgentApi implements AgentApi {
 
   @override
   Future<bool> cancelAgent(int handle) => Completer<bool>().future;
+
+  @override
+  String agentStatus(int handle) => 'running';
 }

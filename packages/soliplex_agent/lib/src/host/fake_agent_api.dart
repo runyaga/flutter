@@ -82,4 +82,13 @@ class FakeAgentApi implements AgentApi {
     calls['cancelAgent'] = [handle];
     return cancelResult;
   }
+
+  /// Value returned by [agentStatus].
+  String statusResult = 'running';
+
+  @override
+  String agentStatus(int handle) {
+    calls['agentStatus'] = [handle];
+    return statusResult;
+  }
 }
