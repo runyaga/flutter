@@ -1,12 +1,8 @@
-import 'dart:async';
-
 import 'package:mocktail/mocktail.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart' show SoliplexApi;
 
 class MockSoliplexApi extends Mock implements SoliplexApi {}
-
-class MockRunOrchestrator extends Mock implements RunOrchestrator {}
 
 /// Test data factory with sensible defaults.
 class TestData {
@@ -60,22 +56,4 @@ class TestData {
       messages: messages ?? const [],
     );
   }
-}
-
-/// Helper to set up a [MockRunOrchestrator] with a controllable state stream.
-({
-  MockRunOrchestrator orchestrator,
-  StreamController<RunState> controller,
-}) buildMockOrchestrator({
-  RunState initialState = const IdleState(),
-}) {
-  final orchestrator = MockRunOrchestrator();
-  final controller = StreamController<RunState>.broadcast();
-
-  when(() => orchestrator.currentState).thenReturn(initialState);
-  when(() => orchestrator.stateChanges).thenAnswer((_) => controller.stream);
-  when(orchestrator.cancelRun).thenReturn(null);
-  when(orchestrator.dispose).thenReturn(null);
-
-  return (orchestrator: orchestrator, controller: controller);
 }

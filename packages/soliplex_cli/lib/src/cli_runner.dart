@@ -373,7 +373,6 @@ Future<void> _sendAndWait(
       roomId: room,
       prompt: prompt,
       threadId: existingThread,
-      ephemeral: false,
     );
     ctx.setThread(room, session.threadKey.threadId);
 
