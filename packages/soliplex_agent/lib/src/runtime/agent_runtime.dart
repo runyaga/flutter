@@ -38,6 +38,10 @@ class AgentRuntime {
   ///
   /// [maxSpawnDepth] limits how deep the parent-child spawn tree can grow.
   /// Set to `0` to disable depth checking (default: 10).
+  ///
+  /// [rootTimeout] is an optional wall-clock timeout applied to root sessions
+  /// (those without a parent). When the timeout fires, the root session and
+  /// all its children are cancelled.
   AgentRuntime({
     required ServerConnection connection,
     required ToolRegistryResolver toolRegistryResolver,
@@ -45,6 +49,7 @@ class AgentRuntime {
     required Logger logger,
     SessionExtensionFactory? extensionFactory,
     this.maxSpawnDepth = 10,
+    this.rootTimeout,
   })  : serverId = connection.serverId,
         _api = connection.api,
         _agUiStreamClient = connection.agUiStreamClient,
@@ -66,7 +71,14 @@ class AgentRuntime {
   /// Maximum depth of the parent-child spawn tree. `0` disables the check.
   final int maxSpawnDepth;
 
+  /// Optional wall-clock timeout for root sessions (no parent).
+  ///
+  /// When set, a [Timer] fires after this duration and cancels the root
+  /// session, cascading to all children.
+  final Duration? rootTimeout;
+
   final Map<String, AgentSession> _sessions = {};
+  final Map<String, Timer> _rootTimeoutTimers = {};
   final Set<String> _deletedThreadIds = {};
   final StreamController<List<AgentSession>> _sessionController =
       StreamController<List<AgentSession>>.broadcast();
@@ -134,6 +146,7 @@ class AgentRuntime {
       rethrow;
     }
     _scheduleCompletion(session, timeout);
+    _scheduleRootTimeout(session, parent);
     return session;
   }
 
@@ -167,6 +180,10 @@ class AgentRuntime {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    for (final timer in _rootTimeoutTimers.values) {
+      timer.cancel();
+    }
+    _rootTimeoutTimers.clear();
     await cancelAll();
     await _cleanupEphemeralThreads();
     for (final session in _sessions.values.toList()) {
@@ -313,7 +330,18 @@ class AgentRuntime {
     );
   }
 
+  void _scheduleRootTimeout(AgentSession session, AgentSession? parent) {
+    if (parent != null || rootTimeout == null) return;
+    _rootTimeoutTimers[session.id] = Timer(rootTimeout!, () {
+      _logger.warning(
+        'Root session ${session.id} timed out after $rootTimeout',
+      );
+      session.cancel();
+    });
+  }
+
   Future<void> _handleSessionComplete(AgentSession session) async {
+    _rootTimeoutTimers.remove(session.id)?.cancel();
     if (session.ephemeral) {
       await _deleteThreadSafe(session.threadKey);
     }
