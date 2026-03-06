@@ -11,7 +11,10 @@ abstract class MontyPlugin {
   String get namespace;
 
   /// Human-readable description for LLM system prompt.
-  String get systemPromptContext;
+  ///
+  /// Return `null` if the plugin has no additional prompt context beyond
+  /// its function schemas.
+  String? get systemPromptContext => null;
 
   /// Host functions this plugin provides.
   List<HostFunction> get functions;

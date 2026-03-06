@@ -4,6 +4,10 @@ import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 
 /// Collects [MontyPlugin]s with namespace validation and function name
 /// collision detection.
+///
+/// All function names must be prefixed with the plugin's namespace followed
+/// by an underscore (e.g., namespace `sqlite` requires functions named
+/// `sqlite_query`, `sqlite_execute`, etc.).
 class PluginRegistry {
   final List<MontyPlugin> _plugins = [];
   final Set<String> _namespaces = {};
@@ -58,8 +62,15 @@ class PluginRegistry {
   }
 
   void _checkFunctionCollisions(MontyPlugin plugin) {
+    final prefix = '${plugin.namespace}_';
     for (final fn in plugin.functions) {
       final name = fn.schema.name;
+      if (!name.startsWith(prefix)) {
+        throw ArgumentError(
+          'Function "$name" in plugin "${plugin.namespace}" must be '
+          'prefixed with "$prefix".',
+        );
+      }
       if (_functionNames.contains(name)) {
         throw StateError(
           'Function "$name" from plugin "${plugin.namespace}" conflicts '

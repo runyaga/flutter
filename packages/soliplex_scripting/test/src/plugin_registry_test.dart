@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 class _TestPlugin extends MontyPlugin {
   _TestPlugin({
     required this.namespace,
-    this.systemPromptContext = '',
+    this.systemPromptContext,
     List<HostFunction>? functions,
   }) : functions = functions ?? [];
 
@@ -14,7 +14,7 @@ class _TestPlugin extends MontyPlugin {
   final String namespace;
 
   @override
-  final String systemPromptContext;
+  final String? systemPromptContext;
 
   @override
   final List<HostFunction> functions;
@@ -52,8 +52,8 @@ void main() {
 
     test('multiple plugins register successfully', () {
       registry
-        ..register(_TestPlugin(namespace: 'aaa', functions: [_fn('a_do')]))
-        ..register(_TestPlugin(namespace: 'bbb', functions: [_fn('b_do')]));
+        ..register(_TestPlugin(namespace: 'aaa', functions: [_fn('aaa_do')]))
+        ..register(_TestPlugin(namespace: 'bbb', functions: [_fn('bbb_do')]));
 
       expect(registry.plugins, hasLength(2));
       expect(registry.plugins[0].namespace, 'aaa');
@@ -178,6 +178,40 @@ void main() {
       });
     });
 
+    group('function prefix enforcement', () {
+      test('rejects function not prefixed with namespace', () {
+        expect(
+          () => registry.register(
+            _TestPlugin(
+              namespace: 'sqlite',
+              functions: [_fn('query')],
+            ),
+          ),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              allOf(
+                contains('query'),
+                contains('sqlite_'),
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('accepts function correctly prefixed with namespace', () {
+        registry.register(
+          _TestPlugin(
+            namespace: 'sqlite',
+            functions: [_fn('sqlite_query')],
+          ),
+        );
+
+        expect(registry.plugins, hasLength(1));
+      });
+    });
+
     group('collision detection', () {
       test('throws StateError on duplicate namespace', () {
         registry.register(_TestPlugin(namespace: 'df'));
@@ -195,21 +229,29 @@ void main() {
       });
 
       test('throws StateError on function name collision across plugins', () {
+        // alpha_s_thing satisfies both alpha_ and alpha_s_ prefixes,
+        // so registering it under both namespaces causes a collision.
         registry.register(
-          _TestPlugin(namespace: 'alpha', functions: [_fn('shared_name')]),
+          _TestPlugin(
+            namespace: 'alpha',
+            functions: [_fn('alpha_s_thing')],
+          ),
         );
 
         expect(
           () => registry.register(
-            _TestPlugin(namespace: 'beta', functions: [_fn('shared_name')]),
+            _TestPlugin(
+              namespace: 'alpha_s',
+              functions: [_fn('alpha_s_thing')],
+            ),
           ),
           throwsA(
             isA<StateError>().having(
               (e) => e.message,
               'message',
               allOf(
-                contains('shared_name'),
-                contains('beta'),
+                contains('alpha_s_thing'),
+                contains('alpha_s'),
                 contains('conflicts'),
               ),
             ),
@@ -218,16 +260,22 @@ void main() {
       });
 
       test('collision does not partially register the plugin', () {
+        // alpha_s_one satisfies prefix alpha_ — register it under alpha.
         registry.register(
-          _TestPlugin(namespace: 'alpha', functions: [_fn('fn_a')]),
+          _TestPlugin(
+            namespace: 'alpha',
+            functions: [_fn('alpha_s_one')],
+          ),
         );
 
-        // beta has a collision — should not be added.
+        // alpha_s tries to register alpha_s_ok (valid, no collision) and
+        // alpha_s_one (valid prefix, but collides). The whole plugin should
+        // be rejected — no partial registration.
         expect(
           () => registry.register(
             _TestPlugin(
-              namespace: 'beta',
-              functions: [_fn('fn_b'), _fn('fn_a')],
+              namespace: 'alpha_s',
+              functions: [_fn('alpha_s_ok'), _fn('alpha_s_one')],
             ),
           ),
           throwsA(isA<StateError>()),

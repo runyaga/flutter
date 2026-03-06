@@ -9,15 +9,15 @@ import 'package:test/test.dart';
 class _TestPlugin extends MontyPlugin {
   _TestPlugin({
     required this.namespace,
-    required this.systemPromptContext,
     required this.functions,
+    this.systemPromptContext,
   });
 
   @override
   final String namespace;
 
   @override
-  final String systemPromptContext;
+  final String? systemPromptContext;
 
   @override
   final List<HostFunction> functions;
@@ -83,6 +83,15 @@ void main() {
 
       // Should complete without error.
       await plugin.onRegister(_NoOpBridge());
+    });
+
+    test('systemPromptContext defaults to null', () {
+      final plugin = _TestPlugin(
+        namespace: 'ns',
+        functions: [],
+      );
+
+      expect(plugin.systemPromptContext, isNull);
     });
 
     test('onDispose default implementation is a no-op', () async {
