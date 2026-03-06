@@ -2,6 +2,7 @@ import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart
     show MontyLimits;
 import 'package:soliplex_agent/soliplex_agent.dart'
     show AgentApi, BlackboardApi, FormApi, HostApi, ScriptEnvironmentFactory;
+import 'package:soliplex_client/soliplex_client.dart' show SoliplexHttpClient;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/src/host_function_wiring.dart';
@@ -29,6 +30,8 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
   required HostApi hostApi,
   AgentApi? agentApi,
   BlackboardApi? blackboardApi,
+  SoliplexHttpClient? httpClient,
+  String? Function()? getAuthToken,
   FormApi? formApi,
   List<HostFunction>? extraFunctions,
   MontyLimits? limits,
@@ -45,6 +48,8 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
       hostApi: hostApi,
       agentApi: agentApi,
       blackboardApi: blackboardApi,
+      httpClient: httpClient,
+      getAuthToken: getAuthToken,
       dfRegistry: dfRegistry,
       streamRegistry: streamRegistry,
       formApi: formApi,

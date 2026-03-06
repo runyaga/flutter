@@ -127,11 +127,13 @@ Future<void> _runSession(ArgResults parsed) async {
     MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
     final hostApi = FakeHostApi();
     final blackboardApi = DirectBlackboardApi();
+    final fetchClient = DartHttpClient();
     extensionFactory = () async {
       final factory = createMontyScriptEnvironmentFactory(
         hostApi: hostApi,
         agentApi: agentApi,
         blackboardApi: blackboardApi,
+        httpClient: fetchClient,
         limits: MontyLimitsDefaults.tool,
       );
       final env = await factory();
