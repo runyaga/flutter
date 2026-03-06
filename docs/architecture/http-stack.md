@@ -178,6 +178,27 @@ SSE streams go through 5 phases:
 - Subscription cancellation (phase 5) triggers `ObservableHttpClient`'s
   `onStreamEnd` with final byte count.
 
+**Cancel semantics (empirically verified):**
+
+Calling `subscription.cancel()` on the body stream sends TCP RST
+to the server. On a Python/uvicorn backend this cascades into
+asyncpg connection termination and DB pool poisoning.
+
+Correct action by scenario:
+
+- **Terminal event received** — detach (`sub = null`), let server
+  close naturally.
+- **User cancel / navigation** — `CancelToken.cancel()`, RST is
+  acceptable.
+- **RunErrorEvent** — force-cancel via `_cleanup()`.
+- **Stream ends without terminal event** — force-cancel, treat as
+  network error.
+
+The cancel decision is owned by the top layer
+(`RunOrchestrator`), not the transport. Middle decorators
+(`Observable`, `Authenticated`, `Refreshing`) are transparent
+pass-throughs.
+
 ## Observer Events
 
 `ObservableHttpClient` emits events through the `HttpObserver` interface:

@@ -201,6 +201,13 @@ class HttpTransport {
   }
 
   /// Wraps a stream with cancellation support from a [CancelToken].
+  ///
+  /// When the token fires, a [CancelledException] is injected into the
+  /// controller and the underlying subscription is cancelled. This cancel
+  /// sends TCP RST to the server — it is an abrupt close, not graceful.
+  /// Callers that receive a terminal application event (e.g. RunFinishedEvent)
+  /// should detach from the stream without cancelling to allow the server to
+  /// close the connection naturally.
   Stream<List<int>> _wrapStreamWithCancellation(
     Stream<List<int>> source,
     CancelToken cancelToken,
