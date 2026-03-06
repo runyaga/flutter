@@ -35,12 +35,21 @@ import 'package:soliplex_logging/soliplex_logging.dart';
 /// ```
 class AgentRuntime {
   /// Creates a runtime bound to a single [ServerConnection].
+  ///
+  /// [maxSpawnDepth] limits how deep the parent-child spawn tree can grow.
+  /// Set to `0` to disable depth checking (default: 10).
+  ///
+  /// [rootTimeout] is an optional wall-clock timeout applied to root sessions
+  /// (those without a parent). When the timeout fires, the root session and
+  /// all its children are cancelled.
   AgentRuntime({
     required ServerConnection connection,
     required ToolRegistryResolver toolRegistryResolver,
     required PlatformConstraints platform,
     required Logger logger,
     SessionExtensionFactory? extensionFactory,
+    this.maxSpawnDepth = 10,
+    this.rootTimeout,
   })  : serverId = connection.serverId,
         _api = connection.api,
         _agUiStreamClient = connection.agUiStreamClient,
@@ -59,7 +68,17 @@ class AgentRuntime {
   /// Identifies which backend server this runtime targets.
   final String serverId;
 
+  /// Maximum depth of the parent-child spawn tree. `0` disables the check.
+  final int maxSpawnDepth;
+
+  /// Optional wall-clock timeout for root sessions (no parent).
+  ///
+  /// When set, a [Timer] fires after this duration and cancels the root
+  /// session, cascading to all children.
+  final Duration? rootTimeout;
+
   final Map<String, AgentSession> _sessions = {};
+  final Map<String, Timer> _rootTimeoutTimers = {};
   final Set<String> _deletedThreadIds = {};
   final _spawnQueue = <Completer<void>>[];
   final StreamController<List<AgentSession>> _sessionController =
@@ -110,11 +129,14 @@ class AgentRuntime {
     _guardNotDisposed();
     _guardWasmReentrancy();
     await _waitForSlot();
+    _guardSpawnDepth(parent);
+    final depth = parent == null ? 0 : parent.depth + 1;
     final (key, existingRunId) = await _resolveThread(roomId, threadId);
     final session = await _buildSession(
       key: key,
       roomId: roomId,
       ephemeral: ephemeral,
+      depth: depth,
     );
     _trackSession(session);
     parent?.addChild(session);
@@ -130,6 +152,7 @@ class AgentRuntime {
       rethrow;
     }
     _scheduleCompletion(session, timeout, autoDispose: autoDispose);
+    _scheduleRootTimeout(session, parent);
     return session;
   }
 
@@ -167,6 +190,10 @@ class AgentRuntime {
       completer.complete();
     }
     _spawnQueue.clear();
+    for (final timer in _rootTimeoutTimers.values) {
+      timer.cancel();
+    }
+    _rootTimeoutTimers.clear();
     await cancelAll();
     await _cleanupEphemeralThreads();
     for (final session in _sessions.values.toList()) {
@@ -207,6 +234,16 @@ class AgentRuntime {
     _spawnQueue.removeAt(0).complete();
   }
 
+  void _guardSpawnDepth(AgentSession? parent) {
+    if (maxSpawnDepth <= 0 || parent == null) return;
+    if (parent.depth + 1 >= maxSpawnDepth) {
+      throw StateError(
+        'Spawn depth limit reached '
+        '(${parent.depth + 1} / $maxSpawnDepth)',
+      );
+    }
+  }
+
   int get _activeCount =>
       _sessions.values.where((s) => !s.state.isTerminal).length;
 
@@ -237,6 +274,7 @@ class AgentRuntime {
     required ThreadKey key,
     required String roomId,
     required bool ephemeral,
+    required int depth,
   }) async {
     var toolRegistry = await _toolRegistryResolver(roomId);
     final extensions = await _createExtensions();
@@ -254,6 +292,7 @@ class AgentRuntime {
     return AgentSession(
       threadKey: key,
       ephemeral: ephemeral,
+      depth: depth,
       runtime: this,
       orchestrator: orchestrator,
       toolRegistry: toolRegistry,
@@ -316,7 +355,18 @@ class AgentRuntime {
     );
   }
 
+  void _scheduleRootTimeout(AgentSession session, AgentSession? parent) {
+    if (parent != null || rootTimeout == null) return;
+    _rootTimeoutTimers[session.id] = Timer(rootTimeout!, () {
+      _logger.warning(
+        'Root session ${session.id} timed out after $rootTimeout',
+      );
+      session.cancel();
+    });
+  }
+
   Future<void> _handleSessionComplete(AgentSession session) async {
+    _rootTimeoutTimers.remove(session.id)?.cancel();
     if (session.ephemeral) {
       await _deleteThreadSafe(session.threadKey);
     }

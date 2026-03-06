@@ -1,7 +1,14 @@
 import 'dart:async';
 
 import 'package:soliplex_agent/soliplex_agent.dart'
-    show AgentApi, FormApi, HostApi;
+    show
+        AgentApi,
+        AgentFailure,
+        AgentSuccess,
+        AgentTimedOut,
+        BlackboardApi,
+        FormApi,
+        HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/src/df_functions.dart';
@@ -22,6 +29,7 @@ class HostFunctionWiring {
   HostFunctionWiring({
     required HostApi hostApi,
     AgentApi? agentApi,
+    BlackboardApi? blackboardApi,
     DfRegistry? dfRegistry,
     StreamRegistry? streamRegistry,
     FormApi? formApi,
@@ -29,6 +37,7 @@ class HostFunctionWiring {
     Duration agentTimeout = const Duration(seconds: 30),
   })  : _hostApi = hostApi,
         _agentApi = agentApi,
+        _blackboardApi = blackboardApi,
         _dfRegistry = dfRegistry ?? DfRegistry(),
         _streamRegistry = streamRegistry,
         _formApi = formApi,
@@ -37,6 +46,7 @@ class HostFunctionWiring {
 
   final HostApi _hostApi;
   final AgentApi? _agentApi;
+  final BlackboardApi? _blackboardApi;
   final DfRegistry _dfRegistry;
   final StreamRegistry? _streamRegistry;
   final FormApi? _formApi;
@@ -58,6 +68,9 @@ class HostFunctionWiring {
     }
     if (_agentApi != null) {
       registry.addCategory('agent', _agentFunctions());
+    }
+    if (_blackboardApi != null) {
+      registry.addCategory('blackboard', _blackboardFunctions());
     }
     if (_extraFunctions != null && _extraFunctions.isNotEmpty) {
       registry.addCategory('extra', _extraFunctions);
@@ -272,6 +285,61 @@ class HostFunctionWiring {
         ),
       ];
 
+  List<HostFunction> _blackboardFunctions() => [
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'blackboard_write',
+            description: 'Write a value to the shared blackboard.',
+            params: [
+              HostParam(
+                name: 'key',
+                type: HostParamType.string,
+                description: 'Key to write.',
+              ),
+              HostParam(
+                name: 'value',
+                type: HostParamType.any,
+                isRequired: false,
+                description: 'JSON-compatible value (string, number, '
+                    'bool, list, map, or null).',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final key = args['key']! as String;
+            final value = args['value'];
+            await _blackboardApi!.write(key, value);
+            return null;
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'blackboard_read',
+            description: 'Read a value from the shared blackboard.',
+            params: [
+              HostParam(
+                name: 'key',
+                type: HostParamType.string,
+                description: 'Key to read.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final key = args['key']! as String;
+            return _blackboardApi!.read(key);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'blackboard_keys',
+            description: 'List all keys on the shared blackboard.',
+          ),
+          handler: (args) async {
+            return _blackboardApi!.keys();
+          },
+        ),
+      ];
+
   List<HostFunction> _agentFunctions() => [
         HostFunction(
           schema: const HostFunctionSchema(
@@ -288,12 +356,23 @@ class HostFunctionWiring {
                 type: HostParamType.string,
                 description: 'Prompt for the agent.',
               ),
+              HostParam(
+                name: 'thread_id',
+                type: HostParamType.string,
+                isRequired: false,
+                description: 'Thread ID to continue an existing conversation.',
+              ),
             ],
           ),
           handler: (args) async {
             final room = args['room']! as String;
             final prompt = args['prompt']! as String;
-            return _agentApi!.spawnAgent(room, prompt);
+            final threadId = args['thread_id'] as String?;
+            return _agentApi!.spawnAgent(
+              room,
+              prompt,
+              threadId: threadId,
+            );
           },
         ),
         HostFunction(
@@ -329,6 +408,88 @@ class HostFunctionWiring {
           handler: (args) async {
             final handle = (args['handle']! as num).toInt();
             return _agentApi!.getResult(handle).timeout(_agentTimeout);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'agent_watch',
+            description: 'Watch a spawned agent and return its result status '
+                'without evicting the handle. Returns a dict with '
+                "'status' ('success', 'failed', 'timed_out') and details.",
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Agent handle from spawn_agent.',
+              ),
+              HostParam(
+                name: 'timeout_seconds',
+                type: HostParamType.number,
+                isRequired: false,
+                description: 'Timeout in seconds (uses agentTimeout default).',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = (args['handle']! as num).toInt();
+            final timeoutSec = args['timeout_seconds'] as num?;
+            final timeout = timeoutSec != null
+                ? Duration(seconds: timeoutSec.toInt())
+                : _agentTimeout;
+            final result = await _agentApi!.watchAgent(handle).timeout(timeout);
+            return switch (result) {
+              AgentSuccess(:final output) => <String, Object?>{
+                  'status': 'success',
+                  'output': output,
+                },
+              AgentFailure(:final reason, :final error, :final partialOutput) =>
+                <String, Object?>{
+                  'status': 'failed',
+                  'reason': reason.name,
+                  'error': error,
+                  if (partialOutput != null) 'partial_output': partialOutput,
+                },
+              AgentTimedOut(:final elapsed) => <String, Object?>{
+                  'status': 'timed_out',
+                  'elapsed_seconds': elapsed.inSeconds,
+                },
+            };
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'cancel_agent',
+            description: 'Cancel a spawned agent. Evicts the handle.',
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Agent handle from spawn_agent.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = (args['handle']! as num).toInt();
+            return _agentApi!.cancelAgent(handle);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'agent_status',
+            description: 'Non-blocking poll of agent lifecycle state. '
+                "Returns 'spawning', 'running', 'completed', 'failed', "
+                "or 'cancelled'.",
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Agent handle from spawn_agent.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = (args['handle']! as num).toInt();
+            return _agentApi!.agentStatus(handle);
           },
         ),
         HostFunction(

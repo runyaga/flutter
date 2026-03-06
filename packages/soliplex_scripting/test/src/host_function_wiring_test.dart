@@ -1,7 +1,16 @@
 import 'dart:async';
 
 import 'package:soliplex_agent/soliplex_agent.dart'
-    show AgentApi, FakeAgentApi, HostApi;
+    show
+        AgentApi,
+        AgentFailure,
+        AgentResult,
+        AgentSuccess,
+        AgentTimedOut,
+        FailureReason,
+        FakeAgentApi,
+        FakeBlackboardApi,
+        HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
@@ -198,10 +207,18 @@ void main() {
       final names = bridge.registered.map((f) => f.schema.name).toSet();
       expect(
         names,
-        containsAll(['spawn_agent', 'wait_all', 'get_result', 'ask_llm']),
+        containsAll([
+          'spawn_agent',
+          'wait_all',
+          'get_result',
+          'agent_watch',
+          'cancel_agent',
+          'agent_status',
+          'ask_llm',
+        ]),
       );
-      // 37 df + 2 chart + 2 platform + 4 agent + 2 introspection = 47
-      expect(bridge.registered, hasLength(47));
+      // 37 df + 2 chart + 2 platform + 7 agent + 2 introspection = 50
+      expect(bridge.registered, hasLength(50));
     });
 
     group('agent handler delegation', () {
@@ -265,6 +282,90 @@ void main() {
         expect(agentApi.calls['getResult'], [10, null]);
       });
 
+      test('agent_watch returns success dict', () async {
+        agentApi.watchResult = const AgentSuccess(
+          threadKey: (serverId: 's', roomId: 'r', threadId: 't'),
+          output: 'done!',
+          runId: 'run-1',
+        );
+
+        final result = await byName['agent_watch']!.handler({'handle': 10});
+
+        expect(result, isA<Map<String, Object?>>());
+        final map = result! as Map<String, Object?>;
+        expect(map['status'], 'success');
+        expect(map['output'], 'done!');
+        expect(agentApi.calls['watchAgent']![0], 10);
+      });
+
+      test('agent_watch returns failed dict', () async {
+        agentApi.watchResult = const AgentFailure(
+          threadKey: (serverId: 's', roomId: 'r', threadId: 't'),
+          reason: FailureReason.serverError,
+          error: 'boom',
+          partialOutput: 'partial',
+        );
+
+        final result = await byName['agent_watch']!.handler({'handle': 5});
+
+        final map = result! as Map<String, Object?>;
+        expect(map['status'], 'failed');
+        expect(map['reason'], 'serverError');
+        expect(map['error'], 'boom');
+        expect(map['partial_output'], 'partial');
+      });
+
+      test('agent_watch returns timed_out dict', () async {
+        agentApi.watchResult = const AgentTimedOut(
+          threadKey: (serverId: 's', roomId: 'r', threadId: 't'),
+          elapsed: Duration(seconds: 15),
+        );
+
+        final result = await byName['agent_watch']!.handler({'handle': 3});
+
+        final map = result! as Map<String, Object?>;
+        expect(map['status'], 'timed_out');
+        expect(map['elapsed_seconds'], 15);
+      });
+
+      test('agent_watch delegates to AgentApi.watchAgent', () async {
+        await byName['agent_watch']!.handler({
+          'handle': 7,
+        });
+
+        expect(agentApi.calls['watchAgent']![0], 7);
+      });
+
+      test('cancel_agent delegates to AgentApi.cancelAgent', () async {
+        final result = await byName['cancel_agent']!.handler({'handle': 8});
+
+        expect(result, isTrue);
+        expect(agentApi.calls['cancelAgent'], [8]);
+      });
+
+      test('cancel_agent schema has handle param', () {
+        final schema = byName['cancel_agent']!.schema;
+        expect(schema.params, hasLength(1));
+        expect(schema.params[0].name, 'handle');
+        expect(schema.params[0].type, HostParamType.integer);
+      });
+
+      test('agent_status delegates to AgentApi.agentStatus', () async {
+        agentApi.statusResult = 'completed';
+
+        final result = await byName['agent_status']!.handler({'handle': 3});
+
+        expect(result, 'completed');
+        expect(agentApi.calls['agentStatus'], [3]);
+      });
+
+      test('agent_status schema has handle param', () {
+        final schema = byName['agent_status']!.schema;
+        expect(schema.params, hasLength(1));
+        expect(schema.params[0].name, 'handle');
+        expect(schema.params[0].type, HostParamType.integer);
+      });
+
       test('ask_llm uses "general" as default room', () async {
         await byName['ask_llm']!.handler({
           'prompt': 'Hello',
@@ -284,13 +385,28 @@ void main() {
         expect(agentApi.calls['spawnAgent']![2], 'tid-123');
       });
 
-      test('spawn_agent schema has correct params', () {
+      test('spawn_agent schema has room, prompt, and optional thread_id', () {
         final schema = byName['spawn_agent']!.schema;
-        expect(schema.params, hasLength(2));
+        expect(schema.params, hasLength(3));
         expect(schema.params[0].name, 'room');
         expect(schema.params[0].type, HostParamType.string);
+        expect(schema.params[0].isRequired, isTrue);
         expect(schema.params[1].name, 'prompt');
         expect(schema.params[1].type, HostParamType.string);
+        expect(schema.params[1].isRequired, isTrue);
+        expect(schema.params[2].name, 'thread_id');
+        expect(schema.params[2].type, HostParamType.string);
+        expect(schema.params[2].isRequired, isFalse);
+      });
+
+      test('spawn_agent passes thread_id when provided', () async {
+        await byName['spawn_agent']!.handler({
+          'room': 'weather',
+          'prompt': 'Continue',
+          'thread_id': 'tid-456',
+        });
+
+        expect(agentApi.calls['spawnAgent']![2], 'tid-456');
       });
 
       test('wait_all schema has list param', () {
@@ -307,6 +423,17 @@ void main() {
         expect(schema.params[0].type, HostParamType.integer);
       });
 
+      test('agent_watch schema has handle and optional timeout', () {
+        final schema = byName['agent_watch']!.schema;
+        expect(schema.params, hasLength(2));
+        expect(schema.params[0].name, 'handle');
+        expect(schema.params[0].type, HostParamType.integer);
+        expect(schema.params[0].isRequired, isTrue);
+        expect(schema.params[1].name, 'timeout_seconds');
+        expect(schema.params[1].type, HostParamType.number);
+        expect(schema.params[1].isRequired, isFalse);
+      });
+
       test('ask_llm schema has prompt, room, and thread_id', () {
         final schema = byName['ask_llm']!.schema;
         expect(schema.params, hasLength(3));
@@ -320,6 +447,132 @@ void main() {
         expect(schema.params[2].name, 'thread_id');
         expect(schema.params[2].type, HostParamType.string);
         expect(schema.params[2].isRequired, isFalse);
+      });
+    });
+  });
+
+  group('HostFunctionWiring with BlackboardApi', () {
+    late _RecordingBridge bridge;
+    late _FakeHostApi hostApi;
+    late FakeBlackboardApi blackboardApi;
+    late HostFunctionWiring wiring;
+
+    setUp(() {
+      bridge = _RecordingBridge();
+      hostApi = _FakeHostApi();
+      blackboardApi = FakeBlackboardApi();
+      wiring = HostFunctionWiring(
+        hostApi: hostApi,
+        blackboardApi: blackboardApi,
+      );
+    });
+
+    test('registers blackboard functions when blackboardApi provided', () {
+      wiring.registerOnto(bridge);
+
+      final names = bridge.registered.map((f) => f.schema.name).toSet();
+      expect(
+        names,
+        containsAll(['blackboard_write', 'blackboard_read', 'blackboard_keys']),
+      );
+      // 37 df + 2 chart + 2 platform + 3 blackboard + 2 introspection = 46
+      expect(bridge.registered, hasLength(46));
+    });
+
+    test('blackboard category absent when blackboardApi is null', () {
+      final b = _RecordingBridge();
+      HostFunctionWiring(hostApi: _FakeHostApi()).registerOnto(b);
+
+      final names = b.registered.map((f) => f.schema.name).toSet();
+      expect(names, isNot(contains('blackboard_write')));
+      expect(names, isNot(contains('blackboard_read')));
+      expect(names, isNot(contains('blackboard_keys')));
+    });
+
+    group('blackboard handler delegation', () {
+      late Map<String, HostFunction> byName;
+
+      setUp(() {
+        wiring.registerOnto(bridge);
+        byName = {for (final f in bridge.registered) f.schema.name: f};
+      });
+
+      test('blackboard_write delegates to BlackboardApi.write', () async {
+        await byName['blackboard_write']!.handler({
+          'key': 'score',
+          'value': 42,
+        });
+
+        expect(blackboardApi.store['score'], 42);
+        expect(blackboardApi.calls['write'], ['score', 42]);
+      });
+
+      test('blackboard_write accepts null value', () async {
+        await byName['blackboard_write']!.handler({
+          'key': 'cleared',
+          'value': null,
+        });
+
+        expect(blackboardApi.store['cleared'], isNull);
+        expect(blackboardApi.calls['write'], ['cleared', null]);
+      });
+
+      test('blackboard_read delegates to BlackboardApi.read', () async {
+        blackboardApi.store['greeting'] = 'hello';
+
+        final result = await byName['blackboard_read']!.handler({
+          'key': 'greeting',
+        });
+
+        expect(result, 'hello');
+        expect(blackboardApi.calls['read'], ['greeting']);
+      });
+
+      test('blackboard_read returns null for missing key', () async {
+        final result = await byName['blackboard_read']!.handler({
+          'key': 'absent',
+        });
+
+        expect(result, isNull);
+      });
+
+      test('blackboard_keys delegates to BlackboardApi.keys', () async {
+        blackboardApi.store['a'] = 1;
+        blackboardApi.store['b'] = 2;
+
+        final result = await byName['blackboard_keys']!.handler({});
+
+        expect(result, isA<List<String>>());
+        expect(result! as List<String>, containsAll(['a', 'b']));
+      });
+
+      test('blackboard_keys returns empty list for empty store', () async {
+        final result = await byName['blackboard_keys']!.handler({});
+
+        expect(result, <String>[]);
+      });
+
+      test('blackboard_write schema has key and optional value', () {
+        final schema = byName['blackboard_write']!.schema;
+        expect(schema.params, hasLength(2));
+        expect(schema.params[0].name, 'key');
+        expect(schema.params[0].type, HostParamType.string);
+        expect(schema.params[0].isRequired, isTrue);
+        expect(schema.params[1].name, 'value');
+        expect(schema.params[1].type, HostParamType.any);
+        expect(schema.params[1].isRequired, isFalse);
+      });
+
+      test('blackboard_read schema has key param', () {
+        final schema = byName['blackboard_read']!.schema;
+        expect(schema.params, hasLength(1));
+        expect(schema.params[0].name, 'key');
+        expect(schema.params[0].type, HostParamType.string);
+      });
+
+      test('blackboard_keys schema has no params', () {
+        final schema = byName['blackboard_keys']!.schema;
+        expect(schema.params, isEmpty);
       });
     });
   });
@@ -353,6 +606,22 @@ void main() {
       final byName = {for (final f in b.registered) f.schema.name: f};
       await expectLater(
         byName['get_result']!.handler({'handle': 1}),
+        throwsA(isA<TimeoutException>()),
+      );
+    });
+
+    test('agent_watch times out with configured agentTimeout', () async {
+      final slowApi = _NeverResolvingAgentApi();
+      final b = _RecordingBridge();
+      HostFunctionWiring(
+        hostApi: _FakeHostApi(),
+        agentApi: slowApi,
+        agentTimeout: const Duration(milliseconds: 50),
+      ).registerOnto(b);
+
+      final byName = {for (final f in b.registered) f.schema.name: f};
+      await expectLater(
+        byName['agent_watch']!.handler({'handle': 1}),
         throwsA(isA<TimeoutException>()),
       );
     });
@@ -400,5 +669,12 @@ class _NeverResolvingAgentApi implements AgentApi {
       Completer<String>().future;
 
   @override
+  Future<AgentResult> watchAgent(int handle, {Duration? timeout}) =>
+      Completer<AgentResult>().future;
+
+  @override
   Future<bool> cancelAgent(int handle) => Completer<bool>().future;
+
+  @override
+  String agentStatus(int handle) => 'running';
 }

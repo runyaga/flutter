@@ -36,6 +36,7 @@ class AgentSession implements ToolExecutionContext {
   AgentSession({
     required this.threadKey,
     required this.ephemeral,
+    required this.depth,
     required AgentRuntime runtime,
     required RunOrchestrator orchestrator,
     required ToolRegistry toolRegistry,
@@ -57,6 +58,9 @@ class AgentSession implements ToolExecutionContext {
 
   /// Whether the thread should be deleted on completion.
   final bool ephemeral;
+
+  /// Depth in the parent-child spawn tree. Root sessions have depth 0.
+  final int depth;
 
   final AgentRuntime _runtime;
   final RunOrchestrator _orchestrator;

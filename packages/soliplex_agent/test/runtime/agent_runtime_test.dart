@@ -470,6 +470,183 @@ void main() {
     });
   });
 
+  group('spawn depth guard', () {
+    test('root session has depth 0', () async {
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      final session = await runtime.spawn(roomId: _roomId, prompt: 'Root');
+
+      expect(session.depth, 0);
+    });
+
+    test('blocks spawn when depth exceeds maxSpawnDepth', () async {
+      runtime = createRuntime();
+      // maxSpawnDepth defaults to 10, create a root session at depth 0
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      final controller = StreamController<BaseEvent>.broadcast();
+      stubRunAgent(stream: controller.stream);
+
+      // Spawn a root at depth 0
+      final root = await runtime.spawn(roomId: _roomId, prompt: 'Root');
+      expect(root.depth, 0);
+
+      // Now create a runtime with maxSpawnDepth=1 to test the guard
+      await runtime.dispose();
+      runtime = AgentRuntime(
+        connection: mockConnection(),
+        toolRegistryResolver: (_) async => const ToolRegistry(),
+        platform: const NativePlatformConstraints(),
+        logger: logger,
+        maxSpawnDepth: 1,
+      );
+
+      final controller2 = StreamController<BaseEvent>.broadcast();
+      stubRunAgent(stream: controller2.stream);
+
+      final parent = await runtime.spawn(roomId: _roomId, prompt: 'Parent');
+      expect(parent.depth, 0);
+
+      expect(
+        () => runtime.spawn(
+          roomId: _roomId,
+          prompt: 'Child',
+          parent: parent,
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('Spawn depth limit'),
+          ),
+        ),
+      );
+
+      // Clean up
+      _happyPathEvents().forEach(controller2.add);
+      await controller2.close();
+    });
+
+    test('allows spawn when depth is disabled (maxSpawnDepth=0)', () async {
+      runtime = AgentRuntime(
+        connection: mockConnection(),
+        toolRegistryResolver: (_) async => const ToolRegistry(),
+        platform: const NativePlatformConstraints(),
+        logger: logger,
+        maxSpawnDepth: 0,
+      );
+
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      final controller = StreamController<BaseEvent>.broadcast();
+      stubRunAgent(stream: controller.stream);
+
+      final parent = await runtime.spawn(roomId: _roomId, prompt: 'Parent');
+
+      // Should not throw even with a parent at depth 0
+      final child = await runtime.spawn(
+        roomId: _roomId,
+        prompt: 'Child',
+        parent: parent,
+      );
+      expect(child.depth, 1);
+
+      // Clean up
+      _happyPathEvents().forEach(controller.add);
+      await controller.close();
+    });
+  });
+
+  group('root timeout', () {
+    test('cancels root session after rootTimeout expires', () async {
+      runtime = AgentRuntime(
+        connection: mockConnection(),
+        toolRegistryResolver: (_) async => const ToolRegistry(),
+        platform: const NativePlatformConstraints(),
+        logger: logger,
+        rootTimeout: const Duration(milliseconds: 100),
+      );
+
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      // Stream that never completes — session stays running until timeout
+      final controller = StreamController<BaseEvent>.broadcast()
+        ..add(const RunStartedEvent(threadId: _threadId, runId: _runId));
+      stubRunAgent(stream: controller.stream);
+
+      final session = await runtime.spawn(roomId: _roomId, prompt: 'Slow');
+
+      final result = await session.result;
+
+      expect(result, isA<AgentFailure>());
+      expect(
+        (result as AgentFailure).reason,
+        FailureReason.cancelled,
+      );
+
+      await controller.close();
+    });
+
+    test('timer is cancelled on normal completion', () async {
+      runtime = AgentRuntime(
+        connection: mockConnection(),
+        toolRegistryResolver: (_) async => const ToolRegistry(),
+        platform: const NativePlatformConstraints(),
+        logger: logger,
+        rootTimeout: const Duration(seconds: 10),
+      );
+
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      final session = await runtime.spawn(roomId: _roomId, prompt: 'Fast');
+
+      final result = await session.result;
+
+      // Completes normally before rootTimeout
+      expect(result, isA<AgentSuccess>());
+    });
+
+    test('no timer for child sessions', () async {
+      runtime = AgentRuntime(
+        connection: mockConnection(),
+        toolRegistryResolver: (_) async => const ToolRegistry(),
+        platform: const NativePlatformConstraints(),
+        logger: logger,
+        rootTimeout: const Duration(milliseconds: 50),
+      );
+
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      final controller = StreamController<BaseEvent>.broadcast()
+        ..add(const RunStartedEvent(threadId: _threadId, runId: _runId));
+      stubRunAgent(stream: controller.stream);
+
+      final parent = await runtime.spawn(roomId: _roomId, prompt: 'Parent');
+      await runtime.spawn(
+        roomId: _roomId,
+        prompt: 'Child',
+        parent: parent,
+      );
+
+      // Wait past the rootTimeout — only parent should be cancelled,
+      // but since child is a child of parent, it gets cascaded
+      final result = await parent.result;
+      expect(result, isA<AgentFailure>());
+
+      await controller.close();
+    });
+  });
+
   group('ephemeral', () {
     test('deletes thread on completion', () async {
       stubCreateThread();

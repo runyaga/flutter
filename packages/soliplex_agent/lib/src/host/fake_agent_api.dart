@@ -1,4 +1,5 @@
 import 'package:soliplex_agent/src/host/agent_api.dart';
+import 'package:soliplex_agent/src/models/agent_result.dart';
 
 /// In-memory [AgentApi] for testing.
 ///
@@ -11,7 +12,17 @@ class FakeAgentApi implements AgentApi {
     this.waitAllResult = const [],
     this.getResultResult = '',
     this.cancelResult = true,
-  });
+    AgentResult? watchResult,
+  }) : watchResult = watchResult ??
+            const AgentSuccess(
+              threadKey: (
+                serverId: 'fake',
+                roomId: 'fake',
+                threadId: 'fake',
+              ),
+              output: '',
+              runId: 'fake-run',
+            );
 
   /// Value returned by [spawnAgent]. Increments after each call.
   int spawnResult;
@@ -24,6 +35,9 @@ class FakeAgentApi implements AgentApi {
 
   /// Value returned by [cancelAgent].
   bool cancelResult;
+
+  /// Value returned by [watchAgent]. Defaults to a success result.
+  AgentResult watchResult;
 
   /// Recorded calls as `{methodName: [args]}`.
   final Map<String, List<Object?>> calls = {};
@@ -58,8 +72,23 @@ class FakeAgentApi implements AgentApi {
   }
 
   @override
+  Future<AgentResult> watchAgent(int handle, {Duration? timeout}) async {
+    calls['watchAgent'] = [handle, timeout];
+    return watchResult;
+  }
+
+  @override
   Future<bool> cancelAgent(int handle) async {
     calls['cancelAgent'] = [handle];
     return cancelResult;
+  }
+
+  /// Value returned by [agentStatus].
+  String statusResult = 'running';
+
+  @override
+  String agentStatus(int handle) {
+    calls['agentStatus'] = [handle];
+    return statusResult;
   }
 }

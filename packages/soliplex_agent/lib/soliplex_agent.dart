@@ -41,7 +41,10 @@ export 'package:soliplex_client/soliplex_client.dart'
 
 // ── Host API ──
 export 'src/host/agent_api.dart';
+export 'src/host/blackboard_api.dart';
+export 'src/host/direct_blackboard_api.dart';
 export 'src/host/fake_agent_api.dart';
+export 'src/host/fake_blackboard_api.dart';
 export 'src/host/fake_host_api.dart';
 export 'src/host/form_api.dart';
 export 'src/host/host_api.dart';
