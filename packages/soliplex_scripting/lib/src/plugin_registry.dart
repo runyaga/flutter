@@ -63,6 +63,7 @@ class PluginRegistry {
 
   void _checkFunctionCollisions(MontyPlugin plugin) {
     final prefix = '${plugin.namespace}_';
+    final seen = <String>{};
     for (final fn in plugin.functions) {
       final name = fn.schema.name;
       if (!name.startsWith(prefix)) {
@@ -71,7 +72,7 @@ class PluginRegistry {
           'prefixed with "$prefix".',
         );
       }
-      if (_functionNames.contains(name)) {
+      if (_functionNames.contains(name) || !seen.add(name)) {
         throw StateError(
           'Function "$name" from plugin "${plugin.namespace}" conflicts '
           'with an already registered function.',
