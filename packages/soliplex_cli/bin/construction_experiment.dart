@@ -274,31 +274,45 @@ _Verdict _validate(_RoomRun run, ConstructionState state) => switch (run.tier) {
 // Code-capturing extension wrapper
 // ---------------------------------------------------------------------------
 
+/// A single captured tool call: the code sent and the result returned.
+class _CapturedCall {
+  _CapturedCall({required this.code, required this.result});
+  final String code;
+  final String result;
+}
+
 /// Wraps a [SessionExtension] and intercepts `execute_python` tool calls
-/// to record the generated Python code before delegating to the real executor.
+/// to record the generated Python code AND execution result.
 class _CodeCapturingExtension implements SessionExtension {
   _CodeCapturingExtension(this._delegate);
 
   final SessionExtension _delegate;
 
-  /// All captured Python snippets in execution order.
-  final List<String> capturedCode = [];
+  /// All captured calls in execution order.
+  final List<_CapturedCall> capturedCalls = [];
 
   @override
   List<ClientTool> get tools => _delegate.tools.map((t) {
         if (t.definition.name == 'execute_python') {
           return ClientTool(
             definition: t.definition,
-            executor: (call, ctx) {
+            executor: (call, ctx) async {
+              String? code;
               try {
                 final decoded =
                     jsonDecode(call.arguments) as Map<String, Object?>;
-                final code = decoded['code'] as String?;
-                if (code != null) capturedCode.add(code);
+                code = decoded['code'] as String?;
               } on Object catch (_) {
                 // Best-effort capture — don't block execution.
               }
-              return t.executor(call, ctx);
+              final result = await t.executor(call, ctx);
+              capturedCalls.add(
+                _CapturedCall(
+                  code: code ?? '<parse error>',
+                  result: result,
+                ),
+              );
+              return result;
             },
           );
         }
@@ -485,15 +499,19 @@ Future<void> main(List<String> args) async {
           ..writeln('=== LLM Result ===')
           ..writeln(output)
           ..writeln()
-          ..writeln('=== Generated Python ===');
-        final pythonCalls = codeCapture?.capturedCode ?? [];
-        for (var i = 0; i < pythonCalls.length; i++) {
+          ..writeln('=== Tool Calls ===');
+        final calls = codeCapture?.capturedCalls ?? [];
+        for (var i = 0; i < calls.length; i++) {
           sink
             ..writeln('--- call ${i + 1} ---')
-            ..writeln(pythonCalls[i]);
+            ..writeln('[code]')
+            ..writeln(calls[i].code)
+            ..writeln()
+            ..writeln('[result]')
+            ..writeln(calls[i].result)
+            ..writeln();
         }
         sink
-          ..writeln()
           ..writeln('=== Final Schedule ===')
           ..writeln(state.getSchedule())
           ..writeln()
@@ -512,7 +530,7 @@ Future<void> main(List<String> args) async {
           'Saved to ${file.path}  '
           '(${stopwatch.elapsed}, '
           '${verdict.summary}, '
-          '${pythonCalls.length} python calls)',
+          '${calls.length} tool calls)',
         );
       } on Object catch (e, st) {
         stopwatch.stop();
@@ -524,12 +542,17 @@ Future<void> main(List<String> args) async {
           ..writeln(st);
 
         final file = File('$outputDir/${run.roomId}.txt');
-        final pythonCalls = codeCapture?.capturedCode ?? [];
-        final pythonSection = StringBuffer('=== Generated Python ===\n');
-        for (var i = 0; i < pythonCalls.length; i++) {
-          pythonSection
+        final calls = codeCapture?.capturedCalls ?? [];
+        final callSection = StringBuffer('=== Tool Calls ===\n');
+        for (var i = 0; i < calls.length; i++) {
+          callSection
             ..writeln('--- call ${i + 1} ---')
-            ..writeln(pythonCalls[i]);
+            ..writeln('[code]')
+            ..writeln(calls[i].code)
+            ..writeln()
+            ..writeln('[result]')
+            ..writeln(calls[i].result)
+            ..writeln();
         }
         await file.writeAsString(
           'Room: ${run.roomId}\n'
@@ -538,7 +561,7 @@ Future<void> main(List<String> args) async {
           '=== Verdict ===\n'
           '${verdict.summary}\n'
           '${verdict.details}\n\n'
-          '$pythonSection\n'
+          '$callSection\n'
           '=== ERROR ===\n$e\n$st\n',
         );
       }
