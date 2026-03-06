@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:soliplex_agent/soliplex_agent.dart'
-    show AgentApi, FormApi, HostApi;
+    show AgentApi, AgentFailure, AgentSuccess, AgentTimedOut, FormApi, HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/src/df_functions.dart';
@@ -329,6 +329,52 @@ class HostFunctionWiring {
           handler: (args) async {
             final handle = (args['handle']! as num).toInt();
             return _agentApi!.getResult(handle).timeout(_agentTimeout);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'agent_watch',
+            description: 'Watch a spawned agent and return its result status '
+                'without evicting the handle. Returns a dict with '
+                "'status' ('success', 'failed', 'timed_out') and details.",
+            params: [
+              HostParam(
+                name: 'handle',
+                type: HostParamType.integer,
+                description: 'Agent handle from spawn_agent.',
+              ),
+              HostParam(
+                name: 'timeout_seconds',
+                type: HostParamType.number,
+                isRequired: false,
+                description: 'Timeout in seconds (uses agentTimeout default).',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final handle = (args['handle']! as num).toInt();
+            final timeoutSec = args['timeout_seconds'] as num?;
+            final timeout = timeoutSec != null
+                ? Duration(seconds: timeoutSec.toInt())
+                : _agentTimeout;
+            final result = await _agentApi!.watchAgent(handle).timeout(timeout);
+            return switch (result) {
+              AgentSuccess(:final output) => <String, Object?>{
+                  'status': 'success',
+                  'output': output,
+                },
+              AgentFailure(:final reason, :final error, :final partialOutput) =>
+                <String, Object?>{
+                  'status': 'failed',
+                  'reason': reason.name,
+                  'error': error,
+                  if (partialOutput != null) 'partial_output': partialOutput,
+                },
+              AgentTimedOut(:final elapsed) => <String, Object?>{
+                  'status': 'timed_out',
+                  'elapsed_seconds': elapsed.inSeconds,
+                },
+            };
           },
         ),
         HostFunction(
