@@ -688,7 +688,7 @@ void main() {
     });
   });
 
-  group('graceful SSE close (issue #60)', () {
+  group('graceful SSE close', () {
     test('dispose after RunFinishedEvent does not cancel subscription',
         () async {
       stubCreateRun();
@@ -719,7 +719,7 @@ void main() {
         isFalse,
         reason: 'dispose() after RunFinishedEvent must not cancel '
             'the subscription to avoid poisoning the server '
-            'connection pool (issue #60)',
+            'connection pool',
       );
 
       await controller.close();
