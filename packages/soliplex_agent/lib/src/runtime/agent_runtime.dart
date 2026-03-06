@@ -123,7 +123,7 @@ class AgentRuntime {
     String? threadId,
     Duration? timeout,
     bool ephemeral = false,
-    bool autoDispose = true,
+    bool autoDispose = false,
     AgentSession? parent,
   }) async {
     _guardNotDisposed();
