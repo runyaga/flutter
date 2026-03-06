@@ -61,6 +61,33 @@ void main() {
     });
   });
 
+  group('MobilePlatformConstraints', () {
+    test('supports parallel execution', () {
+      const constraints = MobilePlatformConstraints();
+      expect(constraints.supportsParallelExecution, isTrue);
+    });
+
+    test('defaults to 2 max concurrent bridges', () {
+      const constraints = MobilePlatformConstraints();
+      expect(constraints.maxConcurrentBridges, equals(2));
+    });
+
+    test('accepts custom max concurrent bridges', () {
+      const constraints = MobilePlatformConstraints(maxConcurrentBridges: 3);
+      expect(constraints.maxConcurrentBridges, equals(3));
+    });
+
+    test('supports reentrant interpreter', () {
+      const constraints = MobilePlatformConstraints();
+      expect(constraints.supportsReentrantInterpreter, isTrue);
+    });
+
+    test('implements PlatformConstraints', () {
+      const PlatformConstraints constraints = MobilePlatformConstraints();
+      expect(constraints, isA<PlatformConstraints>());
+    });
+  });
+
   group('PlatformConstraints interface', () {
     test('native and web have opposite parallel support', () {
       const native = NativePlatformConstraints();
