@@ -1,16 +1,20 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dart_monty_ffi/dart_monty_ffi.dart';
+import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
 import 'package:nocterm/nocterm.dart';
 import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart'
     show DartHttpClient, SoliplexApi;
 import 'package:soliplex_logging/soliplex_logging.dart';
+import 'package:soliplex_scripting/soliplex_scripting.dart';
 
 import 'package:soliplex_tui/src/components/chat_page.dart';
 import 'package:soliplex_tui/src/file_sink.dart';
 import 'package:soliplex_tui/src/loggers.dart';
+import 'package:soliplex_tui/src/tool_definitions.dart';
 
 /// Launches the Soliplex TUI application.
 ///
@@ -21,6 +25,9 @@ Future<void> launchTui({
   required String serverUrl,
   required String logFile,
   String? roomId,
+  bool montyEnabled = false,
+  bool noTools = false,
+  Set<String>? enabledTools,
 }) async {
   final fileSink = FileSink(filePath: logFile);
   LogManager.instance
@@ -40,12 +47,22 @@ Future<void> launchTui({
     final resolvedRoomId = await _resolveRoom(connection.api, roomId);
     Loggers.app.info('Resolved room: $resolvedRoomId');
 
+    final toolRegistry = noTools
+        ? const ToolRegistry()
+        : buildDemoToolRegistry(enabledTools: enabledTools);
+
+    final (:extensionFactory, :bindAgentApi) =
+        _buildMontyWiring(montyEnabled: montyEnabled);
+
     runtime = AgentRuntime(
       connection: connection,
-      toolRegistryResolver: (_) async => const ToolRegistry(),
+      toolRegistryResolver: (_) async => toolRegistry,
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
+      extensionFactory: extensionFactory,
     );
+
+    bindAgentApi(runtime);
 
     await runApp(
       SoliplexTuiApp(
@@ -84,6 +101,9 @@ Future<void> runHeadless({
   String? roomId,
   String? threadId,
   bool verbose = false,
+  bool montyEnabled = false,
+  bool noTools = false,
+  Set<String>? enabledTools,
 }) async {
   final fileSink = FileSink(filePath: logFile);
   LogManager.instance
@@ -112,12 +132,22 @@ Future<void> runHeadless({
     final resolvedThreadId =
         threadId ?? (await connection.api.createThread(resolvedRoomId)).$1.id;
 
+    final toolRegistry = noTools
+        ? const ToolRegistry()
+        : buildDemoToolRegistry(enabledTools: enabledTools);
+
+    final (:extensionFactory, :bindAgentApi) =
+        _buildMontyWiring(montyEnabled: montyEnabled);
+
     runtime = AgentRuntime(
       connection: connection,
-      toolRegistryResolver: (_) async => const ToolRegistry(),
+      toolRegistryResolver: (_) async => toolRegistry,
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
+      extensionFactory: extensionFactory,
     );
+
+    bindAgentApi(runtime);
 
     for (final message in messages) {
       if (verbose) stderr.writeln('[prompt] $message');
@@ -184,6 +214,38 @@ Future<void> listRooms({
   } finally {
     await connection.close();
   }
+}
+
+/// Builds Monty wiring when enabled, returning the extension factory and a
+/// callback to bind the [AgentApi] after runtime creation.
+({
+  SessionExtensionFactory? extensionFactory,
+  void Function(AgentRuntime) bindAgentApi,
+}) _buildMontyWiring({required bool montyEnabled}) {
+  if (!montyEnabled) {
+    return (extensionFactory: null, bindAgentApi: (_) {});
+  }
+
+  MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
+  final hostApi = FakeHostApi();
+  final blackboardApi = DirectBlackboardApi();
+  AgentApi? agentApi;
+
+  return (
+    extensionFactory: () async {
+      final factory = createMontyScriptEnvironmentFactory(
+        hostApi: hostApi,
+        agentApi: agentApi,
+        blackboardApi: blackboardApi,
+        limits: MontyLimitsDefaults.tool,
+      );
+      final env = await factory();
+      return [ScriptEnvironmentExtension(env)];
+    },
+    bindAgentApi: (AgentRuntime runtime) {
+      agentApi = RuntimeAgentApi(runtime: runtime);
+    },
+  );
 }
 
 /// Resolves the room ID — uses the provided ID or picks the first available.
