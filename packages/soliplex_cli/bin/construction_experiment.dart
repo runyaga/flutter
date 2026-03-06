@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dart_monty_ffi/dart_monty_ffi.dart';
@@ -149,13 +150,55 @@ const _rooms = <_RoomRun>[
 ];
 
 // ---------------------------------------------------------------------------
+// Code-capturing extension wrapper
+// ---------------------------------------------------------------------------
+
+/// Wraps a [SessionExtension] and intercepts `execute_python` tool calls
+/// to record the generated Python code before delegating to the real executor.
+class _CodeCapturingExtension implements SessionExtension {
+  _CodeCapturingExtension(this._delegate);
+
+  final SessionExtension _delegate;
+
+  /// All captured Python snippets in execution order.
+  final List<String> capturedCode = [];
+
+  @override
+  List<ClientTool> get tools => _delegate.tools.map((t) {
+        if (t.definition.name == 'execute_python') {
+          return ClientTool(
+            definition: t.definition,
+            executor: (call, ctx) {
+              try {
+                final decoded =
+                    jsonDecode(call.arguments) as Map<String, Object?>;
+                final code = decoded['code'] as String?;
+                if (code != null) capturedCode.add(code);
+              } on Object catch (_) {
+                // Best-effort capture — don't block execution.
+              }
+              return t.executor(call, ctx);
+            },
+          );
+        }
+        return t;
+      }).toList();
+
+  @override
+  Future<void> onAttach(AgentSession session) => _delegate.onAttach(session);
+
+  @override
+  void onDispose() => _delegate.onDispose();
+}
+
+// ---------------------------------------------------------------------------
 // Experiment runner
 // ---------------------------------------------------------------------------
 
 Future<void> main(List<String> args) async {
   final host = args.isNotEmpty ? args[0] : 'http://localhost:8000';
-  final outputDir = args.length > 1 ? args[1] : '/tmp/construction-experiment';
-  await Directory(outputDir).create(recursive: true);
+  final baseDir = args.length > 1 ? args[1] : '/tmp/construction-experiment';
+  final iterations = args.length > 2 ? int.tryParse(args[2]) ?? 1 : 1;
 
   final logManager = LogManager.instance
     ..minimumLevel = LogLevel.debug
@@ -175,166 +218,201 @@ Future<void> main(List<String> args) async {
     }
     await check.close();
   }
-  stderr.writeln('All ${_rooms.length} rooms found on server.');
+  stderr
+    ..writeln('All ${_rooms.length} rooms found on server.')
+    ..writeln('Running $iterations iteration(s).');
 
-  for (final run in _rooms) {
+  for (var iter = 1; iter <= iterations; iter++) {
+    final outputDir = iterations == 1 ? baseDir : '$baseDir/run$iter';
+    await Directory(outputDir).create(recursive: true);
+
     stderr.writeln(
-      '\n${'=' * 70}\n'
-      '${run.tier} ${run.modelSize}: ${run.roomId}\n'
-      '${'=' * 70}',
+      '\n${'#' * 70}\n'
+      'ITERATION $iter / $iterations\n'
+      '${'#' * 70}',
     );
 
-    // Fresh connection + state per room.
-    final connection = createVerboseConnection(host);
-    final state = ConstructionState(
-      jobs: _jobs,
-      staff: _staff,
-      weather: _weather,
-    );
-    final plugin = ConstructionPlugin(state: state);
-
-    // For T3 (dispatcher), pre-seed a schedule and create streams.
-    if (run.needsStreams) {
-      // Pre-seed a schedule that the dispatcher will modify.
-      state
-        ..assign('Bob', 'H1_FND', 2)
-        ..assign('Alice', 'H1_FRM', 3)
-        ..assign('Charlie', 'H1_ROF', 4)
-        ..assign('Bob', 'H2_FND', 3)
-        ..assign('Alice', 'H2_FRM', 4);
-    }
-
-    final hostApi = FakeHostApi(
-      invokeHandler: (name, fnArgs) async {
-        if (name == 'log') {
-          final level = fnArgs['level'] ?? 'info';
-          final message = fnArgs['message'] ?? '';
-          stderr.writeln('[MONTY:$level] $message');
-          return null;
-        }
-        throw UnimplementedError(
-          'FakeHostApi.invoke: no handler for "$name"',
-        );
-      },
-    );
-    final blackboardApi = DirectBlackboardApi();
-    final fetchClient = DartHttpClient();
-
-    AgentApi? agentApi;
-    Future<List<SessionExtension>> extensionFactory() async {
-      final factory = createMontyScriptEnvironmentFactory(
-        hostApi: hostApi,
-        agentApi: agentApi,
-        blackboardApi: blackboardApi,
-        httpClient: fetchClient,
-        platformFactory: () async => MontyFfi(bindings: NativeBindingsFfi()),
-        limits: MontyLimitsDefaults.tool,
-        extraFunctions: plugin.functions,
-        executionTimeout: const Duration(seconds: 60),
-        streamSetup: run.needsStreams
-            ? (streams) {
-                streams
-                  ..registerFactory(
-                    'crew_updates',
-                    () => Stream.fromIterable([
-                      <String, Object?>{
-                        'type': 'crew_noshow',
-                        'worker': 'Alice',
-                        'day': 3,
-                      },
-                    ]),
-                  )
-                  ..registerFactory(
-                    'weather_updates',
-                    () => Stream.fromIterable([
-                      <String, Object?>{
-                        'type': 'weather_change',
-                        'day': 4,
-                        'condition': 'rain',
-                      },
-                    ]),
-                  );
-              }
-            : null,
-      );
-      final env = await factory();
-      return [ScriptEnvironmentExtension(env)];
-    }
-
-    final runtime = AgentRuntime(
-      connection: connection,
-      toolRegistryResolver: (_) async => const ToolRegistry(),
-      platform: const NativePlatformConstraints(),
-      logger: logger,
-      extensionFactory: extensionFactory,
-    );
-    agentApi = RuntimeAgentApi(runtime: runtime);
-
-    final stopwatch = Stopwatch()..start();
-    try {
-      final session = await runtime.spawn(
-        roomId: run.roomId,
-        prompt: run.prompt,
-      );
-
-      final result = await session.awaitResult(
-        timeout: const Duration(seconds: 180),
-      );
-      stopwatch.stop();
-
-      final output = formatResult(result);
-      stderr.writeln(output);
-
-      // Write result + state to file.
-      final file = File('$outputDir/${run.roomId}.txt');
-      final sink = file.openWrite()
-        ..writeln('Room: ${run.roomId}')
-        ..writeln('Tier: ${run.tier}  Model: ${run.modelSize}')
-        ..writeln('Duration: ${stopwatch.elapsed}')
-        ..writeln()
-        ..writeln('=== LLM Result ===')
-        ..writeln(output)
-        ..writeln()
-        ..writeln('=== Final Schedule ===')
-        ..writeln(state.getSchedule())
-        ..writeln()
-        ..writeln('=== Conflicts ===')
-        ..writeln(state.detectConflicts())
-        ..writeln()
-        ..writeln('=== Completed Jobs ===');
-      final completedIds = state.jobs
-          .where((j) => state.jobStatus(j.id) == 'completed')
-          .map((j) => j.id)
-          .toList();
-      sink.writeln(completedIds);
-      await sink.close();
-
+    for (final run in _rooms) {
       stderr.writeln(
-        'Saved to ${file.path}  '
-        '(${stopwatch.elapsed}, '
-        '${state.getSchedule().length} assignments, '
-        '${state.detectConflicts().length} conflicts)',
+        '\n${'=' * 70}\n'
+        '${run.tier} ${run.modelSize}: ${run.roomId}\n'
+        '${'=' * 70}',
       );
-    } on Object catch (e, st) {
-      stopwatch.stop();
-      stderr
-        ..writeln('FAILED (${stopwatch.elapsed}): $e')
-        ..writeln(st);
 
-      final file = File('$outputDir/${run.roomId}.txt');
-      await file.writeAsString(
-        'Room: ${run.roomId}\n'
-        'Tier: ${run.tier}  Model: ${run.modelSize}\n'
-        'Duration: ${stopwatch.elapsed}\n\n'
-        '=== ERROR ===\n$e\n$st\n',
+      // Fresh connection + state per room.
+      final connection = createVerboseConnection(host);
+      final state = ConstructionState(
+        jobs: _jobs,
+        staff: _staff,
+        weather: _weather,
       );
+      final plugin = ConstructionPlugin(state: state);
+
+      // For T3 (dispatcher), pre-seed a schedule and create streams.
+      if (run.needsStreams) {
+        state
+          ..assign('Bob', 'H1_FND', 2)
+          ..assign('Alice', 'H1_FRM', 3)
+          ..assign('Charlie', 'H1_ROF', 4)
+          ..assign('Bob', 'H2_FND', 3)
+          ..assign('Alice', 'H2_FRM', 4);
+      }
+
+      final hostApi = FakeHostApi(
+        invokeHandler: (name, fnArgs) async {
+          if (name == 'log') {
+            final level = fnArgs['level'] ?? 'info';
+            final message = fnArgs['message'] ?? '';
+            stderr.writeln('[MONTY:$level] $message');
+            return null;
+          }
+          throw UnimplementedError(
+            'FakeHostApi.invoke: no handler for "$name"',
+          );
+        },
+      );
+      final blackboardApi = DirectBlackboardApi();
+      final fetchClient = DartHttpClient();
+
+      // Code-capturing wrapper — one per room run.
+      _CodeCapturingExtension? codeCapture;
+
+      AgentApi? agentApi;
+      Future<List<SessionExtension>> extensionFactory() async {
+        final factory = createMontyScriptEnvironmentFactory(
+          hostApi: hostApi,
+          agentApi: agentApi,
+          blackboardApi: blackboardApi,
+          httpClient: fetchClient,
+          platformFactory: () async => MontyFfi(bindings: NativeBindingsFfi()),
+          limits: MontyLimitsDefaults.tool,
+          extraFunctions: plugin.functions,
+          executionTimeout: const Duration(seconds: 60),
+          streamSetup: run.needsStreams
+              ? (streams) {
+                  streams
+                    ..registerFactory(
+                      'crew_updates',
+                      () => Stream.fromIterable([
+                        <String, Object?>{
+                          'type': 'crew_noshow',
+                          'worker': 'Alice',
+                          'day': 3,
+                        },
+                      ]),
+                    )
+                    ..registerFactory(
+                      'weather_updates',
+                      () => Stream.fromIterable([
+                        <String, Object?>{
+                          'type': 'weather_change',
+                          'day': 4,
+                          'condition': 'rain',
+                        },
+                      ]),
+                    );
+                }
+              : null,
+        );
+        final env = await factory();
+        final ext = ScriptEnvironmentExtension(env);
+        codeCapture = _CodeCapturingExtension(ext);
+        return [codeCapture!];
+      }
+
+      final runtime = AgentRuntime(
+        connection: connection,
+        toolRegistryResolver: (_) async => const ToolRegistry(),
+        platform: const NativePlatformConstraints(),
+        logger: logger,
+        extensionFactory: extensionFactory,
+      );
+      agentApi = RuntimeAgentApi(runtime: runtime);
+
+      final stopwatch = Stopwatch()..start();
+      try {
+        final session = await runtime.spawn(
+          roomId: run.roomId,
+          prompt: run.prompt,
+        );
+
+        final result = await session.awaitResult(
+          timeout: const Duration(seconds: 180),
+        );
+        stopwatch.stop();
+
+        final output = formatResult(result);
+        stderr.writeln(output);
+
+        // Write result + state + captured python to file.
+        final file = File('$outputDir/${run.roomId}.txt');
+        final sink = file.openWrite()
+          ..writeln('Room: ${run.roomId}')
+          ..writeln('Tier: ${run.tier}  Model: ${run.modelSize}')
+          ..writeln('Duration: ${stopwatch.elapsed}')
+          ..writeln()
+          ..writeln('=== LLM Result ===')
+          ..writeln(output)
+          ..writeln()
+          ..writeln('=== Generated Python ===');
+        final pythonCalls = codeCapture?.capturedCode ?? [];
+        for (var i = 0; i < pythonCalls.length; i++) {
+          sink
+            ..writeln('--- call ${i + 1} ---')
+            ..writeln(pythonCalls[i]);
+        }
+        sink
+          ..writeln()
+          ..writeln('=== Final Schedule ===')
+          ..writeln(state.getSchedule())
+          ..writeln()
+          ..writeln('=== Conflicts ===')
+          ..writeln(state.detectConflicts())
+          ..writeln()
+          ..writeln('=== Completed Jobs ===');
+        final completedIds = state.jobs
+            .where((j) => state.jobStatus(j.id) == 'completed')
+            .map((j) => j.id)
+            .toList();
+        sink.writeln(completedIds);
+        await sink.close();
+
+        stderr.writeln(
+          'Saved to ${file.path}  '
+          '(${stopwatch.elapsed}, '
+          '${state.getSchedule().length} assignments, '
+          '${state.detectConflicts().length} conflicts, '
+          '${pythonCalls.length} python calls)',
+        );
+      } on Object catch (e, st) {
+        stopwatch.stop();
+        stderr
+          ..writeln('FAILED (${stopwatch.elapsed}): $e')
+          ..writeln(st);
+
+        final file = File('$outputDir/${run.roomId}.txt');
+        final pythonCalls = codeCapture?.capturedCode ?? [];
+        final pythonSection = StringBuffer('=== Generated Python ===\n');
+        for (var i = 0; i < pythonCalls.length; i++) {
+          pythonSection
+            ..writeln('--- call ${i + 1} ---')
+            ..writeln(pythonCalls[i]);
+        }
+        await file.writeAsString(
+          'Room: ${run.roomId}\n'
+          'Tier: ${run.tier}  Model: ${run.modelSize}\n'
+          'Duration: ${stopwatch.elapsed}\n\n'
+          '$pythonSection\n'
+          '=== ERROR ===\n$e\n$st\n',
+        );
+      }
+
+      await runtime.dispose();
+      await connection.close();
+      // Brief pause between rooms.
+      await Future<void>.delayed(const Duration(seconds: 2));
     }
-
-    await runtime.dispose();
-    await connection.close();
-    // Brief pause between rooms.
-    await Future<void>.delayed(const Duration(seconds: 2));
   }
 
-  stderr.writeln('\nExperiment complete. Results in $outputDir');
+  stderr.writeln('\nExperiment complete. Results in $baseDir');
 }
