@@ -35,12 +35,16 @@ import 'package:soliplex_logging/soliplex_logging.dart';
 /// ```
 class AgentRuntime {
   /// Creates a runtime bound to a single [ServerConnection].
+  ///
+  /// [maxSpawnDepth] limits how deep the parent-child spawn tree can grow.
+  /// Set to `0` to disable depth checking (default: 10).
   AgentRuntime({
     required ServerConnection connection,
     required ToolRegistryResolver toolRegistryResolver,
     required PlatformConstraints platform,
     required Logger logger,
     SessionExtensionFactory? extensionFactory,
+    this.maxSpawnDepth = 10,
   })  : serverId = connection.serverId,
         _api = connection.api,
         _agUiStreamClient = connection.agUiStreamClient,
@@ -58,6 +62,9 @@ class AgentRuntime {
 
   /// Identifies which backend server this runtime targets.
   final String serverId;
+
+  /// Maximum depth of the parent-child spawn tree. `0` disables the check.
+  final int maxSpawnDepth;
 
   final Map<String, AgentSession> _sessions = {};
   final Set<String> _deletedThreadIds = {};
@@ -104,11 +111,14 @@ class AgentRuntime {
     _guardNotDisposed();
     _guardWasmReentrancy();
     _guardConcurrency();
+    _guardSpawnDepth(parent);
+    final depth = parent == null ? 0 : parent.depth + 1;
     final (key, existingRunId) = await _resolveThread(roomId, threadId);
     final session = await _buildSession(
       key: key,
       roomId: roomId,
       ephemeral: ephemeral,
+      depth: depth,
     );
     _trackSession(session);
     parent?.addChild(session);
@@ -192,6 +202,16 @@ class AgentRuntime {
     }
   }
 
+  void _guardSpawnDepth(AgentSession? parent) {
+    if (maxSpawnDepth <= 0 || parent == null) return;
+    if (parent.depth + 1 >= maxSpawnDepth) {
+      throw StateError(
+        'Spawn depth limit reached '
+        '(${parent.depth + 1} / $maxSpawnDepth)',
+      );
+    }
+  }
+
   int get _activeCount =>
       _sessions.values.where((s) => !s.state.isTerminal).length;
 
@@ -222,6 +242,7 @@ class AgentRuntime {
     required ThreadKey key,
     required String roomId,
     required bool ephemeral,
+    required int depth,
   }) async {
     var toolRegistry = await _toolRegistryResolver(roomId);
     final extensions = await _createExtensions();
@@ -239,6 +260,7 @@ class AgentRuntime {
     return AgentSession(
       threadKey: key,
       ephemeral: ephemeral,
+      depth: depth,
       runtime: this,
       orchestrator: orchestrator,
       toolRegistry: toolRegistry,

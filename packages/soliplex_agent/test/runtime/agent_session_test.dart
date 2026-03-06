@@ -147,6 +147,7 @@ AgentSession createSession({
   return AgentSession(
     threadKey: _key,
     ephemeral: ephemeral,
+    depth: 0,
     runtime: runtime ?? MockAgentRuntime(),
     orchestrator: orchestrator,
     toolRegistry: registry,
