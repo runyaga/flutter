@@ -255,6 +255,7 @@ void main() {
         agUiStreamClient: agUiStreamClient,
         toolRegistry: _registryWith(),
         logger: logger,
+        maxToolDepth: 10,
       );
       stubCreateRun();
       // Always yield tools — will hit depth limit.

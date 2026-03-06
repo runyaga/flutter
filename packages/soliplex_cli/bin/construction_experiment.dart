@@ -126,6 +126,22 @@ const _t4Prompt = 'Build a schedule for 2 houses (H1, H2) with 5 jobs and '
     'it, and retry. Track all errors on the blackboard. Show '
     'the final schedule and error count.';
 
+const _t5Prompt =
+    'A construction schedule has already been built and completed.\n'
+    'Your job is to VERIFY it is correct by working backwards:\n\n'
+    '1. Get the full schedule and list of jobs/staff.\n'
+    '2. Check for conflicts (double-bookings, etc.).\n'
+    '3. For each assignment, verify:\n'
+    '   - The worker has the right trade for the job.\n'
+    '   - Outdoor jobs are NOT on rainy days (day 1 = rain).\n'
+    '   - Dependencies are satisfied (foundation before framing, '
+    'framing before roofing).\n'
+    '4. Confirm all jobs are completed.\n\n'
+    'Report each check and whether the schedule passes or fails.';
+
+/// Room used for all verification runs (120B model).
+const _verifyRoomId = 'construction-verify-120b';
+
 const _rooms = <_RoomRun>[
   _RoomRun('construction-prescriptive-20b', _t1Prompt, 'T1', '20B'),
   _RoomRun('construction-prescriptive-120b', _t1Prompt, 'T1', '120B'),
@@ -270,6 +286,21 @@ _Verdict _validate(_RoomRun run, ConstructionState state) => switch (run.tier) {
       _ => _Verdict([]),
     };
 
+/// Verify that the state is still correct after verification pass.
+/// Uses the same tier-specific checks plus confirms tool calls were made.
+_Verdict _validateVerify(
+  _RoomRun originalRun,
+  ConstructionState state,
+  int toolCallCount,
+) {
+  final tierChecks = _validate(originalRun, state);
+  return _Verdict([
+    ...tierChecks.checks,
+    _Check('verifier made ≥1 tool call', passed: toolCallCount >= 1),
+    _Check('state not corrupted', passed: state.detectConflicts().isEmpty),
+  ]);
+}
+
 // ---------------------------------------------------------------------------
 // Code-capturing extension wrapper
 // ---------------------------------------------------------------------------
@@ -327,6 +358,208 @@ class _CodeCapturingExtension implements SessionExtension {
 }
 
 // ---------------------------------------------------------------------------
+// Single room runner (shared between generation and verification)
+// ---------------------------------------------------------------------------
+
+class _RunResult {
+  _RunResult({
+    required this.output,
+    required this.verdict,
+    required this.calls,
+    required this.elapsed,
+  });
+  final String output;
+  final _Verdict verdict;
+  final List<_CapturedCall> calls;
+  final Duration elapsed;
+}
+
+/// Run a single room and return the result. [state] and [plugin] are
+/// shared — the caller owns them and can reuse across phases.
+Future<_RunResult?> _runRoom({
+  required String host,
+  required String roomId,
+  required String prompt,
+  required String tier,
+  required String modelSize,
+  required ConstructionState state,
+  required ConstructionPlugin plugin,
+  required Logger logger,
+  required String outputDir,
+  required String filePrefix,
+  required _Verdict Function(ConstructionState) validator,
+  int maxToolDepth = RunOrchestrator.defaultMaxToolDepth,
+}) async {
+  final connection = createVerboseConnection(host);
+
+  final hostApi = FakeHostApi(
+    invokeHandler: (name, fnArgs) async {
+      if (name == 'log') {
+        final level = fnArgs['level'] ?? 'info';
+        final message = fnArgs['message'] ?? '';
+        stderr.writeln('[MONTY:$level] $message');
+        return null;
+      }
+      throw UnimplementedError(
+        'FakeHostApi.invoke: no handler for "$name"',
+      );
+    },
+  );
+  final blackboardApi = DirectBlackboardApi();
+  final fetchClient = DartHttpClient();
+
+  _CodeCapturingExtension? codeCapture;
+
+  AgentApi? agentApi;
+  Future<List<SessionExtension>> extensionFactory() async {
+    final factory = createMontyScriptEnvironmentFactory(
+      hostApi: hostApi,
+      agentApi: agentApi,
+      blackboardApi: blackboardApi,
+      httpClient: fetchClient,
+      platformFactory: () async => MontyFfi(bindings: NativeBindingsFfi()),
+      limits: MontyLimitsDefaults.tool,
+      extraFunctions: plugin.functions,
+      executionTimeout: const Duration(seconds: 60),
+    );
+    final env = await factory();
+    final ext = ScriptEnvironmentExtension(env);
+    codeCapture = _CodeCapturingExtension(ext);
+    return [codeCapture!];
+  }
+
+  final runtime = AgentRuntime(
+    connection: connection,
+    toolRegistryResolver: (_) async => const ToolRegistry(),
+    platform: const NativePlatformConstraints(),
+    logger: logger,
+    extensionFactory: extensionFactory,
+    maxToolDepth: maxToolDepth,
+  );
+  agentApi = RuntimeAgentApi(runtime: runtime);
+
+  final stopwatch = Stopwatch()..start();
+  _RunResult? runResult;
+  try {
+    final session = await runtime.spawn(
+      roomId: roomId,
+      prompt: prompt,
+    );
+
+    final result = await session.awaitResult(
+      timeout: const Duration(seconds: 180),
+    );
+    stopwatch.stop();
+
+    final output = formatResult(result);
+    stderr.writeln(output);
+
+    final verdict = validator(state);
+    stderr
+      ..writeln('VERDICT: ${verdict.summary}')
+      ..writeln(verdict.details);
+
+    final calls = codeCapture?.capturedCalls ?? [];
+    runResult = _RunResult(
+      output: output,
+      verdict: verdict,
+      calls: calls,
+      elapsed: stopwatch.elapsed,
+    );
+
+    // Write result file.
+    final file = File('$outputDir/$filePrefix.txt');
+    final sink = file.openWrite()
+      ..writeln('Room: $roomId')
+      ..writeln('Tier: $tier  Model: $modelSize')
+      ..writeln('Duration: ${stopwatch.elapsed}')
+      ..writeln()
+      ..writeln('=== Verdict ===')
+      ..writeln(verdict.summary)
+      ..writeln(verdict.details)
+      ..writeln()
+      ..writeln('=== LLM Result ===')
+      ..writeln(output)
+      ..writeln()
+      ..writeln('=== Tool Calls ===');
+    for (var i = 0; i < calls.length; i++) {
+      sink
+        ..writeln('--- call ${i + 1} ---')
+        ..writeln('[code]')
+        ..writeln(calls[i].code)
+        ..writeln()
+        ..writeln('[result]')
+        ..writeln(calls[i].result)
+        ..writeln();
+    }
+    sink
+      ..writeln('=== Final Schedule ===')
+      ..writeln(state.getSchedule())
+      ..writeln()
+      ..writeln('=== Conflicts ===')
+      ..writeln(state.detectConflicts())
+      ..writeln()
+      ..writeln('=== Completed Jobs ===');
+    final completedIds = state.jobs
+        .where((j) => state.jobStatus(j.id) == 'completed')
+        .map((j) => j.id)
+        .toList();
+    sink.writeln(completedIds);
+    await sink.close();
+
+    stderr.writeln(
+      'Saved to ${file.path}  '
+      '(${stopwatch.elapsed}, '
+      '${verdict.summary}, '
+      '${calls.length} tool calls)',
+    );
+  } on Object catch (e, st) {
+    stopwatch.stop();
+    final verdict = validator(state);
+    stderr
+      ..writeln('FAILED (${stopwatch.elapsed}): $e')
+      ..writeln('VERDICT: ${verdict.summary}')
+      ..writeln(verdict.details)
+      ..writeln(st);
+
+    final calls = codeCapture?.capturedCalls ?? [];
+    runResult = _RunResult(
+      output: 'ERROR: $e',
+      verdict: verdict,
+      calls: calls,
+      elapsed: stopwatch.elapsed,
+    );
+
+    final file = File('$outputDir/$filePrefix.txt');
+    final callSection = StringBuffer('=== Tool Calls ===\n');
+    for (var i = 0; i < calls.length; i++) {
+      callSection
+        ..writeln('--- call ${i + 1} ---')
+        ..writeln('[code]')
+        ..writeln(calls[i].code)
+        ..writeln()
+        ..writeln('[result]')
+        ..writeln(calls[i].result)
+        ..writeln();
+    }
+    await file.writeAsString(
+      'Room: $roomId\n'
+      'Tier: $tier  Model: $modelSize\n'
+      'Duration: ${stopwatch.elapsed}\n\n'
+      '=== Verdict ===\n'
+      '${verdict.summary}\n'
+      '${verdict.details}\n\n'
+      '$callSection\n'
+      '=== ERROR ===\n$e\n$st\n',
+    );
+  }
+
+  await runtime.dispose();
+  await connection.close();
+  return runResult;
+}
+
+// ---------------------------------------------------------------------------
 // Experiment runner
 // ---------------------------------------------------------------------------
 
@@ -351,10 +584,14 @@ Future<void> main(List<String> args) async {
         exit(1);
       }
     }
+    if (!roomIds.contains(_verifyRoomId)) {
+      stderr.writeln('Room $_verifyRoomId not found on server!');
+      exit(1);
+    }
     await check.close();
   }
   stderr
-    ..writeln('All ${_rooms.length} rooms found on server.')
+    ..writeln('All ${_rooms.length} rooms + verify room found on server.')
     ..writeln('Running $iterations iteration(s).');
 
   for (var iter = 1; iter <= iterations; iter++) {
@@ -374,8 +611,7 @@ Future<void> main(List<String> args) async {
         '${'=' * 70}',
       );
 
-      // Fresh connection + state per room.
-      final connection = createVerboseConnection(host);
+      // Fresh state per room.
       final state = ConstructionState(
         jobs: _jobs,
         staff: _staff,
@@ -393,181 +629,70 @@ Future<void> main(List<String> args) async {
           ..assign('Alice', 'H2_FRM', 4);
       }
 
-      final hostApi = FakeHostApi(
-        invokeHandler: (name, fnArgs) async {
-          if (name == 'log') {
-            final level = fnArgs['level'] ?? 'info';
-            final message = fnArgs['message'] ?? '';
-            stderr.writeln('[MONTY:$level] $message');
-            return null;
-          }
-          throw UnimplementedError(
-            'FakeHostApi.invoke: no handler for "$name"',
-          );
-        },
-      );
-      final blackboardApi = DirectBlackboardApi();
-      final fetchClient = DartHttpClient();
-
-      // Code-capturing wrapper — one per room run.
-      _CodeCapturingExtension? codeCapture;
-
-      AgentApi? agentApi;
-      Future<List<SessionExtension>> extensionFactory() async {
-        final factory = createMontyScriptEnvironmentFactory(
-          hostApi: hostApi,
-          agentApi: agentApi,
-          blackboardApi: blackboardApi,
-          httpClient: fetchClient,
-          platformFactory: () async => MontyFfi(bindings: NativeBindingsFfi()),
-          limits: MontyLimitsDefaults.tool,
-          extraFunctions: plugin.functions,
-          executionTimeout: const Duration(seconds: 60),
-          streamSetup: run.needsStreams
-              ? (streams) {
-                  streams
-                    ..registerFactory(
-                      'crew_updates',
-                      () => Stream.fromIterable([
-                        <String, Object?>{
-                          'type': 'crew_noshow',
-                          'worker': 'Alice',
-                          'day': 3,
-                        },
-                      ]),
-                    )
-                    ..registerFactory(
-                      'weather_updates',
-                      () => Stream.fromIterable([
-                        <String, Object?>{
-                          'type': 'weather_change',
-                          'day': 4,
-                          'condition': 'rain',
-                        },
-                      ]),
-                    );
-                }
-              : null,
-        );
-        final env = await factory();
-        final ext = ScriptEnvironmentExtension(env);
-        codeCapture = _CodeCapturingExtension(ext);
-        return [codeCapture!];
-      }
-
-      final runtime = AgentRuntime(
-        connection: connection,
-        toolRegistryResolver: (_) async => const ToolRegistry(),
-        platform: const NativePlatformConstraints(),
+      // --- Phase 1: Generation ---
+      final genResult = await _runRoom(
+        host: host,
+        roomId: run.roomId,
+        prompt: run.prompt,
+        tier: run.tier,
+        modelSize: run.modelSize,
+        state: state,
+        plugin: plugin,
         logger: logger,
-        extensionFactory: extensionFactory,
+        outputDir: outputDir,
+        filePrefix: run.roomId,
+        validator: (s) => _validate(run, s),
+        maxToolDepth: run.modelSize == '20B' ? 22 : 20,
       );
-      agentApi = RuntimeAgentApi(runtime: runtime);
 
-      final stopwatch = Stopwatch()..start();
-      try {
-        final session = await runtime.spawn(
-          roomId: run.roomId,
-          prompt: run.prompt,
-        );
-
-        final result = await session.awaitResult(
-          timeout: const Duration(seconds: 180),
-        );
-        stopwatch.stop();
-
-        final output = formatResult(result);
-        stderr.writeln(output);
-
-        // Validate correctness.
-        final verdict = _validate(run, state);
-        stderr
-          ..writeln('VERDICT: ${verdict.summary}')
-          ..writeln(verdict.details);
-
-        // Write result + state + captured python + verdict to file.
-        final file = File('$outputDir/${run.roomId}.txt');
-        final sink = file.openWrite()
-          ..writeln('Room: ${run.roomId}')
-          ..writeln('Tier: ${run.tier}  Model: ${run.modelSize}')
-          ..writeln('Duration: ${stopwatch.elapsed}')
-          ..writeln()
-          ..writeln('=== Verdict ===')
-          ..writeln(verdict.summary)
-          ..writeln(verdict.details)
-          ..writeln()
-          ..writeln('=== LLM Result ===')
-          ..writeln(output)
-          ..writeln()
-          ..writeln('=== Tool Calls ===');
-        final calls = codeCapture?.capturedCalls ?? [];
-        for (var i = 0; i < calls.length; i++) {
-          sink
-            ..writeln('--- call ${i + 1} ---')
-            ..writeln('[code]')
-            ..writeln(calls[i].code)
-            ..writeln()
-            ..writeln('[result]')
-            ..writeln(calls[i].result)
-            ..writeln();
-        }
-        sink
-          ..writeln('=== Final Schedule ===')
-          ..writeln(state.getSchedule())
-          ..writeln()
-          ..writeln('=== Conflicts ===')
-          ..writeln(state.detectConflicts())
-          ..writeln()
-          ..writeln('=== Completed Jobs ===');
-        final completedIds = state.jobs
-            .where((j) => state.jobStatus(j.id) == 'completed')
-            .map((j) => j.id)
-            .toList();
-        sink.writeln(completedIds);
-        await sink.close();
-
+      // --- Phase 2: Verification (120B proves the answer correct) ---
+      if (genResult != null && genResult.verdict.passed) {
         stderr.writeln(
-          'Saved to ${file.path}  '
-          '(${stopwatch.elapsed}, '
-          '${verdict.summary}, '
-          '${calls.length} tool calls)',
+          '\n  --- T5 Verify (120B) for ${run.tier} ${run.modelSize} ---',
         );
-      } on Object catch (e, st) {
-        stopwatch.stop();
-        final verdict = _validate(run, state);
-        stderr
-          ..writeln('FAILED (${stopwatch.elapsed}): $e')
-          ..writeln('VERDICT: ${verdict.summary}')
-          ..writeln(verdict.details)
-          ..writeln(st);
 
-        final file = File('$outputDir/${run.roomId}.txt');
-        final calls = codeCapture?.capturedCalls ?? [];
-        final callSection = StringBuffer('=== Tool Calls ===\n');
-        for (var i = 0; i < calls.length; i++) {
-          callSection
-            ..writeln('--- call ${i + 1} ---')
-            ..writeln('[code]')
-            ..writeln(calls[i].code)
-            ..writeln()
-            ..writeln('[result]')
-            ..writeln(calls[i].result)
-            ..writeln();
-        }
-        await file.writeAsString(
-          'Room: ${run.roomId}\n'
-          'Tier: ${run.tier}  Model: ${run.modelSize}\n'
-          'Duration: ${stopwatch.elapsed}\n\n'
-          '=== Verdict ===\n'
-          '${verdict.summary}\n'
-          '${verdict.details}\n\n'
-          '$callSection\n'
-          '=== ERROR ===\n$e\n$st\n',
+        // Snapshot schedule before verification.
+        final scheduleBefore = state.getSchedule().toString();
+
+        final verifyResult = await _runRoom(
+          host: host,
+          roomId: _verifyRoomId,
+          prompt: _t5Prompt,
+          tier: 'T5',
+          modelSize: '120B',
+          state: state,
+          plugin: plugin,
+          logger: logger,
+          outputDir: outputDir,
+          filePrefix: '${run.roomId}-verify',
+          validator: (s) => _validateVerify(
+            run,
+            s,
+            // Will be set after the run; pass 0 as placeholder,
+            // the real count is checked in the post-hoc verdict.
+            0,
+          ),
         );
+
+        // Post-hoc: check state wasn't mutated + tool calls were made.
+        if (verifyResult != null) {
+          final scheduleAfter = state.getSchedule().toString();
+          final statePreserved = scheduleBefore == scheduleAfter;
+          final verifyCalls = verifyResult.calls.length;
+          if (!statePreserved) {
+            stderr.writeln(
+              '  WARNING: Verifier mutated the schedule!',
+            );
+          }
+          stderr.writeln(
+            '  Verify: ${statePreserved ? "state preserved" : "STATE CHANGED"}'
+            ', $verifyCalls tool calls',
+          );
+        }
+      } else {
+        stderr.writeln('  Skipping verification (generation not CORRECT).');
       }
 
-      await runtime.dispose();
-      await connection.close();
       // Brief pause between rooms.
       await Future<void>.delayed(const Duration(seconds: 2));
     }

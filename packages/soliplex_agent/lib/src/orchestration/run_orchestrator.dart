@@ -68,17 +68,23 @@ class RunOrchestrator {
     required AgUiStreamClient agUiStreamClient,
     required ToolRegistry toolRegistry,
     required Logger logger,
+    int maxToolDepth = defaultMaxToolDepth,
   })  : _api = api,
         _agUiStreamClient = agUiStreamClient,
         _toolRegistry = toolRegistry,
-        _logger = logger;
+        _logger = logger,
+        _maxToolDepth = maxToolDepth;
+
+  /// Default maximum number of tool-call rounds before the orchestrator
+  /// aborts the run.
+  static const defaultMaxToolDepth = 20;
 
   final SoliplexApi _api;
   final AgUiStreamClient _agUiStreamClient;
   final ToolRegistry _toolRegistry;
   final Logger _logger;
 
-  static const _maxToolDepth = 10;
+  final int _maxToolDepth;
 
   final StreamController<RunState> _controller =
       StreamController<RunState>.broadcast();
