@@ -49,7 +49,8 @@ class MontyScriptEnvironment implements ScriptEnvironment {
   Future<String> _executePython(ToolCallInfo toolCall, _) async {
     final code = extractCode(toolCall);
     final events = _bridge.execute(code);
-    return collectTextResult(events).timeout(_executionTimeout);
+    final result = await collectTextResult(events).timeout(_executionTimeout);
+    return result.isEmpty ? '(ok)' : result;
   }
 
   @override
@@ -90,7 +91,8 @@ class MontyScriptEnvironment implements ScriptEnvironment {
     return code;
   }
 
-  /// Listens to the bridge event stream and accumulates text deltas.
+  /// Listens to the bridge event stream and accumulates text deltas
+  /// and host-function results.
   ///
   /// Throws [StateError] if a [BridgeRunError] is encountered.
   static Future<String> collectTextResult(Stream<BridgeEvent> events) async {
@@ -99,6 +101,9 @@ class MontyScriptEnvironment implements ScriptEnvironment {
       switch (event) {
         case BridgeTextContent(:final delta):
           buffer.write(delta);
+        case BridgeToolCallResult(:final result) when result.isNotEmpty:
+          if (buffer.isNotEmpty) buffer.write('\n');
+          buffer.writeln(result);
         case BridgeRunError(:final message):
           throw StateError(message);
         default:

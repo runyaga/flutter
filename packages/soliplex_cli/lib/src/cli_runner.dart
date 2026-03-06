@@ -125,13 +125,27 @@ Future<void> _runSession(ArgResults parsed) async {
   AgentApi? agentApi;
   if (montyEnabled) {
     MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
-    final hostApi = FakeHostApi();
+    final hostApi = FakeHostApi(
+      invokeHandler: (name, args) async {
+        if (name == 'log') {
+          final level = args['level'] ?? 'info';
+          final message = args['message'] ?? '';
+          stderr.writeln('[MONTY:$level] $message');
+          return null;
+        }
+        throw UnimplementedError(
+          'FakeHostApi.invoke: no handler for "$name"',
+        );
+      },
+    );
     final blackboardApi = DirectBlackboardApi();
+    final fetchClient = DartHttpClient();
     extensionFactory = () async {
       final factory = createMontyScriptEnvironmentFactory(
         hostApi: hostApi,
         agentApi: agentApi,
         blackboardApi: blackboardApi,
+        httpClient: fetchClient,
         limits: MontyLimitsDefaults.tool,
       );
       final env = await factory();
