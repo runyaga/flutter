@@ -1,7 +1,14 @@
 import 'dart:async';
 
 import 'package:soliplex_agent/soliplex_agent.dart'
-    show AgentApi, AgentFailure, AgentSuccess, AgentTimedOut, FormApi, HostApi;
+    show
+        AgentApi,
+        AgentFailure,
+        AgentSuccess,
+        AgentTimedOut,
+        BlackboardApi,
+        FormApi,
+        HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_scripting/src/df_functions.dart';
@@ -22,6 +29,7 @@ class HostFunctionWiring {
   HostFunctionWiring({
     required HostApi hostApi,
     AgentApi? agentApi,
+    BlackboardApi? blackboardApi,
     DfRegistry? dfRegistry,
     StreamRegistry? streamRegistry,
     FormApi? formApi,
@@ -29,6 +37,7 @@ class HostFunctionWiring {
     Duration agentTimeout = const Duration(seconds: 30),
   })  : _hostApi = hostApi,
         _agentApi = agentApi,
+        _blackboardApi = blackboardApi,
         _dfRegistry = dfRegistry ?? DfRegistry(),
         _streamRegistry = streamRegistry,
         _formApi = formApi,
@@ -37,6 +46,7 @@ class HostFunctionWiring {
 
   final HostApi _hostApi;
   final AgentApi? _agentApi;
+  final BlackboardApi? _blackboardApi;
   final DfRegistry _dfRegistry;
   final StreamRegistry? _streamRegistry;
   final FormApi? _formApi;
@@ -58,6 +68,9 @@ class HostFunctionWiring {
     }
     if (_agentApi != null) {
       registry.addCategory('agent', _agentFunctions());
+    }
+    if (_blackboardApi != null) {
+      registry.addCategory('blackboard', _blackboardFunctions());
     }
     if (_extraFunctions != null && _extraFunctions.isNotEmpty) {
       registry.addCategory('extra', _extraFunctions);
@@ -268,6 +281,61 @@ class HostFunctionWiring {
           handler: (args) async {
             final handle = (args['handle']! as num).toInt();
             return _streamRegistry!.close(handle);
+          },
+        ),
+      ];
+
+  List<HostFunction> _blackboardFunctions() => [
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'blackboard_write',
+            description: 'Write a value to the shared blackboard.',
+            params: [
+              HostParam(
+                name: 'key',
+                type: HostParamType.string,
+                description: 'Key to write.',
+              ),
+              HostParam(
+                name: 'value',
+                type: HostParamType.any,
+                isRequired: false,
+                description: 'JSON-compatible value (string, number, '
+                    'bool, list, map, or null).',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final key = args['key']! as String;
+            final value = args['value'];
+            await _blackboardApi!.write(key, value);
+            return null;
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'blackboard_read',
+            description: 'Read a value from the shared blackboard.',
+            params: [
+              HostParam(
+                name: 'key',
+                type: HostParamType.string,
+                description: 'Key to read.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final key = args['key']! as String;
+            return _blackboardApi!.read(key);
+          },
+        ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'blackboard_keys',
+            description: 'List all keys on the shared blackboard.',
+          ),
+          handler: (args) async {
+            return _blackboardApi!.keys();
           },
         ),
       ];

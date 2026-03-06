@@ -9,6 +9,7 @@ import 'package:soliplex_agent/soliplex_agent.dart'
         AgentTimedOut,
         FailureReason,
         FakeAgentApi,
+        FakeBlackboardApi,
         HostApi;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
@@ -399,6 +400,132 @@ void main() {
         expect(schema.params[2].name, 'thread_id');
         expect(schema.params[2].type, HostParamType.string);
         expect(schema.params[2].isRequired, isFalse);
+      });
+    });
+  });
+
+  group('HostFunctionWiring with BlackboardApi', () {
+    late _RecordingBridge bridge;
+    late _FakeHostApi hostApi;
+    late FakeBlackboardApi blackboardApi;
+    late HostFunctionWiring wiring;
+
+    setUp(() {
+      bridge = _RecordingBridge();
+      hostApi = _FakeHostApi();
+      blackboardApi = FakeBlackboardApi();
+      wiring = HostFunctionWiring(
+        hostApi: hostApi,
+        blackboardApi: blackboardApi,
+      );
+    });
+
+    test('registers blackboard functions when blackboardApi provided', () {
+      wiring.registerOnto(bridge);
+
+      final names = bridge.registered.map((f) => f.schema.name).toSet();
+      expect(
+        names,
+        containsAll(['blackboard_write', 'blackboard_read', 'blackboard_keys']),
+      );
+      // 37 df + 2 chart + 2 platform + 3 blackboard + 2 introspection = 46
+      expect(bridge.registered, hasLength(46));
+    });
+
+    test('blackboard category absent when blackboardApi is null', () {
+      final b = _RecordingBridge();
+      HostFunctionWiring(hostApi: _FakeHostApi()).registerOnto(b);
+
+      final names = b.registered.map((f) => f.schema.name).toSet();
+      expect(names, isNot(contains('blackboard_write')));
+      expect(names, isNot(contains('blackboard_read')));
+      expect(names, isNot(contains('blackboard_keys')));
+    });
+
+    group('blackboard handler delegation', () {
+      late Map<String, HostFunction> byName;
+
+      setUp(() {
+        wiring.registerOnto(bridge);
+        byName = {for (final f in bridge.registered) f.schema.name: f};
+      });
+
+      test('blackboard_write delegates to BlackboardApi.write', () async {
+        await byName['blackboard_write']!.handler({
+          'key': 'score',
+          'value': 42,
+        });
+
+        expect(blackboardApi.store['score'], 42);
+        expect(blackboardApi.calls['write'], ['score', 42]);
+      });
+
+      test('blackboard_write accepts null value', () async {
+        await byName['blackboard_write']!.handler({
+          'key': 'cleared',
+          'value': null,
+        });
+
+        expect(blackboardApi.store['cleared'], isNull);
+        expect(blackboardApi.calls['write'], ['cleared', null]);
+      });
+
+      test('blackboard_read delegates to BlackboardApi.read', () async {
+        blackboardApi.store['greeting'] = 'hello';
+
+        final result = await byName['blackboard_read']!.handler({
+          'key': 'greeting',
+        });
+
+        expect(result, 'hello');
+        expect(blackboardApi.calls['read'], ['greeting']);
+      });
+
+      test('blackboard_read returns null for missing key', () async {
+        final result = await byName['blackboard_read']!.handler({
+          'key': 'absent',
+        });
+
+        expect(result, isNull);
+      });
+
+      test('blackboard_keys delegates to BlackboardApi.keys', () async {
+        blackboardApi.store['a'] = 1;
+        blackboardApi.store['b'] = 2;
+
+        final result = await byName['blackboard_keys']!.handler({});
+
+        expect(result, isA<List<String>>());
+        expect(result! as List<String>, containsAll(['a', 'b']));
+      });
+
+      test('blackboard_keys returns empty list for empty store', () async {
+        final result = await byName['blackboard_keys']!.handler({});
+
+        expect(result, <String>[]);
+      });
+
+      test('blackboard_write schema has key and optional value', () {
+        final schema = byName['blackboard_write']!.schema;
+        expect(schema.params, hasLength(2));
+        expect(schema.params[0].name, 'key');
+        expect(schema.params[0].type, HostParamType.string);
+        expect(schema.params[0].isRequired, isTrue);
+        expect(schema.params[1].name, 'value');
+        expect(schema.params[1].type, HostParamType.any);
+        expect(schema.params[1].isRequired, isFalse);
+      });
+
+      test('blackboard_read schema has key param', () {
+        final schema = byName['blackboard_read']!.schema;
+        expect(schema.params, hasLength(1));
+        expect(schema.params[0].name, 'key');
+        expect(schema.params[0].type, HostParamType.string);
+      });
+
+      test('blackboard_keys schema has no params', () {
+        final schema = byName['blackboard_keys']!.schema;
+        expect(schema.params, isEmpty);
       });
     });
   });
