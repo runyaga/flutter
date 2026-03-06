@@ -271,7 +271,9 @@ class RunOrchestrator {
     _cancelToken?.cancel();
     _cancelToken = null;
     _completeTerminalOnDispose();
-    unawaited(_subscription?.cancel());
+    if (!_receivedTerminalEvent) {
+      unawaited(_subscription?.cancel());
+    }
     _subscription = null;
     if (!_controller.isClosed) {
       unawaited(_controller.close());
@@ -618,7 +620,8 @@ class RunOrchestrator {
 
   void _handleRunFinished(RunningState previous, Conversation conversation) {
     _receivedTerminalEvent = true;
-    _cleanup();
+    _subscription = null;
+    _cancelToken = null;
     final pendingTools = _extractPendingTools(conversation);
     if (pendingTools.isNotEmpty) {
       _setState(
