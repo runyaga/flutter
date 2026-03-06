@@ -103,7 +103,8 @@ class AgentRuntime {
     required String prompt,
     String? threadId,
     Duration? timeout,
-    bool ephemeral = true,
+    bool ephemeral = false,
+    bool autoDispose = true,
     AgentSession? parent,
   }) async {
     _guardNotDisposed();
@@ -128,7 +129,7 @@ class AgentRuntime {
       session.dispose();
       rethrow;
     }
-    _scheduleCompletion(session, timeout);
+    _scheduleCompletion(session, timeout, autoDispose: autoDispose);
     return session;
   }
 
@@ -294,14 +295,23 @@ class AgentRuntime {
   // Completion scheduling
   // ---------------------------------------------------------------------------
 
-  void _scheduleCompletion(AgentSession session, Duration? timeout) {
+  void _scheduleCompletion(
+    AgentSession session,
+    Duration? timeout, {
+    required bool autoDispose,
+  }) {
     final future = timeout != null
         ? session.awaitResult(timeout: timeout)
         : session.result;
     unawaited(
       future.then((_) async {
         if (_disposed) return;
-        await _handleSessionComplete(session);
+        if (autoDispose) {
+          await _handleSessionComplete(session);
+        } else {
+          // Caller owns the lifecycle — just update tracking.
+          _emitSessions();
+        }
       }),
     );
   }

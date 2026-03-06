@@ -19,6 +19,12 @@ Future<void> main(List<String> arguments) async {
       help: 'Log file path',
       defaultsTo: '/tmp/soliplex_tui.log',
     )
+    ..addMultiOption(
+      'prompt',
+      abbr: 'p',
+      help: 'Send message(s) headless, print each response, and exit. '
+          'Repeatable for multi-turn conversations.',
+    )
     ..addFlag(
       'debug',
       abbr: 'd',
@@ -29,6 +35,12 @@ Future<void> main(List<String> arguments) async {
       'list-rooms',
       negatable: false,
       help: 'List available rooms and exit',
+    )
+    ..addFlag(
+      'verbose',
+      abbr: 'v',
+      negatable: false,
+      help: 'Print run state events to stderr',
     )
     ..addFlag('help', abbr: 'h', negatable: false, help: 'Show usage');
 
@@ -58,6 +70,21 @@ Future<void> main(List<String> arguments) async {
     return;
   }
 
+  final verbose = results.flag('verbose');
+
+  final prompts = results.multiOption('prompt');
+  if (prompts.isNotEmpty) {
+    await runHeadless(
+      serverUrl: results.option('server')!,
+      logFile: results.option('log-file')!,
+      messages: prompts,
+      roomId: results.option('room'),
+      threadId: results.option('thread'),
+      verbose: verbose,
+    );
+    return;
+  }
+
   if (results.flag('debug')) {
     final message = stdin.readLineSync()?.trim();
     if (message == null || message.isEmpty) {
@@ -71,9 +98,10 @@ Future<void> main(List<String> arguments) async {
     await runHeadless(
       serverUrl: results.option('server')!,
       logFile: results.option('log-file')!,
-      message: message,
+      messages: [message],
       roomId: results.option('room'),
       threadId: results.option('thread'),
+      verbose: verbose,
     );
     return;
   }
@@ -81,7 +109,6 @@ Future<void> main(List<String> arguments) async {
   await launchTui(
     serverUrl: results.option('server')!,
     roomId: results.option('room'),
-    threadId: results.option('thread'),
     logFile: results.option('log-file')!,
   );
 }

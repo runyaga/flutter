@@ -1,31 +1,41 @@
 import 'package:nocterm/nocterm.dart';
-import 'package:nocterm_bloc/nocterm_bloc.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 
 import 'package:soliplex_tui/src/components/message_item.dart';
-import 'package:soliplex_tui/src/state/tui_chat_cubit.dart';
-import 'package:soliplex_tui/src/state/tui_chat_state.dart';
+import 'package:soliplex_tui/src/signal_builder.dart';
 
 /// Scrollable chat message body with auto-scroll on new content.
+///
+/// Subscribes to [messages] and [streaming] signals independently,
+/// so it only rebuilds when conversation content changes.
 class ChatBody extends StatelessComponent {
-  const ChatBody({required this.scrollController, super.key});
+  const ChatBody({
+    required this.scrollController,
+    required this.messages,
+    required this.streaming,
+    super.key,
+  });
 
   final ScrollController scrollController;
+  final ReadonlySignal<List<ChatMessage>> messages;
+  final ReadonlySignal<StreamingState?> streaming;
 
   @override
   Component build(BuildContext context) {
-    return BlocBuilder<TuiChatCubit, TuiChatState>(
-      builder: (context, state) {
-        final messages = state.messages;
-        final streaming = state is TuiStreamingState ? state.streaming : null;
+    // Combine both signals into a single builder — they change together
+    // during streaming anyway.
+    return SignalBuilder<List<ChatMessage>>(
+      signal: messages,
+      builder: (context, msgs) {
+        final stream = streaming.value;
         final hasStreamingItem =
-            streaming is TextStreaming && streaming.text.isNotEmpty ||
-                streaming is AwaitingText && streaming.hasThinkingContent;
+            stream is TextStreaming && stream.text.isNotEmpty ||
+                stream is AwaitingText && stream.hasThinkingContent;
 
-        final itemCount = messages.length + (hasStreamingItem ? 1 : 0);
+        final itemCount = msgs.length + (hasStreamingItem ? 1 : 0);
 
         // Auto-scroll to bottom when streaming.
-        if (state is TuiStreamingState && scrollController.atEnd) {
+        if (stream != null && scrollController.atEnd) {
           scrollController.scrollToEnd();
         }
 
@@ -36,17 +46,16 @@ class ChatBody extends StatelessComponent {
               controller: scrollController,
               itemCount: itemCount,
               itemBuilder: (context, index) {
-                if (index < messages.length) {
+                if (index < msgs.length) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 1),
-                    child: MessageItem(message: messages[index]),
+                    child: MessageItem(message: msgs[index]),
                   );
                 }
-                // Last item: in-flight streaming text.
-                if (streaming != null) {
+                if (stream != null) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 1),
-                    child: StreamingMessageItem(streaming: streaming),
+                    child: StreamingMessageItem(streaming: stream),
                   );
                 }
                 return const SizedBox();

@@ -200,7 +200,6 @@ void main() {
         roomId: _roomId,
         prompt: 'Hello',
         threadId: 'existing-thread',
-        ephemeral: false,
       );
       final result = await session.result;
 
@@ -478,7 +477,11 @@ void main() {
       stubDeleteThread();
       stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
 
-      final session = await runtime.spawn(roomId: _roomId, prompt: 'Hello');
+      final session = await runtime.spawn(
+        roomId: _roomId,
+        prompt: 'Hello',
+        ephemeral: true,
+      );
 
       await session.result;
       // Give time for completion handler
@@ -495,7 +498,6 @@ void main() {
         roomId: _roomId,
         prompt: 'Hello',
         threadId: 'existing',
-        ephemeral: false,
       );
 
       await session.result;
@@ -554,7 +556,11 @@ void main() {
       final controller = StreamController<BaseEvent>.broadcast();
       stubRunAgent(stream: controller.stream);
 
-      await runtime.spawn(roomId: _roomId, prompt: 'A');
+      await runtime.spawn(
+        roomId: _roomId,
+        prompt: 'A',
+        ephemeral: true,
+      );
       controller.add(const RunStartedEvent(threadId: _threadId, runId: _runId));
       await Future<void>.delayed(Duration.zero);
 
@@ -605,7 +611,11 @@ void main() {
       stubDeleteThread();
 
       await expectLater(
-        () => runtime.spawn(roomId: _roomId, prompt: 'Hello'),
+        () => runtime.spawn(
+          roomId: _roomId,
+          prompt: 'Hello',
+          ephemeral: true,
+        ),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,

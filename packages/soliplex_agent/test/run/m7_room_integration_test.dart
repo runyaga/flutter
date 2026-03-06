@@ -840,7 +840,6 @@ void main() {
       final s1 = await runtime.spawn(
         roomId: 'echo',
         prompt: 'Hello, this is a setup message.',
-        ephemeral: false,
       );
       final r1 = await s1.awaitResult(
         timeout: const Duration(seconds: 60),
@@ -854,7 +853,6 @@ void main() {
         roomId: 'echo',
         prompt: 'Tell me a very long story about dragons.',
         threadId: threadId,
-        ephemeral: false,
       );
       await Future<void>.delayed(const Duration(milliseconds: 500));
       s2.cancel();
@@ -868,7 +866,6 @@ void main() {
         roomId: 'echo',
         prompt: 'Tell me a one-sentence joke.',
         threadId: threadId,
-        ephemeral: false,
       );
       final r3 = await s3.awaitResult(
         timeout: const Duration(seconds: 60),
