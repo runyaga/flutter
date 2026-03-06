@@ -271,10 +271,11 @@ class HostFunctionWiring {
           handler: (args) async {
             final level = args['level']! as String;
             final message = args['message']! as String;
-            return _hostApi.invoke(
+            await _hostApi.invoke(
               'log',
               <String, Object?>{'level': level, 'message': message},
             );
+            return '[$level] $message';
           },
         ),
         HostFunction(

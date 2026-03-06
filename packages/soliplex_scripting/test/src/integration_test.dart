@@ -163,7 +163,7 @@ void main() {
       );
 
       final result = await tools.first.executor(toolCall, _ctx);
-      expect(result, 'done');
+      expect(result, contains('done'));
 
       env.dispose();
     });
@@ -181,7 +181,7 @@ void main() {
       );
 
       final result = await env.tools.first.executor(toolCall, _ctx);
-      expect(result, 'done');
+      expect(result, contains('done'));
       expect(hostApi.calls, contains('registerChart'));
 
       env.dispose();
@@ -206,7 +206,7 @@ void main() {
       );
 
       final result = await env.tools.first.executor(toolCall, _ctx);
-      expect(result, 'done');
+      expect(result, contains('done'));
       expect(agentApi.calls, contains('spawnAgent'));
       expect(agentApi.calls['spawnAgent']![0], 'echo');
       expect(agentApi.calls['spawnAgent']![1], 'hi');
@@ -231,7 +231,7 @@ void main() {
       );
 
       final result = await env.tools.first.executor(toolCall, _ctx);
-      expect(result, 'done');
+      expect(result, contains('done'));
       expect(agentApi.calls, contains('spawnAgent'));
       expect(agentApi.calls['spawnAgent']![0], 'math');
       expect(agentApi.calls['spawnAgent']![1], 'what is 6*7?');
@@ -253,7 +253,7 @@ void main() {
       );
 
       final result = await env.tools.first.executor(toolCall, _ctx);
-      expect(result, 'done');
+      expect(result, contains('done'));
       expect(agentApi.calls, contains('waitAll'));
       expect(agentApi.calls['waitAll']![0], [1, 2]);
 

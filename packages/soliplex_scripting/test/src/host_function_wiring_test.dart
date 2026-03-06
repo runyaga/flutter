@@ -177,7 +177,7 @@ void main() {
           'level': 'info',
         });
 
-        expect(result, 'invoked');
+        expect(result, '[info] hello world');
         expect(hostApi.calls['invoke']![0], 'log');
         final logArgs = hostApi.calls['invoke']![1]! as Map<String, Object?>;
         expect(logArgs['message'], 'hello world');
