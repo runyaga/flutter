@@ -61,6 +61,7 @@ class AgentRuntime {
 
   final Map<String, AgentSession> _sessions = {};
   final Set<String> _deletedThreadIds = {};
+  final _spawnQueue = <Completer<void>>[];
   final StreamController<List<AgentSession>> _sessionController =
       StreamController<List<AgentSession>>.broadcast();
   final Signal<List<AgentSession>> _sessionsSignal = signal([]);
@@ -85,10 +86,14 @@ class AgentRuntime {
     return _sessions.values.where((s) => s.threadKey == key).firstOrNull;
   }
 
+  /// Number of spawn requests waiting for a concurrency slot.
+  int get pendingSpawnCount => _spawnQueue.length;
+
   /// Spawns a new agent session.
   ///
   /// Creates a thread (or reuses [threadId]), resolves tools for [roomId],
-  /// builds an [AgentSession], and starts the run.
+  /// builds an [AgentSession], and starts the run. If the concurrency limit
+  /// is reached, waits for a slot to open before proceeding.
   ///
   /// When [parent] is provided, the new session is registered as a child
   /// of that parent. Cancelling or disposing the parent will cascade to
@@ -103,7 +108,7 @@ class AgentRuntime {
   }) async {
     _guardNotDisposed();
     _guardWasmReentrancy();
-    _guardConcurrency();
+    await _waitForSlot();
     final (key, existingRunId) = await _resolveThread(roomId, threadId);
     final session = await _buildSession(
       key: key,
@@ -157,6 +162,10 @@ class AgentRuntime {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    for (final completer in _spawnQueue) {
+      completer.complete();
+    }
+    _spawnQueue.clear();
     await cancelAll();
     await _cleanupEphemeralThreads();
     for (final session in _sessions.values.toList()) {
@@ -183,13 +192,18 @@ class AgentRuntime {
     }
   }
 
-  void _guardConcurrency() {
-    if (_activeCount >= _platform.maxConcurrentBridges) {
-      throw StateError(
-        'Concurrency limit reached '
-        '($_activeCount / ${_platform.maxConcurrentBridges})',
-      );
-    }
+  Future<void> _waitForSlot() async {
+    if (_activeCount < _platform.maxConcurrentBridges) return;
+    final completer = Completer<void>();
+    _spawnQueue.add(completer);
+    await completer.future;
+    _guardNotDisposed();
+  }
+
+  void _drainQueue() {
+    if (_spawnQueue.isEmpty) return;
+    if (_activeCount >= _platform.maxConcurrentBridges) return;
+    _spawnQueue.removeAt(0).complete();
   }
 
   int get _activeCount =>
@@ -264,6 +278,7 @@ class AgentRuntime {
   void _removeSession(AgentSession session) {
     _sessions.remove(session.id);
     _emitSessions();
+    _drainQueue();
   }
 
   void _emitSessions() {

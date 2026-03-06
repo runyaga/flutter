@@ -365,10 +365,10 @@ void main() {
     });
   });
 
-  group('concurrency guard', () {
-    test('blocks spawn at max concurrent limit', () async {
+  group('concurrency queuing', () {
+    test('queues spawn at max concurrent limit', () async {
       runtime = createRuntime(
-        platform: const NativePlatformConstraints(maxConcurrentBridges: 2),
+        platform: const NativePlatformConstraints(maxConcurrentBridges: 1),
       );
 
       stubCreateThread();
@@ -378,15 +378,89 @@ void main() {
       stubRunAgent(stream: controller.stream);
 
       await runtime.spawn(roomId: _roomId, prompt: 'A');
-      await runtime.spawn(roomId: _roomId, prompt: 'B');
+      expect(runtime.pendingSpawnCount, 0);
+
+      // Second spawn should queue, not throw.
+      final spawnFuture = runtime.spawn(roomId: _roomId, prompt: 'B');
+      // Let microtask run so _waitForSlot enqueues.
+      await Future<void>.delayed(Duration.zero);
+      expect(runtime.pendingSpawnCount, 1);
+
+      // Complete first session to free the slot.
+      _happyPathEvents().forEach(controller.add);
+      await controller.close();
+
+      // Give time for session completion + queue drain.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Queued spawn needs a fresh stream.
+      final controller2 = StreamController<BaseEvent>.broadcast();
+      stubRunAgent(stream: controller2.stream);
+
+      final session = await spawnFuture;
+      expect(session, isNotNull);
+      expect(runtime.pendingSpawnCount, 0);
+
+      // Clean up
+      _happyPathEvents().forEach(controller2.add);
+      await controller2.close();
+    });
+
+    test('dispose unblocks queued spawns with StateError', () async {
+      runtime = createRuntime(
+        platform: const NativePlatformConstraints(maxConcurrentBridges: 1),
+      );
+
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      final controller = StreamController<BaseEvent>.broadcast();
+      stubRunAgent(stream: controller.stream);
+
+      await runtime.spawn(roomId: _roomId, prompt: 'A');
+
+      // Queue a second spawn and immediately attach an error handler
+      // so the test zone doesn't see an unhandled rejection.
+      Object? caught;
+      final spawnFuture = runtime.spawn(roomId: _roomId, prompt: 'B');
+      unawaited(
+        spawnFuture.then<void>((_) {}).catchError((Object e) {
+          caught = e;
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(runtime.pendingSpawnCount, 1);
+
+      // Complete first session and dispose runtime.
+      _happyPathEvents().forEach(controller.add);
+      await controller.close();
+      await runtime.dispose();
+
+      // Let microtasks settle.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(caught, isA<StateError>());
+    });
+
+    test('WASM reentrant guard still throws immediately', () async {
+      runtime = createRuntime(
+        platform: const WebPlatformConstraints(),
+      );
+
+      stubCreateThread();
+      stubCreateRun();
+      stubDeleteThread();
+      final controller = StreamController<BaseEvent>.broadcast();
+      stubRunAgent(stream: controller.stream);
+
+      await runtime.spawn(roomId: _roomId, prompt: 'A');
 
       expect(
-        () => runtime.spawn(roomId: _roomId, prompt: 'C'),
+        () => runtime.spawn(roomId: _roomId, prompt: 'B'),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
             'message',
-            contains('Concurrency limit'),
+            contains('WASM'),
           ),
         ),
       );
