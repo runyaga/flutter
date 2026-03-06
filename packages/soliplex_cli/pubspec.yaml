@@ -8,12 +8,20 @@ environment:
 
 dependencies:
   args: ^2.4.0
+  dart_monty_ffi: ^0.6.1
+  dart_monty_platform_interface: ^0.6.1
   soliplex_agent:
     path: ../soliplex_agent
   soliplex_client:
     path: ../soliplex_client
+  soliplex_dataframe:
+    path: ../soliplex_dataframe
+  soliplex_interpreter_monty:
+    path: ../soliplex_interpreter_monty
   soliplex_logging:
     path: ../soliplex_logging
+  soliplex_scripting:
+    path: ../soliplex_scripting
 
 dev_dependencies:
   mocktail: ^1.0.0
