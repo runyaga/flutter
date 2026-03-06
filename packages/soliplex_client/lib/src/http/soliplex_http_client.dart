@@ -54,6 +54,13 @@ abstract class SoliplexHttpClient {
   /// The returned [StreamedHttpResponse] contains the HTTP status code and
   /// headers, plus a body stream that emits byte chunks as they arrive.
   ///
+  /// **Cancel semantics:** Cancelling the body stream's subscription (either
+  /// directly or via [cancelToken]) sends an abrupt TCP close (RST) to the
+  /// server. This can cause server-side connection pool errors. For SSE
+  /// streams where the server sends a terminal application event before
+  /// closing, prefer detaching the subscription reference rather than
+  /// cancelling — let the server close the stream naturally.
+  ///
   /// Parameters:
   /// - [method]: HTTP method (typically GET or POST)
   /// - [uri]: The request URI
