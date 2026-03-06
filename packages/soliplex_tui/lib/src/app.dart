@@ -228,6 +228,7 @@ Future<void> listRooms({
 
   MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
   final hostApi = FakeHostApi();
+  final blackboardApi = DirectBlackboardApi();
   AgentApi? agentApi;
 
   return (
@@ -235,6 +236,7 @@ Future<void> listRooms({
       final factory = createMontyScriptEnvironmentFactory(
         hostApi: hostApi,
         agentApi: agentApi,
+        blackboardApi: blackboardApi,
         limits: MontyLimitsDefaults.tool,
       );
       final env = await factory();
