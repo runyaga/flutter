@@ -3,6 +3,8 @@
 ## 0.1.0
 
 - Initial release.
+- Updated for `ServerConnection` unification (#57).
+- Updated for `AgUiStreamClient` migration (#62, #63).
 - Interactive REPL with thread-aware conversational model.
 - Commands: bare text, `/spawn`, `/room`, `/new`, `/thread`,
   `/sessions`, `/waitall`, `/waitany`, `/cancel`, `/rooms`,
