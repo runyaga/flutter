@@ -385,13 +385,28 @@ void main() {
         expect(agentApi.calls['spawnAgent']![2], 'tid-123');
       });
 
-      test('spawn_agent schema has correct params', () {
+      test('spawn_agent schema has room, prompt, and optional thread_id', () {
         final schema = byName['spawn_agent']!.schema;
-        expect(schema.params, hasLength(2));
+        expect(schema.params, hasLength(3));
         expect(schema.params[0].name, 'room');
         expect(schema.params[0].type, HostParamType.string);
+        expect(schema.params[0].isRequired, isTrue);
         expect(schema.params[1].name, 'prompt');
         expect(schema.params[1].type, HostParamType.string);
+        expect(schema.params[1].isRequired, isTrue);
+        expect(schema.params[2].name, 'thread_id');
+        expect(schema.params[2].type, HostParamType.string);
+        expect(schema.params[2].isRequired, isFalse);
+      });
+
+      test('spawn_agent passes thread_id when provided', () async {
+        await byName['spawn_agent']!.handler({
+          'room': 'weather',
+          'prompt': 'Continue',
+          'thread_id': 'tid-456',
+        });
+
+        expect(agentApi.calls['spawnAgent']![2], 'tid-456');
       });
 
       test('wait_all schema has list param', () {
