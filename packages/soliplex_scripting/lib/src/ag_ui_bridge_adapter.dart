@@ -53,5 +53,17 @@ class AgUiBridgeAdapter {
         BridgeTextEnd(:final messageId) => TextMessageEndEvent(
             messageId: messageId,
           ),
+        BridgeEventLoopWaiting() => const CustomEvent(
+            name: 'event_loop.waiting',
+            value: null,
+          ),
+        BridgeEventLoopResumed(:final event) => CustomEvent(
+            name: 'event_loop.resumed',
+            value: event,
+          ),
+        BridgeUiRendered(:final schema) => CustomEvent(
+            name: 'ui.rendered',
+            value: schema,
+          ),
       };
 }

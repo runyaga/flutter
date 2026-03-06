@@ -84,3 +84,24 @@ class BridgeTextEnd extends BridgeEvent {
   const BridgeTextEnd({required this.messageId});
   final String messageId;
 }
+
+/// Event loop entered wait state (Python called `wait_for_event()`).
+class BridgeEventLoopWaiting extends BridgeEvent {
+  const BridgeEventLoopWaiting();
+}
+
+/// Event loop resumed after receiving a UI event.
+class BridgeEventLoopResumed extends BridgeEvent {
+  const BridgeEventLoopResumed({required this.event});
+
+  /// The UI event map that was dispatched.
+  final Map<String, dynamic> event;
+}
+
+/// Python called `render_ui` with a schema.
+class BridgeUiRendered extends BridgeEvent {
+  const BridgeUiRendered({required this.schema});
+
+  /// The UI schema map that was rendered.
+  final Map<String, dynamic> schema;
+}

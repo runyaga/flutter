@@ -22,4 +22,12 @@ abstract final class MontyLimitsDefaults {
     memoryBytes: 32 * 1024 * 1024, // 32 MB
     stackDepth: 100,
   );
+
+  /// Limits for event-loop scripts (long-running, UI-interactive).
+  /// No timeout (event loops run indefinitely), standard memory cap.
+  static const eventLoop = MontyLimits(
+    memoryBytes: 32 * 1024 * 1024, // 32 MB
+    stackDepth: 100,
+    // No timeoutMs — event loops run indefinitely.
+  );
 }
