@@ -3,7 +3,8 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:dart_monty_ffi/dart_monty_ffi.dart';
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
+    show MontyPlatform;
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_cli/src/client_factory.dart';
 import 'package:soliplex_cli/src/result_printer.dart';
@@ -72,12 +73,9 @@ Future<void> runCli(List<String> args) async {
     return;
   }
 
-  await runZonedGuarded(
-    () => _runSession(parsed),
-    (e, _) {
-      stderr.writeln('[async error] $e');
-    },
-  );
+  await runZonedGuarded(() => _runSession(parsed), (e, _) {
+    stderr.writeln('[async error] $e');
+  });
 }
 
 Future<void> _runSession(ArgResults parsed) async {
@@ -124,7 +122,10 @@ Future<void> _runSession(ArgResults parsed) async {
   // reference when sessions are spawned (not at construction time).
   AgentApi? agentApi;
   if (montyEnabled) {
-    MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
+    if (wasmMode) {
+      // Retain global singleton for simulated WASM (single bridge).
+      MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
+    }
     final hostApi = FakeHostApi(
       invokeHandler: (name, args) async {
         if (name == 'log') {
@@ -140,12 +141,15 @@ Future<void> _runSession(ArgResults parsed) async {
     );
     final blackboardApi = DirectBlackboardApi();
     final fetchClient = DartHttpClient();
+    final MontyPlatformFactory? montyPlatformFactory =
+        wasmMode ? null : () async => MontyFfi(bindings: NativeBindingsFfi());
     extensionFactory = () async {
       final factory = createMontyScriptEnvironmentFactory(
         hostApi: hostApi,
         agentApi: agentApi,
         blackboardApi: blackboardApi,
         httpClient: fetchClient,
+        platformFactory: montyPlatformFactory,
         limits: MontyLimitsDefaults.tool,
       );
       final env = await factory();
@@ -384,11 +388,7 @@ Future<void> _dispatch({
   await _sendAndWait(ctx, ctx.defaultRoom, input);
 }
 
-Future<void> _sendAndWait(
-  _CliContext ctx,
-  String room,
-  String prompt,
-) async {
+Future<void> _sendAndWait(_CliContext ctx, String room, String prompt) async {
   final existingThread = ctx.threadFor(room);
   final label = existingThread != null
       ? 'Continuing thread ${_short(existingThread)}...'
@@ -406,9 +406,7 @@ Future<void> _sendAndWait(
     StreamSubscription<RunState>? traceSub;
     void Function()? eventUnsub;
     if (ctx.verbose) {
-      traceSub = session.stateChanges.listen(
-        _traceState,
-      );
+      traceSub = session.stateChanges.listen(_traceState);
       eventUnsub = session.lastExecutionEvent.subscribe((event) {
         if (event == null) return;
         _traceExecutionEvent(event);
@@ -457,10 +455,7 @@ Future<void> _sendToRoom(_CliContext ctx, String input) async {
   await _sendAndWait(ctx, targetRoom, prompt);
 }
 
-Future<void> _waitAll(
-  AgentRuntime runtime,
-  List<AgentSession> tracked,
-) async {
+Future<void> _waitAll(AgentRuntime runtime, List<AgentSession> tracked) async {
   if (tracked.isEmpty) {
     stdout.writeln('No tracked sessions.');
     return;
@@ -480,10 +475,7 @@ Future<void> _waitAll(
   tracked.clear();
 }
 
-Future<void> _waitAny(
-  AgentRuntime runtime,
-  List<AgentSession> tracked,
-) async {
+Future<void> _waitAny(AgentRuntime runtime, List<AgentSession> tracked) async {
   if (tracked.isEmpty) {
     stdout.writeln('No tracked sessions.');
     return;
@@ -495,9 +487,7 @@ Future<void> _waitAny(
       timeout: const Duration(seconds: 120),
     );
     stdout.writeln(formatResult(result));
-    tracked.removeWhere(
-      (s) => s.threadKey == result.threadKey,
-    );
+    tracked.removeWhere((s) => s.threadKey == result.threadKey);
     stdout.writeln('${tracked.length} session(s) remaining.');
   } on Object catch (e) {
     stdout.writeln('Error: $e');
@@ -604,9 +594,7 @@ void _traceState(RunState state) {
 void _traceExecutionEvent(ExecutionEvent event) {
   switch (event) {
     case ClientToolExecuting(:final toolName, :final toolCallId):
-      stderr.writeln(
-        '[TOOL] Executing $toolName  id=${_short(toolCallId)}',
-      );
+      stderr.writeln('[TOOL] Executing $toolName  id=${_short(toolCallId)}');
     case ClientToolCompleted(:final toolCallId, :final result, :final status):
       final preview =
           result.length > 200 ? '${result.substring(0, 200)}...' : result;

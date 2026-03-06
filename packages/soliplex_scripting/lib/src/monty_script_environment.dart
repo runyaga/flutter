@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
+    show MontyPlatform;
 import 'package:soliplex_agent/soliplex_agent.dart'
     show ClientTool, ScriptEnvironment;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;
@@ -26,15 +28,18 @@ class MontyScriptEnvironment implements ScriptEnvironment {
     required MontyBridge bridge,
     required DfRegistry dfRegistry,
     required StreamRegistry streamRegistry,
+    MontyPlatform? ownedPlatform,
     Duration executionTimeout = const Duration(seconds: 30),
     IsolatePlugin? isolatePlugin,
   })  : _bridge = bridge,
+        _ownedPlatform = ownedPlatform,
         _dfRegistry = dfRegistry,
         _streamRegistry = streamRegistry,
         _executionTimeout = executionTimeout,
         _isolatePlugin = isolatePlugin;
 
   final MontyBridge _bridge;
+  final MontyPlatform? _ownedPlatform;
   final DfRegistry _dfRegistry;
   final StreamRegistry _streamRegistry;
   final Duration _executionTimeout;
@@ -62,6 +67,7 @@ class MontyScriptEnvironment implements ScriptEnvironment {
     _disposed = true;
     if (_isolatePlugin != null) unawaited(_isolatePlugin.onDispose());
     _bridge.dispose();
+    if (_ownedPlatform != null) unawaited(_ownedPlatform.dispose());
     _dfRegistry.disposeAll();
     unawaited(_streamRegistry.dispose());
   }
