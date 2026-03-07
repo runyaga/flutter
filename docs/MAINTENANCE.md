@@ -175,12 +175,60 @@ When an AI agent reads documentation to assist with code changes:
 
 1. **Before coding:** Read the relevant doc section. Run associated assertions
    from this file. If any fail, note the discrepancy before proceeding.
-2. **During coding:** If you discover a doc claim is wrong, fix the doc in the
+1. **During coding:** If you discover a doc claim is wrong, fix the doc in the
    same PR as the code change.
-3. **After coding:** Re-run assertions. Update freshness markers on any docs
+1. **After coding:** Re-run assertions. Update freshness markers on any docs
    you verified or modified.
-4. **If uncertain:** Use `soliplex_cli` to interact with the system and
+1. **If uncertain:** Use `soliplex_cli` to interact with the system and
    validate understanding against live behavior.
+
+### Reporting Findings via GitHub Issues
+
+When an AI agent discovers documentation drift, stale content, or missing
+coverage during an audit, the **primary feedback mechanism** is opening a
+GitHub issue. Do not silently fix-and-forget — the issue creates a paper
+trail and lets humans prioritize.
+
+Use `gh issue create` with this template:
+
+```bash
+gh issue create \
+  --title "docs(audit): <short description of finding>" \
+  --label "documentation" \
+  --body "$(cat <<'ISSUE'
+## Documentation Audit Finding
+
+**Assertion failed:** A{N} — {assertion name}
+**File:** `path/to/doc.md`
+**Verified:** {date}
+
+### What was found
+
+{Specific description of the drift, gap, or stale content.
+Include the command that was run and the actual vs expected output.}
+
+### Suggested fix
+
+{Concrete suggestion — e.g., "update class list to include FooBar",
+"archive this doc", "add assertion for new export".}
+
+### Evidence
+
+\`\`\`
+{paste actual command output here}
+\`\`\`
+ISSUE
+)"
+```
+
+**Rules for bot-created issues:**
+
+- One issue per finding — do not bundle unrelated findings
+- Always include the assertion ID or discovery command that triggered it
+- Always include raw evidence (command output, not paraphrased)
+- Label with `documentation`
+- If the fix is trivial (broken link, typo), fix it in a PR and reference
+  the issue — don't just file and leave
 
 ---
 
