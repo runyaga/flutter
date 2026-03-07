@@ -64,15 +64,19 @@ agents can verify continuously.
 
 ### What's Missing (Gaps)
 
-1. **"Start Here" golden path** — No clear reading order for newcomers
-1. **soliplex_agent tutorials** — Zero how-to guides (custom tools, HostApi impl, etc.)
-1. **Interactive CLI walkthrough** — No guided "learn by doing" docs
-1. **Testing strategy** — No project-wide testing philosophy
+These gaps were identified before this roadmap was created. Items marked
+**(ADDRESSED)** now have a plan or implementation in this document; they remain
+listed here for traceability.
+
+1. **"Start Here" golden path** — **(ADDRESSED)** `docs/index.md` rewritten in Phase 0
+1. **soliplex_agent tutorials** — **(PLANNED)** Phase 2 tutorials 01-04
+1. **Interactive CLI walkthrough** — **(PLANNED)** `getting-started/cli-quickstart.md` in Phase 3
+1. **Testing strategy** — Phase 4: `guides/testing-strategy.md`
 1. **CI/CD and deployment** — No build/release docs
 1. **Auth workflow** — No user authentication docs
 1. **Flutter UI layer** — No guidance on state management or adding features
-1. **Maintenance protocol** — No process for keeping docs current
-1. **Cross-team sharing** — No documentation standards doc for backend adoption
+1. **Maintenance protocol** — **(ADDRESSED)** `MAINTENANCE.md` created in Phase 0
+1. **Cross-team sharing** — Phase 6: `DOCUMENTATION-STANDARDS.md`
 
 ---
 
