@@ -309,7 +309,103 @@ should reference this as a concrete, tested example.
 - [ ] `INSTALL.md` — End-user/deployer installation guide (separate from
       developer-setup, which targets contributors)
 
-### Phase 5: Cross-Team Sharing
+### Phase 5: Scheduled LLM Documentation Audit
+
+**Goal:** Automated, periodic LLM-driven review that runs the evaluation
+criteria from MAINTENANCE.md and files GitHub issues for findings.
+
+This is the enforcement loop that keeps documentation honest over time.
+Without it, the maintenance protocol is a checklist that humans forget to
+run.
+
+#### Architecture
+
+A scheduled GitHub Action (`doc-audit.yml`) runs weekly (or biweekly).
+It has two stages:
+
+**Stage 1 — Deterministic (no LLM):**
+
+- Run all assertion commands from MAINTENANCE.md (A1-A6)
+- Check freshness markers for expiration
+- Check all internal doc links resolve
+- Collect results into a structured JSON report
+
+**Stage 2 — LLM evaluation (OpenAI):**
+
+- Feed the JSON report + each doc file to the LLM
+- System prompt includes the fail-by-default doctrine and anti-sycophancy
+  rules from MAINTENANCE.md verbatim
+- LLM evaluates each doc against the readiness gate criteria
+- LLM must produce a structured verdict per doc: PASS/FAIL with evidence
+- For each FAIL: LLM drafts a GitHub issue body with the required template
+- Script calls `gh issue create` for each finding
+
+#### Key Design Decisions
+
+- **OpenAI, not local model.** Scheduled batch job, cost is low (weekly
+  cadence, bounded input size). `OPENAI_API_KEY` stored as repo secret.
+- **Model choice:** Use a capable model (gpt-4o or equivalent). The
+  anti-sycophancy prompt must be tested against the chosen model to
+  ensure it actually falsifies.
+- **Deterministic first.** Stage 1 runs without the LLM. If Stage 1
+  finds failures, they are filed as issues regardless of Stage 2. The
+  LLM adds value by catching semantic drift that assertions miss (e.g.,
+  "this diagram no longer matches the actual data flow").
+- **Rate limiting.** Cap at 10 issues per run to prevent flooding. If
+  more than 10 findings, file a summary issue linking to the raw report.
+- **Audit log.** The full structured report is uploaded as a workflow
+  artifact for human review.
+
+#### Workflow Skeleton
+
+```yaml
+name: Documentation Audit
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday 9am UTC
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run deterministic assertions
+        run: scripts/doc-audit-deterministic.sh > report.json
+
+      - name: LLM evaluation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: scripts/doc-audit-llm.py report.json > findings.json
+
+      - name: File issues for findings
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/doc-audit-file-issues.sh findings.json
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-audit-report
+          path: report.json
+```
+
+#### Implementation Checklist
+
+- [ ] `scripts/doc-audit-deterministic.sh` — runs MAINTENANCE.md assertions,
+      outputs structured JSON
+- [ ] `scripts/doc-audit-llm.py` — sends docs + report to OpenAI, parses
+      structured verdicts, enforces anti-sycophancy prompt
+- [ ] `scripts/doc-audit-file-issues.sh` — creates GitHub issues from
+      findings JSON, respects 10-issue cap
+- [ ] `.github/workflows/doc-audit.yml` — scheduled workflow
+- [ ] `OPENAI_API_KEY` added as repo secret
+- [ ] Test run: trigger manually, verify issues are filed correctly
+- [ ] Tune anti-sycophancy prompt against chosen model until false-pass
+      rate is acceptable
+
+### Phase 6: Cross-Team Sharing
 
 **Goal:** Make this documentation system a reusable template.
 
@@ -329,11 +425,12 @@ should reference this as a concrete, tested example.
 | Priority | Phase | Rationale |
 |---|---|---|
 | P0 | Phase 0 (Cleanup) | Remove noise — prerequisite for everything |
-| P0 | Phase 1 (MAINTENANCE.md) | Most critical, prevents future rot |
-| P1 | Phase 2 (soliplex_agent) | Core package, most complex, most needed |
+| P0 | Phase 5 (LLM Audit) | **Bootstrap first.** The audit creates the backlog. Without it, everything else is a checklist nobody runs. Get the enforcement loop spinning immediately — it will file issues that drive Phases 1-4. |
+| P0 | Phase 1 (MAINTENANCE.md) | Assertions + gate criteria that the audit evaluates against |
+| P1 | Phase 2 (soliplex_agent) | Core package, driven by audit findings |
 | P1 | Phase 3 (Getting Started) | Front door for new developers and agents |
-| P2 | Phase 4 (Supporting) | Fills gaps, lower urgency |
-| P2 | Phase 5 (Cross-Team) | Force multiplier but depends on P0-P1 |
+| P2 | Phase 4 (Supporting) | Fills gaps, driven by audit findings |
+| P2 | Phase 6 (Cross-Team) | Force multiplier, depends on P0-P1 |
 
 ---
 
@@ -356,3 +453,6 @@ assessment.
   reachable from `index.md` via at most 2 link hops
 - [ ] **Backend portability:** `DOCUMENTATION-STANDARDS.md` contains no
   Flutter/Dart-specific content — all patterns are framework-agnostic
+- [ ] **Audit loop running:** `doc-audit.yml` has run at least 3 scheduled
+  cycles, filed at least 1 issue per cycle, and zero issues were
+  false positives (sycophantic passes that a human later overturned)
