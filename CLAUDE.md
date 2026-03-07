@@ -68,10 +68,10 @@ After any code modification, run in order:
 
 ## Documentation
 
-- [docs/index.md](docs/index.md) - Documentation index
+- [docs/index.md](docs/index.md) - Start here (golden path reading order)
+- [docs/MAINTENANCE.md](docs/MAINTENANCE.md) - Self-validating doc health protocol
 - [docs/rules/flutter_rules.md](docs/rules/flutter_rules.md) - Development conventions
-- [docs/guides/developer-setup.md](docs/guides/developer-setup.md) - Environment setup
-- [docs/logging-quickstart.md](docs/logging-quickstart.md) - Logging usage guide
+- [docs/getting-started/developer-setup.md](docs/getting-started/developer-setup.md) - Environment setup
+- [docs/guides/logging-quickstart.md](docs/guides/logging-quickstart.md) - Logging usage guide
 - [docs/guides/logging.md](docs/guides/logging.md) - Logging architecture
 - [docs/summary/client.md](docs/summary/client.md) - soliplex_client package
-- [docs/design/index.md](docs/design/index.md) - Design documents index

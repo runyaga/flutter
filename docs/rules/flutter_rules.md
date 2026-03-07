@@ -155,7 +155,7 @@ Loggers.http.debug('GET /api/users');
 Loggers.activeRun.error('Failed', error: e, stackTrace: s);
 ```
 
-See [Logging Quickstart](../logging-quickstart.md) for the full list of
+See [Logging Quickstart](../guides/logging-quickstart.md) for the full list of
 available loggers and log level guidelines.
 
 ## Quick Reference
