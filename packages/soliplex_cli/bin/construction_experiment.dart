@@ -287,17 +287,25 @@ _Verdict _validate(_RoomRun run, ConstructionState state) => switch (run.tier) {
     };
 
 /// Verify that the state is still correct after verification pass.
-/// Uses the same tier-specific checks plus confirms tool calls were made.
-_Verdict _validateVerify(
+/// Uses the same tier-specific checks. Tool call count and state
+/// preservation are checked post-hoc (after _runRoom returns).
+_Verdict _validateVerify(_RoomRun originalRun, ConstructionState state) {
+  final tierChecks = _validate(originalRun, state);
+  return _Verdict([...tierChecks.checks]);
+}
+
+/// Full T5 verdict including post-hoc checks (tool calls, state).
+_Verdict _fullVerifyVerdict(
   _RoomRun originalRun,
   ConstructionState state,
   int toolCallCount,
+  bool statePreserved,
 ) {
   final tierChecks = _validate(originalRun, state);
   return _Verdict([
     ...tierChecks.checks,
     _Check('verifier made ≥1 tool call', passed: toolCallCount >= 1),
-    _Check('state not corrupted', passed: state.detectConflicts().isEmpty),
+    _Check('state preserved', passed: statePreserved),
   ]);
 }
 
@@ -665,13 +673,7 @@ Future<void> main(List<String> args) async {
           logger: logger,
           outputDir: outputDir,
           filePrefix: '${run.roomId}-verify',
-          validator: (s) => _validateVerify(
-            run,
-            s,
-            // Will be set after the run; pass 0 as placeholder,
-            // the real count is checked in the post-hoc verdict.
-            0,
-          ),
+          validator: (s) => _validateVerify(run, s),
         );
 
         // Post-hoc: check state wasn't mutated + tool calls were made.
@@ -679,13 +681,20 @@ Future<void> main(List<String> args) async {
           final scheduleAfter = state.getSchedule().toString();
           final statePreserved = scheduleBefore == scheduleAfter;
           final verifyCalls = verifyResult.calls.length;
+          final fullVerdict = _fullVerifyVerdict(
+            run,
+            state,
+            verifyCalls,
+            statePreserved,
+          );
           if (!statePreserved) {
             stderr.writeln(
               '  WARNING: Verifier mutated the schedule!',
             );
           }
           stderr.writeln(
-            '  Verify: ${statePreserved ? "state preserved" : "STATE CHANGED"}'
+            '  Verify: ${fullVerdict.summary}'
+            ' | ${statePreserved ? "state preserved" : "STATE CHANGED"}'
             ', $verifyCalls tool calls',
           );
         }
