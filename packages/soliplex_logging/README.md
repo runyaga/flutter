@@ -45,7 +45,7 @@ Loggers.http.debug('GET /api/users');
 Loggers.activeRun.error('Failed', error: e, stackTrace: s);
 ```
 
-See [logging-quickstart.md](../../docs/logging-quickstart.md) for app-specific
+See [logging-quickstart.md](../../docs/guides/logging-quickstart.md) for app-specific
 usage.
 
 ## Log Levels
