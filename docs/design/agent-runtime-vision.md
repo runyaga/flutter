@@ -463,7 +463,7 @@ from the app.
 
 > **Dependency injection, interfaces, and implementation phases** are
 > specified in
-> [`soliplex-agent-package.md`](soliplex-agent-package.md) —
+> [`agent-stack.md`](../architecture/agent-stack.md) —
 > the canonical component spec. This document focuses on runtime
 > behavior, use cases, and the Python API surface.
 
@@ -524,7 +524,7 @@ if is_done(agent):
 
 ### Dart Runtime Interface
 
-> See [`soliplex-agent-package.md`](soliplex-agent-package.md) § "AgentRuntime"
+> See [`agent-stack.md`](../architecture/agent-stack.md) § "AgentRuntime"
 > for the canonical Dart interfaces: `AgentRuntime`, `AgentSession`,
 > `AgentResult`, and `ToolRegistryResolver`.
 
@@ -594,7 +594,7 @@ already suspended — it's sitting inside the `wait_all()` resume chain.
 WASM is single-threaded and non-reentrant. **Hard freeze.**
 
 **The guard:** `PlatformConstraints.supportsReentrantInterpreter`
-(see [`soliplex-agent-package.md`](soliplex-agent-package.md) § "PlatformConstraints").
+(see [`agent-stack.md`](../architecture/agent-stack.md) § "PlatformConstraints").
 Before dispatching any tool that would invoke Python, the runtime
 checks this flag. If `false` and Python is already suspended:
 
