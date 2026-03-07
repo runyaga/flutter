@@ -40,13 +40,13 @@ flowchart TD
     E --> F
     G --> C
 
-    style A fill:#e1f5ff
-    style B fill:#fff4e1
-    style C fill:#ffe4e1
-    style D fill:#e8f5e9
-    style E fill:#f3e5f5
-    style F fill:#f3e5f5
-    style G fill:#e0f7fa
+    style A fill:#1565c0,color:#fff
+    style B fill:#e65100,color:#fff
+    style C fill:#b71c1c,color:#fff
+    style D fill:#2e7d32,color:#fff
+    style E fill:#6a1b9a,color:#fff
+    style F fill:#6a1b9a,color:#fff
+    style G fill:#00838f,color:#fff
 ```
 
 ## Packages
