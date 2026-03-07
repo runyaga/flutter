@@ -3,6 +3,28 @@
 > For humans AND AI agents. This document is self-validating — its assertions
 > can be executed to detect drift between documentation and code.
 
+## Governing Principle: Fail by Default
+
+**All documentation is assumed stale until proven current.** The burden of
+proof is on the document, not the reviewer. A doc without a passing
+assertion and a current freshness marker is treated as unreliable.
+
+This means:
+
+- **No effort = fail.** A document that has not been actively verified
+  against the codebase is considered stale, regardless of how recently it
+  was written.
+- **Evidence required.** Verification means running the associated assertion
+  commands and confirming the output matches. "I read it and it looks fine"
+  is not verification.
+- **Decay is the default state.** Code changes constantly. Documentation
+  that was correct yesterday may be wrong today. Assume drift until you
+  prove otherwise.
+
+The evaluation criteria below exist so that documents can be **failed** —
+not just praised. A review that finds no issues should be treated with
+skepticism.
+
 ## How to Use This Document
 
 **Humans:** Review the checklists periodically (monthly or after major PRs).
@@ -11,7 +33,8 @@ Skim the assertions — if something looks wrong, run the command to verify.
 **AI Agents:** Before working on the codebase, run the relevant assertion
 commands below. If any fail, flag the associated documentation as stale
 before relying on it. After making code changes, re-run assertions and
-update freshness markers.
+update freshness markers. If you find drift, open a GitHub issue (see
+Bot Protocol below).
 
 **CI:** The deterministic assertions are encoded as Dart tests in
 `packages/soliplex_agent/test/doc_health_test.dart`. These run automatically
@@ -273,13 +296,17 @@ adopt the same pattern:
 
 ## Documentation Readiness Gate
 
-New documentation must pass a readiness gate before merging. The gate is
-designed to be **evaluated backwards** — the reviewer (human or LLM) must
-produce concrete evidence for each criterion, not subjective assessment.
+**Default state: FAIL.** New documentation starts in a failed state and must
+be promoted to passing by producing evidence for every criterion below. If
+any criterion lacks evidence, the document fails the gate and must not merge.
+
+The gate is designed to be **evaluated backwards** — the reviewer (human or
+LLM) must produce concrete evidence for each criterion. The absence of
+evidence is a failure, not an unknown.
 
 An LLM evaluating readiness MUST cite specific evidence. If it cannot cite
 evidence, the criterion fails. "Looks good" or "appears complete" is not
-evidence.
+evidence. "I could not find a counterexample" is not evidence of correctness.
 
 ### Gate Criteria
 
@@ -314,6 +341,21 @@ For every new or substantially rewritten doc section:
    this file and in `doc_health_test.dart`.
    - Evidence: cite the assertion ID (e.g., A7)
    - FAIL if: testable claims exist without assertions
+
+### Scoring
+
+Each criterion above is binary: PASS (evidence provided) or FAIL (no evidence
+or contradicting evidence).
+
+| Result | Meaning | Action |
+|---|---|---|
+| 6/6 PASS | Document is verified. Merge allowed. | Update freshness marker. |
+| 5/6 PASS | One gap. Fixable. | Fix the gap, re-evaluate, then merge. |
+| 4/6 or below | Document is not ready. | Do not merge. File issue with findings. |
+
+A document that scores 4/6 or below is **rejected**. It goes back to the
+author with specific failing criteria and evidence of failure. There is no
+"close enough" — the gate exists to prevent doc rot at the source.
 
 ### Anti-Sycophancy Rule
 
