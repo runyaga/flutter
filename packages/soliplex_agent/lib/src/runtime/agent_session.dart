@@ -204,6 +204,7 @@ class AgentSession implements ToolExecutionContext {
   Future<void> start({
     required String userMessage,
     String? existingRunId,
+    ThreadHistory? cachedHistory,
   }) async {
     await _attachExtensions();
     _subscription = _orchestrator.stateChanges.listen(_onStateChange);
@@ -213,6 +214,7 @@ class AgentSession implements ToolExecutionContext {
         userMessage: userMessage,
         toolExecutor: _executeAll,
         existingRunId: existingRunId,
+        cachedHistory: cachedHistory,
       ),
     );
   }
@@ -415,3 +417,4 @@ class AgentSession implements ToolExecutionContext {
       _state == AgentSessionState.failed ||
       _state == AgentSessionState.cancelled;
 }
+

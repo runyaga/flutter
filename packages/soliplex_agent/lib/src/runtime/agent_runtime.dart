@@ -125,6 +125,7 @@ class AgentRuntime {
     bool ephemeral = false,
     bool autoDispose = true,
     AgentSession? parent,
+    ThreadHistory? cachedHistory,
   }) async {
     _guardNotDisposed();
     _guardWasmReentrancy();
@@ -141,7 +142,11 @@ class AgentRuntime {
     _trackSession(session);
     parent?.addChild(session);
     try {
-      await session.start(userMessage: prompt, existingRunId: existingRunId);
+      await session.start(
+        userMessage: prompt,
+        existingRunId: existingRunId,
+        cachedHistory: cachedHistory,
+      );
     } on Object {
       parent?.removeChild(session);
       _removeSession(session);
@@ -402,3 +407,4 @@ extension _AgentSessionStateX on AgentSessionState {
       this == AgentSessionState.failed ||
       this == AgentSessionState.cancelled;
 }
+
