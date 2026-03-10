@@ -74,13 +74,17 @@ Future<void> launchTui({
 
     final uiDelegate = TuiUiDelegate();
 
+    final llm = wiring.agentLlmProvider ??
+        AgUiLlmProvider(
+          api: connection.api,
+          agUiStreamClient: connection.agUiStreamClient,
+        );
+
     runtime = AgentRuntime(
       connection: connection,
-      llmProvider: AgUiLlmProvider(
-        api: connection.api,
-        agUiStreamClient: connection.agUiStreamClient,
-      ),
-      toolRegistryResolver: (_) async => toolRegistry,
+      llmProvider: llm,
+      toolRegistryResolver: (_) async =>
+          _mergeWithMcpTools(toolRegistry, mcpManager),
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
       extensionFactory: wiring.extensionFactory,
@@ -181,13 +185,17 @@ Future<void> runHeadless({
     );
     mcpManager = wiring.mcpManager;
 
+    final llm = wiring.agentLlmProvider ??
+        AgUiLlmProvider(
+          api: connection.api,
+          agUiStreamClient: connection.agUiStreamClient,
+        );
+
     runtime = AgentRuntime(
       connection: connection,
-      llmProvider: AgUiLlmProvider(
-        api: connection.api,
-        agUiStreamClient: connection.agUiStreamClient,
-      ),
-      toolRegistryResolver: (_) async => toolRegistry,
+      llmProvider: llm,
+      toolRegistryResolver: (_) async =>
+          _mergeWithMcpTools(toolRegistry, mcpManager),
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
       extensionFactory: wiring.extensionFactory,
@@ -368,14 +376,15 @@ Future<void> listRooms({required String serverUrl}) async {
 }
 
 /// Builds Monty wiring when enabled, returning the extension factory, a
-/// callback to bind the [AgentApi] after runtime creation, and an optional
-/// [McpConnectionManager] that the caller must dispose.
+/// callback to bind the [AgentApi] after runtime creation, an optional
+/// [McpConnectionManager] that the caller must dispose, and an optional
+/// [AgentLlmProvider] for direct LLM completions.
 ({
   SessionExtensionFactory? extensionFactory,
   void Function(AgentRuntime) bindAgentApi,
   McpConnectionManager? mcpManager,
-})
-_buildMontyWiring({
+  AgentLlmProvider? agentLlmProvider,
+}) _buildMontyWiring({
   required bool montyEnabled,
   String? llmProvider,
   String? llmModel,
@@ -383,27 +392,35 @@ _buildMontyWiring({
   String? llmApiKey,
   List<String> mcpServers = const [],
 }) {
-  if (!montyEnabled) {
-    return (extensionFactory: null, bindAgentApi: (_) {}, mcpManager: null);
-  }
-
-  MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
-  final blackboardApi = DirectBlackboardApi();
-  AgentApi? agentApi;
-
-  // Phase 2: direct LLM completions (bypasses backend).
+  // Build the direct LLM provider regardless of Monty — it drives agent
+  // runs whenever --llm-provider is set.
   final provider = _createLlmProvider(
     provider: llmProvider,
     model: llmModel,
     url: llmUrl,
     apiKey: llmApiKey,
   );
+  final agentLlmProvider =
+      provider != null ? ChatFnLlmProvider(chatFn: provider.chat) : null;
 
-  // Phase 2: MCP connection manager.
+  // MCP servers are also independent of Monty.
   final mcpConfigs = _parseMcpServers(mcpServers);
   final mcpManager = mcpConfigs.isNotEmpty
       ? McpConnectionManager(serverConfigs: mcpConfigs)
       : null;
+
+  if (!montyEnabled) {
+    return (
+      extensionFactory: null,
+      bindAgentApi: (_) {},
+      mcpManager: mcpManager,
+      agentLlmProvider: agentLlmProvider,
+    );
+  }
+
+  MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
+  final blackboardApi = DirectBlackboardApi();
+  AgentApi? agentApi;
 
   return (
     extensionFactory: () async {
@@ -416,13 +433,13 @@ _buildMontyWiring({
         llmCompleter: provider?.complete,
         llmChatCompleter: provider != null
             ? (messages, {systemPrompt, maxTokens}) => provider.chat(
-                [
-                  for (final m in messages)
-                    (role: m['role']!, content: m['content']!),
-                ],
-                systemPrompt: systemPrompt,
-                maxTokens: maxTokens,
-              )
+                  [
+                    for (final m in messages)
+                      (role: m['role']!, content: m['content']!),
+                  ],
+                  systemPrompt: systemPrompt,
+                  maxTokens: maxTokens,
+                )
             : null,
         mcpExecutor: mcpManager?.executeTool,
         mcpToolLister: mcpManager?.listTools,
@@ -438,6 +455,7 @@ _buildMontyWiring({
       agentApi = RuntimeAgentApi(runtime: runtime);
     },
     mcpManager: mcpManager,
+    agentLlmProvider: agentLlmProvider,
   );
 }
 
@@ -452,28 +470,26 @@ LlmProvider? _createLlmProvider({
   if (provider == null) return null;
   return switch (provider) {
     'anthropic' => AnthropicLlmProvider(
-      apiKey:
-          apiKey ??
-          Platform.environment['ANTHROPIC_API_KEY'] ??
-          (throw ArgumentError(
-            'Anthropic requires --llm-api-key or ANTHROPIC_API_KEY',
-          )),
-      model: model ?? 'claude-sonnet-4-20250514',
-    ),
+        apiKey: apiKey ??
+            Platform.environment['ANTHROPIC_API_KEY'] ??
+            (throw ArgumentError(
+              'Anthropic requires --llm-api-key or ANTHROPIC_API_KEY',
+            )),
+        model: model ?? 'claude-sonnet-4-20250514',
+      ),
     'openai' => OpenAiLlmProvider(
-      apiKey:
-          apiKey ??
-          Platform.environment['OPENAI_API_KEY'] ??
-          (throw ArgumentError(
-            'OpenAI requires --llm-api-key or OPENAI_API_KEY',
-          )),
-      model: model ?? 'gpt-4o',
-      baseUrl: url,
-    ),
+        apiKey: apiKey ??
+            Platform.environment['OPENAI_API_KEY'] ??
+            (throw ArgumentError(
+              'OpenAI requires --llm-api-key or OPENAI_API_KEY',
+            )),
+        model: model ?? 'gpt-4o',
+        baseUrl: url,
+      ),
     'ollama' => OllamaLlmProvider(
-      model: model ?? 'llama3.2',
-      baseUrl: url ?? 'http://localhost:11434/api',
-    ),
+        model: model ?? 'llama3.2',
+        baseUrl: url ?? 'http://localhost:11434/api',
+      ),
     _ => throw ArgumentError('Unknown LLM provider: $provider'),
   };
 }
@@ -506,6 +522,43 @@ Map<String, McpServerConfig> _parseMcpServers(List<String> specs) {
   return configs;
 }
 
+/// Merges MCP server tools into the base [ToolRegistry].
+///
+/// When [mcpManager] is non-null, fetches all available MCP tools and
+/// registers each as a [ClientTool] whose executor delegates to the
+/// MCP server. Returns the base registry unchanged when [mcpManager]
+/// is null.
+Future<ToolRegistry> _mergeWithMcpTools(
+  ToolRegistry base,
+  McpConnectionManager? mcpManager,
+) async {
+  if (mcpManager == null) return base;
+
+  final mcpTools = await mcpManager.listTools();
+  var registry = base;
+  for (final tool in mcpTools) {
+    final serverId = tool['server']! as String;
+    final name = tool['name']! as String;
+    final description = (tool['description'] ?? '') as String;
+    registry = registry.register(
+      ClientTool.simple(
+        name: name,
+        description: description,
+        executor: (tc, _) async {
+          final args = tc.hasArguments
+              ? Map<String, Object?>.from(
+                  jsonDecode(tc.arguments) as Map,
+                )
+              : <String, Object?>{};
+          final result = await mcpManager.executeTool(serverId, name, args);
+          return jsonEncode(result);
+        },
+      ),
+    );
+  }
+  return registry;
+}
+
 /// Resolves the room ID — uses the provided ID or picks the first available.
 Future<String> _resolveRoom(SoliplexApi api, String? roomId) async {
   if (roomId != null) return roomId;
@@ -520,19 +573,19 @@ Future<String> _resolveRoom(SoliplexApi api, String? roomId) async {
 
 /// Serializes a [ToolCallInfo] for the JSON envelope.
 Map<String, dynamic> _toolCallToJson(ToolCallInfo tc) => {
-  'id': tc.id,
-  'name': tc.name,
-  if (tc.hasArguments) 'arguments': tc.arguments,
-};
+      'id': tc.id,
+      'name': tc.name,
+      if (tc.hasArguments) 'arguments': tc.arguments,
+    };
 
 /// Formats a [RunState] as a concise string for verbose logging.
 String _describeRunState(RunState state) {
   return switch (state) {
     IdleState() => 'Idle',
     RunningState(:final streaming) => switch (streaming) {
-      AwaitingText() => 'Running (awaiting text)',
-      TextStreaming(:final text) => 'Running (${text.length} chars)',
-    },
+        AwaitingText() => 'Running (awaiting text)',
+        TextStreaming(:final text) => 'Running (${text.length} chars)',
+      },
     ToolYieldingState(:final pendingToolCalls) =>
       'ToolYielding (${pendingToolCalls.map((t) => t.name).join(', ')})',
     CompletedState() => 'Completed',
