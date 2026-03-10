@@ -49,6 +49,7 @@ class AgentRuntime {
     required Logger logger,
     SessionExtensionFactory? extensionFactory,
     this.maxSpawnDepth = 10,
+    this.maxToolDepth = RunOrchestrator.defaultMaxToolDepth,
     this.rootTimeout,
   })  : serverId = connection.serverId,
         _api = connection.api,
@@ -70,6 +71,9 @@ class AgentRuntime {
 
   /// Maximum depth of the parent-child spawn tree. `0` disables the check.
   final int maxSpawnDepth;
+
+  /// Maximum number of tool-call rounds per orchestrator run.
+  final int maxToolDepth;
 
   /// Optional wall-clock timeout for root sessions (no parent).
   ///
@@ -288,6 +292,7 @@ class AgentRuntime {
       agUiStreamClient: _agUiStreamClient,
       toolRegistry: toolRegistry,
       logger: _logger,
+      maxToolDepth: maxToolDepth,
     );
     return AgentSession(
       threadKey: key,

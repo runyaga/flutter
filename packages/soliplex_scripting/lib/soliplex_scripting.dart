@@ -14,6 +14,7 @@ export 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart'
 
 export 'src/ag_ui_bridge_adapter.dart';
 export 'src/df_functions.dart';
+export 'src/experiments/construction_plugin.dart';
 export 'src/host_function_wiring.dart';
 export 'src/host_schema_ag_ui.dart';
 export 'src/monty_script_environment.dart';

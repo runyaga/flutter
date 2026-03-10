@@ -248,6 +248,48 @@ void main() {
       // Error routed through resolveFutures errors map
       expect(mock.lastResolveFuturesErrors![1], contains('handler error'));
     });
+
+    test('resumes with error when handler throws an Error (not Exception)',
+        () async {
+      final syncBridge = DefaultMontyBridge(
+        platform: mock,
+        useFutures: false,
+      );
+      addTearDown(syncBridge.dispose);
+
+      syncBridge.register(
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'fail_error',
+            description: 'Throws an Error',
+          ),
+          handler: (args) async =>
+              throw ArgumentError.value(42, 'bad', 'not valid'),
+        ),
+      );
+
+      mock
+        ..enqueueProgress(
+          const MontyPending(
+            functionName: 'fail_error',
+            arguments: [],
+            callId: 1,
+          ),
+        )
+        ..enqueueProgress(
+          const MontyComplete(result: MontyResult(usage: _usage)),
+        );
+
+      final events = await syncBridge.execute('fail_error()').toList();
+
+      final results = events.whereType<BridgeToolCallResult>().toList();
+      expect(results, hasLength(1));
+      expect(results.first.result, contains('not valid'));
+
+      // Platform was resumed with error (not left in pending state).
+      expect(mock.resumeErrorMessages, hasLength(1));
+      expect(mock.resumeErrorMessages.first, contains('not valid'));
+    });
   });
 
   group('state guards', () {

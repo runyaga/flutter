@@ -395,6 +395,27 @@ class HostFunctionWiring {
             return _streamRegistry!.close(handle);
           },
         ),
+        HostFunction(
+          schema: const HostFunctionSchema(
+            name: 'stream_select',
+            description: 'Wait for the next event from any of the given stream '
+                'subscriptions. Returns {"handle": N, "data": ...} for '
+                'whichever stream fires first, or null when all streams '
+                'are exhausted.',
+            params: [
+              HostParam(
+                name: 'handles',
+                type: HostParamType.list,
+                description: 'List of stream subscription handles.',
+              ),
+            ],
+          ),
+          handler: (args) async {
+            final raw = args['handles']! as List<Object?>;
+            final handles = raw.cast<num>().map((n) => n.toInt()).toList();
+            return _streamRegistry!.select(handles);
+          },
+        ),
       ];
 
   List<HostFunction> _blackboardFunctions() => [
