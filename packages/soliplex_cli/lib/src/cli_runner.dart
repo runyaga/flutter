@@ -249,21 +249,24 @@ Future<void> _runSession(ArgResults parsed) async {
   final montyEnabled = parsed.flag('monty');
   final wasmMode = parsed.flag('wasm-mode');
 
-  // Build the LLM provider: local (ChatFnLlmProvider) or backend (AgUi).
+  // Build the LLM provider: local (StreamingLlmProvider) or backend (AgUi).
   final AgentLlmProvider llmProvider;
   LlmProvider? completionsProvider;
   if (localMode) {
-    completionsProvider = _createLlmProvider(
+    final created = _createLocalProvider(
       providerName: llmProviderName,
       model: llmModel,
       baseUrl: llmUrl,
       apiKey: llmApiKey,
-    );
-    if (completionsProvider == null) return; // Error already printed.
-    llmProvider = ChatFnLlmProvider(
-      chatFn: completionsProvider.chat,
       systemPrompt: llmSystemPrompt,
     );
+    if (created == null) return; // Error already printed.
+    completionsProvider = created.completionsProvider;
+    llmProvider = created.agentProvider;
+    final stack = llmProvider is StreamingLlmProvider
+        ? 'streaming (open_responses)'
+        : 'text-based (legacy)';
+    logger.info('Local LLM: $llmProviderName via $stack');
   } else {
     llmProvider = AgUiLlmProvider(
       api: connection.api,
@@ -811,21 +814,36 @@ void _traceExecutionEvent(ExecutionEvent event) {
 
 String _short(String id) => id.length > 12 ? '${id.substring(0, 12)}...' : id;
 
-/// Creates an [LlmProvider] from CLI flags.
+/// Creates a local LLM provider pair from CLI flags.
 ///
 /// Returns `null` and prints an error if configuration is invalid
 /// (e.g. missing API key for Anthropic/OpenAI).
-LlmProvider? _createLlmProvider({
+///
+/// For Ollama and OpenAI, returns an [OpenResponsesLlmProvider] backed
+/// [StreamingLlmProvider] with native tool calling. For Anthropic (whose
+/// API is not OpenAI-compatible), falls back to [AnthropicLlmProvider]
+/// with [ChatFnLlmProvider].
+({LlmProvider completionsProvider, AgentLlmProvider agentProvider})?
+    _createLocalProvider({
   required String providerName,
   String? model,
   String? baseUrl,
   String? apiKey,
+  String? systemPrompt,
 }) {
   switch (providerName) {
     case 'ollama':
-      return OllamaLlmProvider(
+      final p = OpenResponsesLlmProvider.ollama(
         model: model ?? 'qwen3:8b',
-        baseUrl: baseUrl ?? 'http://localhost:11434/api',
+        baseUrl: baseUrl ?? 'http://localhost:11434/v1',
+        systemPrompt: systemPrompt,
+      );
+      return (
+        completionsProvider: p,
+        agentProvider: StreamingLlmProvider(
+          chatFn: p.chatStream,
+          systemPrompt: systemPrompt,
+        ),
       );
     case 'anthropic':
       final key = apiKey ?? Platform.environment['ANTHROPIC_API_KEY'];
@@ -836,9 +854,16 @@ LlmProvider? _createLlmProvider({
         );
         return null;
       }
-      return AnthropicLlmProvider(
+      final p = AnthropicLlmProvider(
         apiKey: key,
         model: model ?? 'claude-sonnet-4-20250514',
+      );
+      return (
+        completionsProvider: p,
+        agentProvider: ChatFnLlmProvider(
+          chatFn: p.chat,
+          systemPrompt: systemPrompt,
+        ),
       );
     case 'openai':
       final key = apiKey ?? Platform.environment['OPENAI_API_KEY'];
@@ -849,7 +874,18 @@ LlmProvider? _createLlmProvider({
         );
         return null;
       }
-      return OpenAiLlmProvider(apiKey: key, model: model ?? 'gpt-4o');
+      final p = OpenResponsesLlmProvider.openai(
+        apiKey: key,
+        model: model ?? 'gpt-4o',
+        systemPrompt: systemPrompt,
+      );
+      return (
+        completionsProvider: p,
+        agentProvider: StreamingLlmProvider(
+          chatFn: p.chatStream,
+          systemPrompt: systemPrompt,
+        ),
+      );
     default:
       stderr.writeln('Unknown LLM provider: $providerName');
       return null;
