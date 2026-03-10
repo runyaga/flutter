@@ -12,5 +12,7 @@ dependencies:
 
 dev_dependencies:
   mocktail: ^1.0.4
+  soliplex_completions:
+    path: ../soliplex_completions
   test: ^1.24.0
   very_good_analysis: ^10.0.0
