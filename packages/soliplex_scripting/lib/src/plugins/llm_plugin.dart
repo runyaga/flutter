@@ -154,7 +154,7 @@ class LlmPlugin extends MontyPlugin {
                 mapped,
                 systemPrompt: systemPrompt,
               );
-              return <String, Object?>{'text': text};
+              return <String, Object?>{'text': text, 'thread_id': null};
             }
 
             final room = args['room'] as String? ?? defaultRoom;

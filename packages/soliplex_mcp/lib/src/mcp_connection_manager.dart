@@ -1,5 +1,6 @@
 import 'package:mcp_dart/mcp_dart.dart';
 import 'package:soliplex_mcp/src/mcp_server_config.dart';
+import 'package:soliplex_mcp/src/transport_factory.dart' as tf;
 
 /// Manages lazy-initialized MCP client connections.
 ///
@@ -39,17 +40,7 @@ class McpConnectionManager {
       const Implementation(name: 'soliplex-mcp', version: '0.1.0'),
     );
 
-    final transport = switch (config.kind) {
-      McpTransportKind.stdio => StdioClientTransport(
-          StdioServerParameters(
-            command: config.command!,
-            args: config.args,
-          ),
-        ),
-      McpTransportKind.http => StreamableHttpClientTransport(
-          Uri.parse(config.url!),
-        ),
-    };
+    final transport = tf.createTransport(config);
 
     await client.connect(transport);
     _activeClients[serverId] = client;

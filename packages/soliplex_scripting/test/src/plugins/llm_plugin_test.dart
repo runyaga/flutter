@@ -249,6 +249,8 @@ void main() {
       expect(result, isA<Map<String, Object?>>());
       final map = result! as Map<String, Object?>;
       expect(map['text'], 'chat callback response');
+      expect(map.containsKey('thread_id'), isTrue);
+      expect(map['thread_id'], isNull);
       expect(chatCalls, hasLength(1));
       expect(chatCalls.first.first['role'], 'user');
       expect(chatCalls.first.first['content'], 'Hi');
