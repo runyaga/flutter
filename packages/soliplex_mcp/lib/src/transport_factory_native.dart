@@ -8,6 +8,7 @@ Transport createTransport(McpServerConfig config) {
         StdioServerParameters(
           command: config.command!,
           args: config.args,
+          environment: config.environment,
         ),
       ),
     McpTransportKind.http => StreamableHttpClientTransport(
