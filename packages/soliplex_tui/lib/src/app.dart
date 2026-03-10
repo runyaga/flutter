@@ -134,13 +134,12 @@ Future<void> runHeadless({
   AgentRuntime? runtime;
 
   try {
-    final resolvedRoomId =
-        roomId ?? (await _resolveRoom(connection.api, null));
+    final resolvedRoomId = roomId ?? (await _resolveRoom(connection.api, null));
     Loggers.app.info('Using room: $resolvedRoomId');
 
     // Resolve or create thread once — all prompts share it.
-    final resolvedThreadId = threadId ??
-        (await connection.api.createThread(resolvedRoomId)).$1.id;
+    final resolvedThreadId =
+        threadId ?? (await connection.api.createThread(resolvedRoomId)).$1.id;
 
     final toolRegistry = noTools
         ? const ToolRegistry()
@@ -155,9 +154,7 @@ Future<void> runHeadless({
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
       extensionFactory: extensionFactory,
-      uiDelegate: autoApprove
-          ? const AutoApproveUiDelegate()
-          : null,
+      uiDelegate: autoApprove ? const AutoApproveUiDelegate() : null,
     );
 
     bindAgentApi(runtime);
@@ -184,8 +181,7 @@ Future<void> runHeadless({
     // errors.
     await runZonedGuarded(
       () => runtime!.dispose(),
-      (e, s) =>
-          Loggers.agui.debug('Ignoring dispose error', error: e),
+      (e, s) => Loggers.agui.debug('Ignoring dispose error', error: e),
     );
     runtime = null;
   } on Exception catch (e, s) {

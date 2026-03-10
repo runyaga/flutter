@@ -3,8 +3,7 @@ import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_tui/src/tool_definitions.dart';
 import 'package:test/test.dart';
 
-class _MockToolExecutionContext extends Mock
-    implements ToolExecutionContext {}
+class _MockToolExecutionContext extends Mock implements ToolExecutionContext {}
 
 void main() {
   group('buildDemoToolRegistry', () {

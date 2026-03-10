@@ -19,8 +19,7 @@ class _MockAgUiStreamClient extends Mock implements AgUiStreamClient {}
 
 class _MockLogger extends Mock implements Logger {}
 
-class _FakeSimpleRunAgentInput extends Fake
-    implements SimpleRunAgentInput {}
+class _FakeSimpleRunAgentInput extends Fake implements SimpleRunAgentInput {}
 
 class _FakeCancelToken extends Fake implements CancelToken {}
 
@@ -174,8 +173,7 @@ void main() {
         api: api,
         agUiStreamClient: agUiStreamClient,
       ),
-      toolRegistryResolver: (_) async =>
-          toolRegistry ?? const ToolRegistry(),
+      toolRegistryResolver: (_) async => toolRegistry ?? const ToolRegistry(),
       platform: const NativePlatformConstraints(),
       logger: logger,
     );
@@ -187,8 +185,7 @@ void main() {
   }
 
   void stubCreateRun() {
-    when(() => api.createRun(any(), any()))
-        .thenAnswer((_) async => _runInfo());
+    when(() => api.createRun(any(), any())).thenAnswer((_) async => _runInfo());
   }
 
   var runAgentCallCount = 0;

@@ -193,8 +193,7 @@ void main() {
           toolRegistryResolver: (_) async => registry,
         );
 
-        final session =
-            await runtime.spawn(roomId: _roomA, prompt: 'test');
+        final session = await runtime.spawn(roomId: _roomA, prompt: 'test');
         await session.result;
 
         expect(approvalResult, isFalse);
@@ -233,8 +232,7 @@ void main() {
           toolRegistryResolver: (_) async => registry,
         );
 
-        final session =
-            await runtime.spawn(roomId: _roomA, prompt: 'test');
+        final session = await runtime.spawn(roomId: _roomA, prompt: 'test');
         await session.result;
 
         expect(approvalResult, isTrue);
@@ -277,8 +275,7 @@ void main() {
           toolRegistryResolver: (_) async => registry,
         );
 
-        final session =
-            await runtime.spawn(roomId: _roomA, prompt: 'test');
+        final session = await runtime.spawn(roomId: _roomA, prompt: 'test');
 
         // Complete the pending approval with false
         await Future<void>.delayed(Duration.zero);
@@ -323,8 +320,7 @@ void main() {
           toolRegistryResolver: (_) async => registry,
         );
 
-        final session =
-            await runtime.spawn(roomId: _roomA, prompt: 'test');
+        final session = await runtime.spawn(roomId: _roomA, prompt: 'test');
 
         // Listen for AwaitingApproval via the signal
         final events = <ExecutionEvent?>[];
@@ -332,8 +328,7 @@ void main() {
 
         await session.result;
 
-        final awaitingEvents =
-            events.whereType<AwaitingApproval>().toList();
+        final awaitingEvents = events.whereType<AwaitingApproval>().toList();
         expect(awaitingEvents, hasLength(1));
         expect(awaitingEvents.first.toolCallId, 'tc-1');
         expect(awaitingEvents.first.toolName, 'test_tool');
@@ -406,8 +401,7 @@ void main() {
           return Stream.fromIterable(_resumeTextEvents());
         });
 
-        when(() => api.deleteThread(any(), any()))
-            .thenAnswer((_) async {});
+        when(() => api.deleteThread(any(), any())).thenAnswer((_) async {});
 
         final registry = const ToolRegistry().register(
           ClientTool(

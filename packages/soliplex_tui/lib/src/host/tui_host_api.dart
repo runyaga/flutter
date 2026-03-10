@@ -45,8 +45,7 @@ class TuiHostApi implements HostApi, SessionExtension {
   }
 
   @override
-  Map<String, List<Object?>>? getDataFrame(int handle) =>
-      _dataFrames[handle];
+  Map<String, List<Object?>>? getDataFrame(int handle) => _dataFrames[handle];
 
   @override
   int registerChart(Map<String, Object?> chartConfig) {
@@ -170,8 +169,7 @@ class TuiHostApi implements HostApi, SessionExtension {
     await _requireApproval(
       toolName: 'native.file_write',
       arguments: {...args, 'path': path},
-      rationale:
-          'Script wants to write ${content.length} chars to $path',
+      rationale: 'Script wants to write ${content.length} chars to $path',
     );
 
     final file = File(path);
@@ -242,12 +240,12 @@ class TuiHostApi implements HostApi, SessionExtension {
     if (text.length <= _maxOutputBytes) return text;
     // Find a safe cut point that doesn't split a surrogate pair.
     var end = _maxOutputBytes;
-    if (end < text.length && text.codeUnitAt(end - 1) >= 0xD800 &&
+    if (end < text.length &&
+        text.codeUnitAt(end - 1) >= 0xD800 &&
         text.codeUnitAt(end - 1) <= 0xDBFF) {
       end--; // Back up past the high surrogate.
     }
     return '${text.substring(0, end)}'
         '\n... [Truncated: ${text.length} chars total]';
   }
-
 }

@@ -145,7 +145,8 @@ class AgentSession implements ToolExecutionContext {
 
   @override
   Future<AgentSession> spawnChild({
-    required String prompt, String? roomId,
+    required String prompt,
+    String? roomId,
     String? threadId,
     Duration? timeout,
     bool ephemeral = true,
@@ -168,11 +169,13 @@ class AgentSession implements ToolExecutionContext {
     required String rationale,
   }) async {
     if (_uiDelegate == null) return false;
-    emitEvent(AwaitingApproval(
-      toolCallId: toolCallId,
-      toolName: toolName,
-      rationale: rationale,
-    ),);
+    emitEvent(
+      AwaitingApproval(
+        toolCallId: toolCallId,
+        toolName: toolName,
+        rationale: rationale,
+      ),
+    );
     return Future.any([
       _uiDelegate.requestToolApproval(
         session: this,

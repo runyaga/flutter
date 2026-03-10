@@ -60,7 +60,8 @@ Future<void> runCli(List<String> args) async {
       'prompt',
       abbr: 'p',
       splitCommas: false,
-      help: 'Send prompt(s) non-interactively and exit. '
+      help:
+          'Send prompt(s) non-interactively and exit. '
           'Multiple --prompt flags run sequentially in the same thread.',
     );
 
@@ -134,15 +135,14 @@ Future<void> _runSession(ArgResults parsed) async {
           stderr.writeln('[MONTY:$level] $message');
           return null;
         }
-        throw UnimplementedError(
-          'FakeHostApi.invoke: no handler for "$name"',
-        );
+        throw UnimplementedError('FakeHostApi.invoke: no handler for "$name"');
       },
     );
     final blackboardApi = DirectBlackboardApi();
     final fetchClient = DartHttpClient();
-    final MontyPlatformFactory? montyPlatformFactory =
-        wasmMode ? null : () async => MontyFfi(bindings: NativeBindingsFfi());
+    final MontyPlatformFactory? montyPlatformFactory = wasmMode
+        ? null
+        : () async => MontyFfi(bindings: NativeBindingsFfi());
     extensionFactory = () async {
       final factory = createMontyScriptEnvironmentFactory(
         hostApi: hostApi,
@@ -203,8 +203,8 @@ Future<void> _runSession(ArgResults parsed) async {
       toolNames.isEmpty
           ? 'tools: (none)'
           : 'tools: [${toolNames.join(', ')}]'
-              '${montyEnabled ? '  (monty: enabled)' : ''}'
-              '${wasmMode ? '  (wasm-mode)' : ''}',
+                '${montyEnabled ? '  (monty: enabled)' : ''}'
+                '${wasmMode ? '  (wasm-mode)' : ''}',
     )
     ..writeln();
   _printHelp();
@@ -543,10 +543,10 @@ void _traceState(RunState state) {
         'msgs=$msgCount  tools=$toolCount  streaming=$streaming',
       );
     case ToolYieldingState(
-        :final pendingToolCalls,
-        :final toolDepth,
-        :final conversation,
-      ):
+      :final pendingToolCalls,
+      :final toolDepth,
+      :final conversation,
+    ):
       stderr.writeln(
         '[AGUI] ToolYielding  depth=$toolDepth  '
         'pending=${pendingToolCalls.length}',
@@ -596,8 +596,9 @@ void _traceExecutionEvent(ExecutionEvent event) {
     case ClientToolExecuting(:final toolName, :final toolCallId):
       stderr.writeln('[TOOL] Executing $toolName  id=${_short(toolCallId)}');
     case ClientToolCompleted(:final toolCallId, :final result, :final status):
-      final preview =
-          result.length > 200 ? '${result.substring(0, 200)}...' : result;
+      final preview = result.length > 200
+          ? '${result.substring(0, 200)}...'
+          : result;
       stderr.writeln(
         '[TOOL] Completed ${_short(toolCallId)}  '
         'status=$status  result=$preview',

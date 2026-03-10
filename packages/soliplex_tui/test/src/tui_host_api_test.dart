@@ -41,8 +41,12 @@ void main() {
 
   group('registerDataFrame / getDataFrame', () {
     test('returns incrementing handles', () {
-      final h1 = api.registerDataFrame({'a': [1, 2]});
-      final h2 = api.registerDataFrame({'b': [3, 4]});
+      final h1 = api.registerDataFrame({
+        'a': [1, 2]
+      });
+      final h2 = api.registerDataFrame({
+        'b': [3, 4]
+      });
 
       expect(h1, 1);
       expect(h2, 2);
@@ -66,7 +70,9 @@ void main() {
     });
 
     test('stored frame is unmodifiable', () {
-      final handle = api.registerDataFrame({'x': [1]});
+      final handle = api.registerDataFrame({
+        'x': [1]
+      });
       final frame = api.getDataFrame(handle)!;
 
       expect(
@@ -106,7 +112,9 @@ void main() {
   // =========================================================================
 
   test('DataFrame and chart handles share counter', () {
-    final dfHandle = api.registerDataFrame({'a': [1]});
+    final dfHandle = api.registerDataFrame({
+      'a': [1]
+    });
     final chartHandle = api.registerChart({'type': 'bar'});
 
     expect(dfHandle, 1);
@@ -289,7 +297,8 @@ void main() {
     final session = _MockAgentSession();
     await api.onAttach(session);
 
-    final tmpPath = '/tmp/tui_host_api_test_${pid}_${DateTime.now().millisecondsSinceEpoch}.txt';
+    final tmpPath =
+        '/tmp/tui_host_api_test_${pid}_${DateTime.now().millisecondsSinceEpoch}.txt';
 
     addTearDown(() {
       try {

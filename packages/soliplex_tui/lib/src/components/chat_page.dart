@@ -255,9 +255,8 @@ class _ChatPageState extends State<ChatPage> {
           _lastReasoningText = reasoning;
         }
 
-        final showReasoning =
-            _activePanel == _ActivePanel.reasoning &&
-                _lastReasoningText.isNotEmpty;
+        final showReasoning = _activePanel == _ActivePanel.reasoning &&
+            _lastReasoningText.isNotEmpty;
 
         final approvalSignal = tab.approvalRequest;
         final approval = approvalSignal?.value;

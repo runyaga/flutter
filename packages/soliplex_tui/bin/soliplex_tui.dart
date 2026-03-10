@@ -101,8 +101,7 @@ Future<void> main(List<String> arguments) async {
   final montyEnabled = results.flag('monty');
   final noTools = results.flag('no-tools');
   final toolsFilter = results.option('tools');
-  final enabledTools =
-      toolsFilter?.split(',').map((s) => s.trim()).toSet();
+  final enabledTools = toolsFilter?.split(',').map((s) => s.trim()).toSet();
 
   final prompts = results.multiOption('prompt');
   if (prompts.isNotEmpty) {

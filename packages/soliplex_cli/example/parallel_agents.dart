@@ -43,10 +43,11 @@ Future<void> main() async {
     stdout.writeln('Spawned 3 sessions, waiting for all...\n');
 
     // Wait for all to complete.
-    final results = await runtime.waitAll(
-      [s1, s2, s3],
-      timeout: const Duration(seconds: 60),
-    );
+    final results = await runtime.waitAll([
+      s1,
+      s2,
+      s3,
+    ], timeout: const Duration(seconds: 60));
 
     for (final result in results) {
       stdout.writeln(formatResult(result));

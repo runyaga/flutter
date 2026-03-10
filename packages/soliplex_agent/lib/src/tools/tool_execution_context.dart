@@ -22,7 +22,8 @@ abstract interface class ToolExecutionContext {
   ///
   /// When [roomId] is omitted, the child inherits the parent session's room.
   Future<AgentSession> spawnChild({
-    required String prompt, String? roomId,
+    required String prompt,
+    String? roomId,
   });
 
   /// Emit a granular execution event for UI observation.

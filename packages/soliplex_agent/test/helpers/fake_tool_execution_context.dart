@@ -10,7 +10,8 @@ class FakeToolExecutionContext implements ToolExecutionContext {
 
   @override
   Future<AgentSession> spawnChild({
-    required String prompt, String? roomId,
+    required String prompt,
+    String? roomId,
   }) =>
       throw UnimplementedError();
 
