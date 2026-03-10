@@ -22,8 +22,11 @@ Future<void> main(List<String> arguments) async {
     ..addMultiOption(
       'prompt',
       abbr: 'p',
+      splitCommas: false,
       help: 'Send message(s) headless, print each response, and exit. '
-          'Repeatable for multi-turn conversations.',
+          'Repeatable for multi-turn conversations. '
+          'Use -p "value" form for multi-line content '
+          '(--prompt=value may drop newlines).',
     )
     ..addFlag(
       'debug',
