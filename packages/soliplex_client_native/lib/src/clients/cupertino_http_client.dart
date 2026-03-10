@@ -42,8 +42,8 @@ class CupertinoHttpClient implements SoliplexHttpClient {
     URLSessionConfiguration? configuration,
     this.defaultTimeout = defaultHttpTimeout,
   }) : _client = CupertinoClient.fromSessionConfiguration(
-         configuration ?? _createConfiguration(defaultTimeout),
-       );
+          configuration ?? _createConfiguration(defaultTimeout),
+        );
 
   /// Creates a Cupertino HTTP client with a custom client for testing.
   ///
@@ -81,17 +81,15 @@ class CupertinoHttpClient implements SoliplexHttpClient {
     final request = _createRequest(method, uri, headers, body);
 
     try {
-      final streamedResponse = await _client
-          .send(request)
-          .timeout(
+      final streamedResponse = await _client.send(request).timeout(
+        effectiveTimeout,
+        onTimeout: () {
+          throw TimeoutException(
+            'Request timed out after ${effectiveTimeout.inSeconds}s',
             effectiveTimeout,
-            onTimeout: () {
-              throw TimeoutException(
-                'Request timed out after ${effectiveTimeout.inSeconds}s',
-                effectiveTimeout,
-              );
-            },
           );
+        },
+      );
 
       final bodyBytes = await streamedResponse.stream.toBytes().timeout(
         effectiveTimeout,
