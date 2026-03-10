@@ -462,4 +462,3 @@ class AgentSession implements ToolExecutionContext {
       _state == AgentSessionState.failed ||
       _state == AgentSessionState.cancelled;
 }
-
