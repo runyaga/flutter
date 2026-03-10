@@ -64,6 +64,7 @@ export 'src/orchestration/error_classifier.dart';
 export 'src/orchestration/execution_event.dart';
 export 'src/orchestration/run_orchestrator.dart';
 export 'src/orchestration/run_state.dart';
+export 'src/orchestration/streaming_llm_provider.dart';
 export 'src/orchestration/tool_call_parser.dart';
 // ── Runtime ──
 export 'src/runtime/agent_runtime.dart';
