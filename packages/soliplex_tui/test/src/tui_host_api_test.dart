@@ -42,10 +42,10 @@ void main() {
   group('registerDataFrame / getDataFrame', () {
     test('returns incrementing handles', () {
       final h1 = api.registerDataFrame({
-        'a': [1, 2]
+        'a': [1, 2],
       });
       final h2 = api.registerDataFrame({
-        'b': [3, 4]
+        'b': [3, 4],
       });
 
       expect(h1, 1);
@@ -71,7 +71,7 @@ void main() {
 
     test('stored frame is unmodifiable', () {
       final handle = api.registerDataFrame({
-        'x': [1]
+        'x': [1],
       });
       final frame = api.getDataFrame(handle)!;
 
@@ -113,7 +113,7 @@ void main() {
 
   test('DataFrame and chart handles share counter', () {
     final dfHandle = api.registerDataFrame({
-      'a': [1]
+      'a': [1],
     });
     final chartHandle = api.registerChart({'type': 'bar'});
 
@@ -286,7 +286,7 @@ void main() {
     );
 
     expect(result, isA<String>());
-    expect(result as String, contains('hello_from_test'));
+    expect(result! as String, contains('hello_from_test'));
   });
 
   // =========================================================================
@@ -313,7 +313,7 @@ void main() {
       {'path': tmpPath, 'content': 'test content'},
     );
     expect(writeResult, isA<String>());
-    expect(writeResult as String, contains('12 chars'));
+    expect(writeResult! as String, contains('12 chars'));
 
     final readResult = await api.invoke(
       'native.file_read',

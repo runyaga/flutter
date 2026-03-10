@@ -22,6 +22,7 @@ import 'package:soliplex_agent/src/runtime/agent_session.dart';
 ///   }
 /// }
 /// ```
+// ignore: one_member_abstracts
 abstract interface class AgentUiDelegate {
   /// Suspends the tool loop until the user approves or rejects.
   ///
