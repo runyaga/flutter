@@ -103,7 +103,7 @@ Let me check that for you.
       expect(result, isA<ToolCallResponse>());
       final tc = result as ToolCallResponse;
       expect(tc.arguments['filter'], {
-        'age': {'gt': 18}
+        'age': {'gt': 18},
       });
       expect(tc.arguments['limit'], 10);
     });

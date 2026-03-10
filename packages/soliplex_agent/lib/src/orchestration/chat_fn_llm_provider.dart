@@ -6,7 +6,7 @@ import 'package:soliplex_agent/src/orchestration/agent_llm_provider.dart';
 import 'package:soliplex_agent/src/orchestration/tool_call_parser.dart';
 import 'package:soliplex_client/soliplex_client.dart';
 
-/// Callback type for LLM chat completions.
+/// Callback type for LLM chat.
 ///
 /// Accepts a list of messages and optional system prompt.
 /// Returns the LLM's text response.
@@ -15,36 +15,36 @@ import 'package:soliplex_client/soliplex_client.dart';
 /// `soliplex_agent`. The application layer bridges:
 /// ```dart
 /// final ollama = OllamaLlmProvider(model: 'qwen3:8b');
-/// final provider = CompletionsLlmProvider(
+/// final provider = ChatFnLlmProvider(
 ///   chatFn: (msgs, {systemPrompt, maxTokens}) =>
 ///       ollama.chat(msgs, systemPrompt: systemPrompt, maxTokens: maxTokens),
 /// );
 /// ```
-typedef ChatCompletionFn = Future<String> Function(
+typedef ChatFn = Future<String> Function(
   List<({String role, String content})> messages, {
   String? systemPrompt,
   int? maxTokens,
 });
 
-/// [AgentLlmProvider] backed by direct LLM SDK calls.
+/// [AgentLlmProvider] backed by a [ChatFn] callback.
 ///
-/// Wraps a [ChatCompletionFn] callback, converts AG-UI messages to
-/// simple role/content pairs, and synthesizes AG-UI events from the
-/// LLM's text response. Tool calling uses a text-based protocol
-/// (Phase 1) — the system prompt instructs the LLM to emit fenced
-/// `tool_call` blocks that [parseToolCallResponse] extracts.
-class CompletionsLlmProvider implements AgentLlmProvider {
-  /// Creates a [CompletionsLlmProvider].
+/// Wraps a [ChatFn] callback, converts AG-UI messages to simple
+/// role/content pairs, and synthesizes AG-UI events from the LLM's
+/// text response. Tool calling uses a text-based protocol (Phase 1)
+/// — the system prompt instructs the LLM to emit fenced `tool_call`
+/// blocks that [parseToolCallResponse] extracts.
+class ChatFnLlmProvider implements AgentLlmProvider {
+  /// Creates a [ChatFnLlmProvider].
   ///
-  /// [chatFn] is the LLM completion callback.
+  /// [chatFn] is the LLM chat callback.
   /// [systemPrompt] is an optional base system prompt prepended to
   /// the tool instructions.
-  CompletionsLlmProvider({
-    required ChatCompletionFn chatFn,
+  ChatFnLlmProvider({
+    required ChatFn chatFn,
     this.systemPrompt,
   }) : _chatFn = chatFn;
 
-  final ChatCompletionFn _chatFn;
+  final ChatFn _chatFn;
 
   /// Optional base system prompt.
   final String? systemPrompt;
@@ -121,7 +121,7 @@ class CompletionsLlmProvider implements AgentLlmProvider {
   }
 
   /// Converts AG-UI messages to simple role/content pairs for the
-  /// [ChatCompletionFn].
+  /// [ChatFn].
   List<({String role, String content})> _convertMessages(
     SimpleRunAgentInput input,
   ) {

@@ -2,7 +2,7 @@ import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('CompletionsLlmProvider', () {
+  group('ChatFnLlmProvider', () {
     const key = (
       serverId: 'local',
       roomId: 'test-room',
@@ -25,7 +25,7 @@ void main() {
     }
 
     test('text response emits correct AG-UI event sequence', () async {
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async =>
             'Hello! How can I help?',
       );
@@ -46,7 +46,7 @@ void main() {
     });
 
     test('tool call response emits ToolCall events', () async {
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async => '''
 ```tool_call
 {"name": "get_weather", "arguments": {"city": "NYC"}}
@@ -66,7 +66,7 @@ void main() {
     });
 
     test('tool call with prefix text emits text then tool call', () async {
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async => '''
 Let me check.
 
@@ -95,7 +95,7 @@ Let me check.
     });
 
     test('malformed tool call falls back to text response', () async {
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async => '''
 ```tool_call
 {invalid json}
@@ -113,7 +113,7 @@ Let me check.
     });
 
     test('LLM error emits RunErrorEvent', () async {
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async =>
             throw Exception('Connection refused'),
       );
@@ -130,7 +130,7 @@ Let me check.
     });
 
     test('existingRunId is used when provided', () async {
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async => 'ok',
       );
 
@@ -146,7 +146,7 @@ Let me check.
     });
 
     test('generates local runId when existingRunId is null', () async {
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async => 'ok',
       );
 
@@ -156,7 +156,7 @@ Let me check.
 
     test('system prompt includes tool definitions', () async {
       String? capturedSystemPrompt;
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async {
           capturedSystemPrompt = systemPrompt;
           return 'ok';
@@ -186,7 +186,7 @@ Let me check.
 
     test('empty tools list omits tool instructions', () async {
       String? capturedSystemPrompt;
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async {
           capturedSystemPrompt = systemPrompt;
           return 'ok';
@@ -206,7 +206,7 @@ Let me check.
 
     test('converts AG-UI messages to role/content pairs', () async {
       List<({String role, String content})>? capturedMessages;
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async {
           capturedMessages = messages;
           return 'ok';
@@ -235,7 +235,7 @@ Let me check.
 
     test('tool result messages formatted with prefix', () async {
       List<({String role, String content})>? capturedMessages;
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async {
           capturedMessages = messages;
           return 'ok';
@@ -265,7 +265,7 @@ Let me check.
 
     test('cancelled token prevents event emission', () async {
       final cancelToken = CancelToken()..cancel('test');
-      final provider = CompletionsLlmProvider(
+      final provider = ChatFnLlmProvider(
         chatFn: (messages, {systemPrompt, maxTokens}) async => 'should not run',
       );
 
