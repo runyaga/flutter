@@ -413,3 +413,4 @@ extension _AgentSessionStateX on AgentSessionState {
       this == AgentSessionState.failed ||
       this == AgentSessionState.cancelled;
 }
+
