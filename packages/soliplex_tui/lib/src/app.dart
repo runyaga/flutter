@@ -459,18 +459,21 @@ Future<void> listRooms({required String serverUrl}) async {
 }) {
   // Build the direct LLM provider regardless of Monty — it drives agent
   // runs whenever --llm-provider is set.
-  final provider = _createLlmProvider(
-    provider: llmProvider,
+  final created = _createLocalProvider(
+    providerName: llmProvider,
     model: llmModel,
-    url: llmUrl,
+    baseUrl: llmUrl,
     apiKey: llmApiKey,
+    systemPrompt: llmSystemPrompt,
   );
-  final agentLlmProvider = provider != null
-      ? ChatFnLlmProvider(
-          chatFn: provider.chat,
-          systemPrompt: llmSystemPrompt,
-        )
-      : null;
+  final provider = created?.completionsProvider;
+  final agentLlmProvider = created?.agentProvider;
+  if (agentLlmProvider != null) {
+    final stack = agentLlmProvider is StreamingLlmProvider
+        ? 'streaming (open_responses)'
+        : 'text-based (legacy)';
+    Loggers.app.info('Local LLM: $llmProvider via $stack');
+  }
 
   // MCP servers are also independent of Monty.
   final mcpConfigs = _parseMcpServers(mcpServers);
@@ -543,39 +546,72 @@ Future<void> listRooms({required String serverUrl}) async {
   );
 }
 
-/// Creates an [LlmProvider] from CLI flags, or returns `null` if no
-/// provider was specified.
-LlmProvider? _createLlmProvider({
-  String? provider,
+/// Creates a local LLM provider pair from CLI flags, or returns `null`
+/// if no provider was specified.
+///
+/// For Ollama and OpenAI, returns an [OpenResponsesLlmProvider] backed
+/// [StreamingLlmProvider] with native tool calling. For Anthropic (whose
+/// API is not OpenAI-compatible), falls back to [AnthropicLlmProvider]
+/// with [ChatFnLlmProvider].
+({LlmProvider completionsProvider, AgentLlmProvider agentProvider})?
+    _createLocalProvider({
+  String? providerName,
   String? model,
-  String? url,
+  String? baseUrl,
   String? apiKey,
+  String? systemPrompt,
 }) {
-  if (provider == null) return null;
-  return switch (provider) {
-    'anthropic' => AnthropicLlmProvider(
+  if (providerName == null) return null;
+  switch (providerName) {
+    case 'ollama':
+      final p = OpenResponsesLlmProvider.ollama(
+        model: model ?? 'llama3.2',
+        baseUrl: baseUrl ?? 'http://localhost:11434/v1',
+        systemPrompt: systemPrompt,
+      );
+      return (
+        completionsProvider: p,
+        agentProvider: StreamingLlmProvider(
+          chatFn: p.chatStream,
+          systemPrompt: systemPrompt,
+        ),
+      );
+    case 'anthropic':
+      final p = AnthropicLlmProvider(
         apiKey: apiKey ??
             Platform.environment['ANTHROPIC_API_KEY'] ??
             (throw ArgumentError(
               'Anthropic requires --llm-api-key or ANTHROPIC_API_KEY',
             )),
         model: model ?? 'claude-sonnet-4-20250514',
-      ),
-    'openai' => OpenAiLlmProvider(
+      );
+      return (
+        completionsProvider: p,
+        agentProvider: ChatFnLlmProvider(
+          chatFn: p.chat,
+          systemPrompt: systemPrompt,
+        ),
+      );
+    case 'openai':
+      final p = OpenResponsesLlmProvider.openai(
         apiKey: apiKey ??
             Platform.environment['OPENAI_API_KEY'] ??
             (throw ArgumentError(
               'OpenAI requires --llm-api-key or OPENAI_API_KEY',
             )),
         model: model ?? 'gpt-4o',
-        baseUrl: url,
-      ),
-    'ollama' => OllamaLlmProvider(
-        model: model ?? 'llama3.2',
-        baseUrl: url ?? 'http://localhost:11434/api',
-      ),
-    _ => throw ArgumentError('Unknown LLM provider: $provider'),
-  };
+        systemPrompt: systemPrompt,
+      );
+      return (
+        completionsProvider: p,
+        agentProvider: StreamingLlmProvider(
+          chatFn: p.chatStream,
+          systemPrompt: systemPrompt,
+        ),
+      );
+    default:
+      throw ArgumentError('Unknown LLM provider: $providerName');
+  }
 }
 
 /// Parses `--mcp name=command args...` specs into a config map.
