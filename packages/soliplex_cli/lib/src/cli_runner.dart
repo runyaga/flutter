@@ -801,8 +801,7 @@ void _traceExecutionEvent(ExecutionEvent event) {
     case ClientToolExecuting(:final toolName, :final toolCallId):
       stderr.writeln('[TOOL] Executing $toolName  id=${_short(toolCallId)}');
     case ClientToolCompleted(:final toolCallId, :final result, :final status):
-      final preview =
-          result.length > 200 ? '${result.substring(0, 200)}...' : result;
+      final preview = result;
       stderr.writeln(
         '[TOOL] Completed ${_short(toolCallId)}  '
         'status=$status  result=$preview',

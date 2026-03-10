@@ -68,15 +68,19 @@ class RunOrchestrator {
     required AgentLlmProvider llmProvider,
     required ToolRegistry toolRegistry,
     required Logger logger,
+    int maxToolDepth = defaultMaxToolDepth,
   })  : _llmProvider = llmProvider,
         _toolRegistry = toolRegistry,
-        _logger = logger;
+        _logger = logger,
+        _maxToolDepth = maxToolDepth;
+
+  /// Default maximum tool-call depth before the orchestrator aborts.
+  static const defaultMaxToolDepth = 10;
 
   final AgentLlmProvider _llmProvider;
   final ToolRegistry _toolRegistry;
   final Logger _logger;
-
-  static const _maxToolDepth = 10;
+  final int _maxToolDepth;
 
   final StreamController<RunState> _controller =
       StreamController<RunState>.broadcast();
