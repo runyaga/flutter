@@ -214,11 +214,13 @@ class HttpTransport {
   ) {
     late StreamController<List<int>> controller;
     StreamSubscription<List<int>>? subscription;
+    Timer? inactivityTimer;
 
     controller = StreamController<List<int>>(
       onListen: () {
         // Listen to cancellation
         cancelToken.whenCancelled.then((_) {
+          inactivityTimer?.cancel();
           if (!controller.isClosed) {
             controller
               ..addError(CancelledException(reason: cancelToken.reason))
@@ -227,16 +229,37 @@ class HttpTransport {
           }
         });
 
-        // Forward stream data
+        // Forward stream data with inactivity timeout on errors.
+        // Transient errors (e.g. Chrome ERR_NETWORK_CHANGED) are forwarded
+        // but don't kill the stream. If no data arrives within 30s after
+        // an error, the connection is considered dead and closed.
         subscription = source.listen(
-          controller.add,
-          onError: controller.addError,
-          onDone: controller.close,
+          (data) {
+            inactivityTimer?.cancel();
+            inactivityTimer = null;
+            controller.add(data);
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            controller.addError(error, stackTrace);
+            inactivityTimer ??= Timer(const Duration(seconds: 30), () {
+              subscription?.cancel();
+              if (!controller.isClosed) {
+                controller.close();
+              }
+            });
+          },
+          onDone: () {
+            inactivityTimer?.cancel();
+            controller.close();
+          },
         );
       },
       onPause: () => subscription?.pause(),
       onResume: () => subscription?.resume(),
-      onCancel: () => subscription?.cancel(),
+      onCancel: () {
+        inactivityTimer?.cancel();
+        subscription?.cancel();
+      },
     );
 
     return controller.stream;
@@ -253,7 +276,8 @@ class HttpTransport {
       return;
     }
 
-    final message = 'HTTP $statusCode'
+    final message =
+        'HTTP $statusCode'
         '${response.reasonPhrase != null ? ': ${response.reasonPhrase}' : ''}';
 
     if (statusCode == 401 || statusCode == 403) {
@@ -336,7 +360,8 @@ class HttpTransport {
 
     // Check if response is JSON
     final contentType = response.contentType ?? '';
-    final isJson = contentType.contains('application/json') ||
+    final isJson =
+        contentType.contains('application/json') ||
         body.trimLeft().startsWith('{') ||
         body.trimLeft().startsWith('[');
 
