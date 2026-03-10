@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:dart_monty_ffi/dart_monty_ffi.dart';
 import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:meta/meta.dart';
 import 'package:nocterm/nocterm.dart';
 import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
@@ -84,7 +85,7 @@ Future<void> launchTui({
       connection: connection,
       llmProvider: llm,
       toolRegistryResolver: (_) async =>
-          _mergeWithMcpTools(toolRegistry, mcpManager),
+          mergeWithMcpTools(toolRegistry, mcpManager),
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
       extensionFactory: wiring.extensionFactory,
@@ -195,7 +196,7 @@ Future<void> runHeadless({
       connection: connection,
       llmProvider: llm,
       toolRegistryResolver: (_) async =>
-          _mergeWithMcpTools(toolRegistry, mcpManager),
+          mergeWithMcpTools(toolRegistry, mcpManager),
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
       extensionFactory: wiring.extensionFactory,
@@ -528,7 +529,8 @@ Map<String, McpServerConfig> _parseMcpServers(List<String> specs) {
 /// registers each as a [ClientTool] whose executor delegates to the
 /// MCP server. Returns the base registry unchanged when [mcpManager]
 /// is null.
-Future<ToolRegistry> _mergeWithMcpTools(
+@visibleForTesting
+Future<ToolRegistry> mergeWithMcpTools(
   ToolRegistry base,
   McpConnectionManager? mcpManager,
 ) async {
@@ -545,11 +547,16 @@ Future<ToolRegistry> _mergeWithMcpTools(
         name: name,
         description: description,
         executor: (tc, _) async {
-          final args = tc.hasArguments
-              ? Map<String, Object?>.from(
-                  jsonDecode(tc.arguments) as Map,
-                )
-              : <String, Object?>{};
+          Map<String, Object?> args;
+          try {
+            args = tc.hasArguments
+                ? Map<String, Object?>.from(
+                    jsonDecode(tc.arguments) as Map,
+                  )
+                : <String, Object?>{};
+          } on Object catch (e) {
+            return jsonEncode({'error': 'Invalid tool arguments: $e'});
+          }
           final result = await mcpManager.executeTool(serverId, name, args);
           return jsonEncode(result);
         },

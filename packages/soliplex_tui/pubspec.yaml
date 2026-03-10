@@ -8,6 +8,7 @@ environment:
 
 dependencies:
   args: ^2.5.0
+  meta: ^1.12.0
   dart_monty_ffi:
     git:
       url: https://github.com/runyaga/dart_monty.git
