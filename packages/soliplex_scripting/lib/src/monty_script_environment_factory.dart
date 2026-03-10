@@ -56,6 +56,8 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
   McpToolExecutor? mcpExecutor,
   McpToolLister? mcpToolLister,
   McpServerLister? mcpServerLister,
+  LlmCompleter? llmCompleter,
+  LlmChatCompleter? llmChatCompleter,
   List<HostFunction>? extraFunctions,
   List<MontyPlugin>? extraPlugins,
   MontyPlatformFactory? platformFactory,
@@ -97,9 +99,17 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
         registry.register(FormPlugin(formApi: formApi));
       }
       if (agentApi != null) {
-        registry
-          ..register(AgentPlugin(agentApi: agentApi))
-          ..register(LlmPlugin(agentApi: agentApi));
+        registry.register(AgentPlugin(agentApi: agentApi));
+      }
+      if (llmCompleter != null && llmChatCompleter != null) {
+        registry.register(
+          LlmPlugin.fromCallbacks(
+            complete: llmCompleter,
+            chat: llmChatCompleter,
+          ),
+        );
+      } else if (agentApi != null) {
+        registry.register(LlmPlugin(agentApi: agentApi));
       }
       if (mcpExecutor != null) {
         registry.register(

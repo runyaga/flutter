@@ -1,22 +1,52 @@
 import 'package:soliplex_agent/soliplex_agent.dart' show AgentApi;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 
+/// Callback for single-shot LLM completions.
+typedef LlmCompleter = Future<String> Function(
+  String prompt, {
+  String? systemPrompt,
+  int? maxTokens,
+});
+
+/// Callback for multi-turn LLM chat completions.
+typedef LlmChatCompleter = Future<String> Function(
+  List<Map<String, String>> messages, {
+  String? systemPrompt,
+  int? maxTokens,
+});
+
 /// Plugin exposing LLM completion functions to Monty scripts.
 ///
-/// Delegates to [AgentApi.spawnAgent] + [AgentApi.getResult] in Phase 1.
-/// Phase 2 adds a direct `LlmCompleter` constructor path.
+/// Two construction paths:
+/// - [LlmPlugin.new] — delegates to [AgentApi] (backend-routed, Phase 1)
+/// - [LlmPlugin.fromCallbacks] — delegates to injected functions (direct
+///   SDK calls via `soliplex_completions`, Phase 2)
 class LlmPlugin extends MontyPlugin {
   LlmPlugin({
     required AgentApi agentApi,
     this.defaultRoom = 'general',
     Duration agentTimeout = const Duration(seconds: 30),
   })  : _agentApi = agentApi,
-        _agentTimeout = agentTimeout;
+        _agentTimeout = agentTimeout,
+        _completer = null,
+        _chatCompleter = null;
 
-  final AgentApi _agentApi;
+  /// Direct callback constructor — bypasses [AgentApi] entirely.
+  LlmPlugin.fromCallbacks({
+    required LlmCompleter complete,
+    required LlmChatCompleter chat,
+  })  : _completer = complete,
+        _chatCompleter = chat,
+        _agentApi = null,
+        _agentTimeout = Duration.zero,
+        defaultRoom = '';
+
+  final AgentApi? _agentApi;
   final Duration _agentTimeout;
+  final LlmCompleter? _completer;
+  final LlmChatCompleter? _chatCompleter;
 
-  /// Default room for LLM calls when none specified.
+  /// Default room for LLM calls when none specified (AgentApi path only).
   final String defaultRoom;
 
   @override
@@ -57,13 +87,17 @@ class LlmPlugin extends MontyPlugin {
           handler: (args) async {
             final prompt = args['prompt']! as String;
             final systemPrompt = args['system_prompt'] as String?;
-            final room = args['room'] as String? ?? defaultRoom;
 
+            if (_completer != null) {
+              return _completer(prompt, systemPrompt: systemPrompt);
+            }
+
+            final room = args['room'] as String? ?? defaultRoom;
             final fullPrompt = systemPrompt != null
                 ? 'System: $systemPrompt\n\n$prompt'
                 : prompt;
 
-            final handle = await _agentApi
+            final handle = await _agentApi!
                 .spawnAgent(room, fullPrompt)
                 .timeout(_agentTimeout);
             return _agentApi.getResult(handle).timeout(_agentTimeout);
@@ -106,6 +140,23 @@ class LlmPlugin extends MontyPlugin {
           handler: (args) async {
             final messages = args['messages']! as List<Object?>;
             final systemPrompt = args['system_prompt'] as String?;
+
+            final mapped = <Map<String, String>>[
+              for (final msg in messages)
+                {
+                  'role': (msg! as Map)['role']! as String,
+                  'content': (msg as Map)['content']! as String,
+                },
+            ];
+
+            if (_chatCompleter != null) {
+              final text = await _chatCompleter(
+                mapped,
+                systemPrompt: systemPrompt,
+              );
+              return <String, Object?>{'text': text};
+            }
+
             final room = args['room'] as String? ?? defaultRoom;
             final threadId = args['thread_id'] as String?;
 
@@ -115,14 +166,11 @@ class LlmPlugin extends MontyPlugin {
                 ..writeln('System: $systemPrompt')
                 ..writeln();
             }
-            for (final msg in messages) {
-              final m = msg! as Map;
-              final role = m['role'] as String;
-              final content = m['content'] as String;
-              buffer.writeln('$role: $content');
+            for (final m in mapped) {
+              buffer.writeln('${m['role']}: ${m['content']}');
             }
 
-            final handle = await _agentApi
+            final handle = await _agentApi!
                 .spawnAgent(
                   room,
                   buffer.toString().trimRight(),
