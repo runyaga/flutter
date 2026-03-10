@@ -222,7 +222,7 @@ class OpenResponsesLlmProvider implements LlmProvider {
     final request = or.CreateResponseRequest(
       model: model,
       input: input,
-      instructions: systemPrompt ?? this.systemPrompt,
+      instructions: systemPrompt,
       maxOutputTokens: maxTokens,
     );
 
@@ -250,7 +250,7 @@ class OpenResponsesLlmProvider implements LlmProvider {
     final request = or.CreateResponseRequest(
       model: model,
       input: input,
-      instructions: systemPrompt ?? this.systemPrompt,
+      instructions: systemPrompt,
       maxOutputTokens: maxTokens,
     );
 
@@ -309,9 +309,11 @@ class OpenResponsesLlmProvider implements LlmProvider {
     return switch (event) {
       or.OutputTextDeltaEvent(:final delta) => LlmTextDelta(delta),
       or.OutputTextDoneEvent(:final text) => LlmTextDone(text),
-      or.FunctionCallArgumentsDeltaEvent(:final callId, :final delta) =>
+      or.FunctionCallArgumentsDeltaEvent(:final callId, :final delta)
+          when callId != null =>
         LlmToolCallArgsDelta(callId: callId, delta: delta),
-      or.FunctionCallArgumentsDoneEvent(:final callId, :final arguments) =>
+      or.FunctionCallArgumentsDoneEvent(:final callId, :final arguments)
+          when callId != null =>
         LlmToolCallDone(callId: callId, arguments: arguments),
       or.OutputItemAddedEvent(:final item) => switch (item) {
           or.FunctionCallOutputItemResponse(:final callId, :final name) =>
