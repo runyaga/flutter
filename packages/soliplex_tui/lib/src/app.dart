@@ -550,9 +550,7 @@ Future<ToolRegistry> mergeWithMcpTools(
           Map<String, Object?> args;
           try {
             args = tc.hasArguments
-                ? Map<String, Object?>.from(
-                    jsonDecode(tc.arguments) as Map,
-                  )
+                ? Map<String, Object?>.from(jsonDecode(tc.arguments) as Map)
                 : <String, Object?>{};
           } on Object catch (e) {
             return jsonEncode({'error': 'Invalid tool arguments: $e'});

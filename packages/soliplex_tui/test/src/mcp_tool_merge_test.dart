@@ -80,9 +80,7 @@ void main() {
           {'server': 'brave', 'name': 'web_search', 'description': 'Search'},
         ],
       );
-      when(
-        () => mockMcp.executeTool('brave', 'web_search', any()),
-      ).thenAnswer(
+      when(() => mockMcp.executeTool('brave', 'web_search', any())).thenAnswer(
         (_) async => {
           'isError': false,
           'content': ['result text'],
@@ -114,9 +112,7 @@ void main() {
           {'server': 's1', 'name': 'no_args_tool', 'description': 'No args'},
         ],
       );
-      when(
-        () => mockMcp.executeTool('s1', 'no_args_tool', any()),
-      ).thenAnswer(
+      when(() => mockMcp.executeTool('s1', 'no_args_tool', any())).thenAnswer(
         (_) async => {
           'isError': false,
           'content': ['done'],
@@ -158,9 +154,7 @@ void main() {
 
       expect(decoded, contains('error'));
       expect(decoded['error'], contains('Invalid tool arguments'));
-      verifyNever(
-        () => mockMcp.executeTool(any(), any(), any()),
-      );
+      verifyNever(() => mockMcp.executeTool(any(), any(), any()));
     });
 
     test('handles empty description gracefully', () async {
