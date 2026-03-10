@@ -31,6 +31,8 @@ packages/
   soliplex_interpreter_monty/ # Pure Dart: Monty Python sandbox bridge
   soliplex_logging/        # Pure Dart: logging, DiskQueue, BackendLogSink
   soliplex_scripting/      # Pure Dart: wiring ag-ui <-> interpreter bridge
+  soliplex_completions/    # Pure Dart: LLM providers (Anthropic, OpenAI, Ollama)
+  soliplex_mcp/            # Pure Dart: MCP connection manager (mcp_dart wrapper)
 docs/                     # Documentation (see docs/index.md)
 ```
 

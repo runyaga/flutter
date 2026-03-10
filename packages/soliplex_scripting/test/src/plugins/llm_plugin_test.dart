@@ -195,6 +195,76 @@ void main() {
       });
     });
   });
+
+  group('LlmPlugin.fromCallbacks', () {
+    late List<String> completeCalls;
+    late List<List<Map<String, String>>> chatCalls;
+    late LlmPlugin plugin;
+
+    setUp(() {
+      completeCalls = [];
+      chatCalls = [];
+      plugin = LlmPlugin.fromCallbacks(
+        complete: (prompt, {String? systemPrompt, int? maxTokens}) async {
+          completeCalls.add(prompt);
+          return 'callback response';
+        },
+        chat: (messages, {String? systemPrompt, int? maxTokens}) async {
+          chatCalls.add(messages);
+          return 'chat callback response';
+        },
+      );
+    });
+
+    test('namespace is llm', () {
+      expect(plugin.namespace, 'llm');
+    });
+
+    test('provides 2 functions', () {
+      expect(plugin.functions, hasLength(2));
+    });
+
+    test('llm_complete delegates to completer callback', () async {
+      final fn = plugin.functions.firstWhere(
+        (f) => f.schema.name == 'llm_complete',
+      );
+
+      final result = await fn.handler({'prompt': 'Hello'});
+
+      expect(result, 'callback response');
+      expect(completeCalls, ['Hello']);
+    });
+
+    test('llm_chat delegates to chatCompleter callback', () async {
+      final fn = plugin.functions.firstWhere(
+        (f) => f.schema.name == 'llm_chat',
+      );
+
+      final result = await fn.handler({
+        'messages': <Object?>[
+          <String, Object?>{'role': 'user', 'content': 'Hi'},
+        ],
+      });
+
+      expect(result, isA<Map<String, Object?>>());
+      final map = result! as Map<String, Object?>;
+      expect(map['text'], 'chat callback response');
+      expect(map.containsKey('thread_id'), isTrue);
+      expect(map['thread_id'], isNull);
+      expect(chatCalls, hasLength(1));
+      expect(chatCalls.first.first['role'], 'user');
+      expect(chatCalls.first.first['content'], 'Hi');
+    });
+
+    test('registers onto bridge via PluginRegistry', () async {
+      final bridge = RecordingBridge();
+      final registry = PluginRegistry()..register(plugin);
+      await registry.attachTo(bridge);
+
+      final names = bridge.registered.map((f) => f.schema.name).toSet();
+      expect(names, containsAll(['llm_complete', 'llm_chat']));
+    });
+  });
 }
 
 class _NeverResolvingAgentApi implements FakeAgentApi {
