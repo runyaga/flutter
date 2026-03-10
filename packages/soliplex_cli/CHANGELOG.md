@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Add `--llm-provider`, `--llm-model`, `--llm-system-prompt` flags for local LLM mode (#143).
+- Local mode generates thread IDs locally, disables backend-dependent commands.
+- Supports Ollama, Anthropic, and OpenAI providers via `soliplex_completions`.
+
 ## 0.2.0
 
 - Updated for `ServerConnection` unification (#57).

@@ -11,6 +11,7 @@ import 'package:soliplex_cli/src/result_printer.dart';
 import 'package:soliplex_cli/src/tool_definitions.dart';
 import 'package:soliplex_client/soliplex_client.dart'
     show DartHttpClient, SoliplexApi;
+import 'package:soliplex_completions/soliplex_completions.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
 
@@ -62,6 +63,21 @@ Future<void> runCli(List<String> args) async {
       splitCommas: false,
       help: 'Send prompt(s) non-interactively and exit. '
           'Multiple --prompt flags run sequentially in the same thread.',
+    )
+    ..addOption(
+      'llm-provider',
+      help: 'Local LLM provider (ollama, anthropic, openai). '
+          'Bypasses the AG-UI backend.',
+      allowed: ['ollama', 'anthropic', 'openai'],
+    )
+    ..addOption(
+      'llm-model',
+      help: 'Model name for the LLM provider '
+          '(e.g. qwen3:8b, claude-sonnet-4-20250514, gpt-4o).',
+    )
+    ..addOption(
+      'llm-system-prompt',
+      help: 'System prompt for the local LLM provider.',
     );
 
   final parsed = parser.parse(args);
@@ -82,6 +98,10 @@ Future<void> _runSession(ArgResults parsed) async {
   final host = parsed.option('host')!;
   final room = parsed.option('room')!;
   final verbose = parsed.flag('verbose');
+  final llmProviderName = parsed.option('llm-provider');
+  final llmModel = parsed.option('llm-model');
+  final llmSystemPrompt = parsed.option('llm-system-prompt');
+  final localMode = llmProviderName != null;
 
   final connection = verbose
       ? createVerboseConnection(host)
@@ -116,6 +136,25 @@ Future<void> _runSession(ArgResults parsed) async {
 
   final montyEnabled = parsed.flag('monty');
   final wasmMode = parsed.flag('wasm-mode');
+
+  // Build the LLM provider: local (ChatFnLlmProvider) or backend (AgUi).
+  final AgentLlmProvider llmProvider;
+  if (localMode) {
+    final completionsProvider = _createLlmProvider(
+      providerName: llmProviderName,
+      model: llmModel,
+    );
+    if (completionsProvider == null) return; // Error already printed.
+    llmProvider = ChatFnLlmProvider(
+      chatFn: completionsProvider.chat,
+      systemPrompt: llmSystemPrompt,
+    );
+  } else {
+    llmProvider = AgUiLlmProvider(
+      api: connection.api,
+      agUiStreamClient: connection.agUiStreamClient,
+    );
+  }
 
   SessionExtensionFactory? extensionFactory;
   // Deferred: set after runtime creation so the closure captures the live
@@ -157,10 +196,7 @@ Future<void> _runSession(ArgResults parsed) async {
 
   final runtime = AgentRuntime(
     connection: connection,
-    llmProvider: AgUiLlmProvider(
-      api: connection.api,
-      agUiStreamClient: connection.agUiStreamClient,
-    ),
+    llmProvider: llmProvider,
     toolRegistryResolver: (_) async => toolRegistry,
     platform: wasmMode
         ? const WebPlatformConstraints()
@@ -175,23 +211,27 @@ Future<void> _runSession(ArgResults parsed) async {
 
   final ctx = _CliContext(
     runtime: runtime,
-    api: connection.api,
+    api: localMode ? null : connection.api,
     defaultRoom: room,
     verbose: verbose,
+    localMode: localMode,
   );
 
   if (verbose) stderr.writeln('[verbose mode]');
   final toolNames = toolRegistry.toolDefinitions.map((t) => t.name).toList();
   if (montyEnabled) toolNames.add('execute_python');
 
+  final banner = localMode
+      ? 'soliplex-cli local mode: $llmProviderName'
+          '${llmModel != null ? ' ($llmModel)' : ''}'
+          ' (room: $room)'
+      : 'soliplex-cli connected to $host (room: $room)';
+
   final prompts = parsed.multiOption('prompt');
   if (prompts.isNotEmpty) {
     // Non-interactive mode: run prompts sequentially, then exit.
     if (verbose) {
-      stderr.writeln(
-        'soliplex-cli connected to $host (room: $room)  '
-        'tools: [${toolNames.join(', ')}]',
-      );
+      stderr.writeln('$banner  tools: [${toolNames.join(', ')}]');
     }
     await _runPrompts(ctx, prompts);
     await runtime.dispose();
@@ -200,7 +240,7 @@ Future<void> _runSession(ArgResults parsed) async {
   }
 
   stdout
-    ..writeln('soliplex-cli connected to $host (room: $room)')
+    ..writeln(banner)
     ..writeln(
       toolNames.isEmpty
           ? 'tools: (none)'
@@ -247,12 +287,14 @@ class _CliContext {
     required this.api,
     required this.defaultRoom,
     required this.verbose,
+    this.localMode = false,
   });
 
   final AgentRuntime runtime;
-  final SoliplexApi api;
+  final SoliplexApi? api;
   final String defaultRoom;
   final bool verbose;
+  final bool localMode;
   final List<AgentSession> tracked = [];
 
   /// Active thread per room: roomId → threadId.
@@ -306,7 +348,11 @@ Future<void> _dispatch({
   }
 
   if (input == '/rooms') {
-    await _listRooms(ctx.api);
+    if (ctx.api == null) {
+      stdout.writeln('Not available in local LLM mode.');
+      return;
+    }
+    await _listRooms(ctx.api!);
     return;
   }
 
@@ -391,17 +437,31 @@ Future<void> _dispatch({
 }
 
 Future<void> _sendAndWait(_CliContext ctx, String room, String prompt) async {
-  final existingThread = ctx.threadFor(room);
-  final label = existingThread != null
-      ? 'Continuing thread ${_short(existingThread)}...'
-      : 'Starting new thread...';
-  stdout.writeln(label);
+  // In local mode, always provide a threadId so AgentRuntime doesn't call
+  // the backend API's createThread.
+  final String? threadId;
+  if (ctx.localMode) {
+    final existing = ctx.threadFor(room);
+    if (existing != null) {
+      threadId = existing;
+      stdout.writeln('Continuing thread ${_short(threadId)}...');
+    } else {
+      threadId = 'local-${DateTime.now().microsecondsSinceEpoch}';
+      stdout.writeln('Starting new local thread...');
+    }
+  } else {
+    threadId = ctx.threadFor(room);
+    final label = threadId != null
+        ? 'Continuing thread ${_short(threadId)}...'
+        : 'Starting new thread...';
+    stdout.writeln(label);
+  }
 
   try {
     final session = await ctx.runtime.spawn(
       roomId: room,
       prompt: prompt,
-      threadId: existingThread,
+      threadId: threadId,
     );
     ctx.setThread(room, session.threadKey.threadId);
 
@@ -428,9 +488,13 @@ Future<void> _sendAndWait(_CliContext ctx, String room, String prompt) async {
 
 Future<void> _spawnBackground(_CliContext ctx, String prompt) async {
   try {
+    final threadId = ctx.localMode
+        ? 'local-spawn-${DateTime.now().microsecondsSinceEpoch}'
+        : null;
     final session = await ctx.runtime.spawn(
       roomId: ctx.defaultRoom,
       prompt: prompt,
+      threadId: threadId,
     );
     ctx.tracked.add(session);
     stdout.writeln(
@@ -610,6 +674,45 @@ void _traceExecutionEvent(ExecutionEvent event) {
 }
 
 String _short(String id) => id.length > 12 ? '${id.substring(0, 12)}...' : id;
+
+/// Creates an [LlmProvider] from CLI flags.
+///
+/// Returns `null` and prints an error if configuration is invalid
+/// (e.g. missing API key for Anthropic/OpenAI).
+LlmProvider? _createLlmProvider({
+  required String providerName,
+  String? model,
+}) {
+  switch (providerName) {
+    case 'ollama':
+      return OllamaLlmProvider(model: model ?? 'qwen3:8b');
+    case 'anthropic':
+      final apiKey = Platform.environment['ANTHROPIC_API_KEY'];
+      if (apiKey == null || apiKey.isEmpty) {
+        stderr.writeln('Error: ANTHROPIC_API_KEY environment variable required '
+            'for --llm-provider anthropic');
+        return null;
+      }
+      return AnthropicLlmProvider(
+        apiKey: apiKey,
+        model: model ?? 'claude-sonnet-4-20250514',
+      );
+    case 'openai':
+      final apiKey = Platform.environment['OPENAI_API_KEY'];
+      if (apiKey == null || apiKey.isEmpty) {
+        stderr.writeln('Error: OPENAI_API_KEY environment variable required '
+            'for --llm-provider openai');
+        return null;
+      }
+      return OpenAiLlmProvider(
+        apiKey: apiKey,
+        model: model ?? 'gpt-4o',
+      );
+    default:
+      stderr.writeln('Unknown LLM provider: $providerName');
+      return null;
+  }
+}
 
 void _printHelp() {
   stdout.writeln('''
