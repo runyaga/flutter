@@ -9,7 +9,7 @@ import 'package:nocterm/nocterm.dart';
 import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart'
-    show DartHttpClient, SoliplexApi, ToolCallInfo;
+    show DartHttpClient, SoliplexApi, ThreadHistory, ToolCallInfo;
 import 'package:soliplex_completions/soliplex_completions.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:soliplex_mcp/soliplex_mcp.dart';
@@ -39,7 +39,10 @@ Future<void> launchTui({
   String? llmModel,
   String? llmUrl,
   String? llmApiKey,
+  String? llmSystemPrompt,
   List<String> mcpServers = const [],
+  int executionTimeoutSeconds = 30,
+  String? prelude,
 }) async {
   final fileSink = FileSink(filePath: logFile);
   LogManager.instance
@@ -76,7 +79,10 @@ Future<void> launchTui({
       llmModel: llmModel,
       llmUrl: llmUrl,
       llmApiKey: llmApiKey,
+      llmSystemPrompt: llmSystemPrompt,
       mcpServers: mcpServers,
+      executionTimeoutSeconds: executionTimeoutSeconds,
+      prelude: prelude,
     );
     mcpManager = wiring.mcpManager;
 
@@ -150,7 +156,10 @@ Future<void> runHeadless({
   String? llmModel,
   String? llmUrl,
   String? llmApiKey,
+  String? llmSystemPrompt,
   List<String> mcpServers = const [],
+  int executionTimeoutSeconds = 30,
+  String? prelude,
 }) async {
   final fileSink = FileSink(filePath: logFile);
   LogManager.instance
@@ -196,7 +205,10 @@ Future<void> runHeadless({
       llmModel: llmModel,
       llmUrl: llmUrl,
       llmApiKey: llmApiKey,
+      llmSystemPrompt: llmSystemPrompt,
       mcpServers: mcpServers,
+      executionTimeoutSeconds: executionTimeoutSeconds,
+      prelude: prelude,
     );
     mcpManager = wiring.mcpManager;
 
@@ -274,6 +286,7 @@ Future<void> _runHeadlessPlain({
   required List<String> messages,
   required bool verbose,
 }) async {
+  ThreadHistory? history;
   for (final message in messages) {
     if (verbose) stderr.writeln('[prompt] $message');
 
@@ -281,16 +294,33 @@ Future<void> _runHeadlessPlain({
       roomId: roomId,
       prompt: message,
       threadId: threadId,
+      cachedHistory: history,
     );
 
-    if (verbose) {
-      effect(() {
-        final state = session.runState.value;
+    CompletedState? completedState;
+    final cleanup = effect(() {
+      final state = session.runState.value;
+      if (verbose) {
         stderr.writeln('[state] ${_describeRunState(state)}');
-      });
-    }
+      }
+      if (state is CompletedState) {
+        completedState = state;
+      }
+    });
 
     final result = await session.result;
+    cleanup();
+
+    // Thread conversation history to next turn.
+    if (completedState != null) {
+      history = ThreadHistory(
+        messages: completedState!.conversation.messages,
+        aguiState: completedState!.conversation.aguiState,
+        messageStates: completedState!.conversation.messageStates,
+      );
+    }
+
+    session.dispose();
 
     switch (result) {
       case AgentSuccess(:final output):
@@ -320,6 +350,7 @@ Future<void> _runHeadlessJson({
   var turns = 0;
   String? agentOutput;
 
+  ThreadHistory? history;
   for (final message in messages) {
     if (verbose) stderr.writeln('[prompt] $message');
     turns++;
@@ -328,10 +359,11 @@ Future<void> _runHeadlessJson({
       roomId: roomId,
       prompt: message,
       threadId: threadId,
+      cachedHistory: history,
     );
 
-    // Collect tool calls as they flow through ToolYieldingState.
-    // Deduplicate by tool call ID since effect() may re-fire.
+    // Collect tool calls and capture final conversation as state flows.
+    CompletedState? completedState;
     final cleanup = effect(() {
       final state = session.runState.value;
       if (verbose) {
@@ -344,10 +376,24 @@ Future<void> _runHeadlessJson({
           }
         }
       }
+      if (state is CompletedState) {
+        completedState = state;
+      }
     });
 
     final result = await session.result;
     cleanup();
+
+    // Thread conversation history to next turn.
+    if (completedState != null) {
+      history = ThreadHistory(
+        messages: completedState!.conversation.messages,
+        aguiState: completedState!.conversation.aguiState,
+        messageStates: completedState!.conversation.messageStates,
+      );
+    }
+
+    session.dispose();
 
     switch (result) {
       case AgentSuccess(:final output):
@@ -406,7 +452,10 @@ Future<void> listRooms({required String serverUrl}) async {
   String? llmModel,
   String? llmUrl,
   String? llmApiKey,
+  String? llmSystemPrompt,
   List<String> mcpServers = const [],
+  int executionTimeoutSeconds = 30,
+  String? prelude,
 }) {
   // Build the direct LLM provider regardless of Monty — it drives agent
   // runs whenever --llm-provider is set.
@@ -416,8 +465,12 @@ Future<void> listRooms({required String serverUrl}) async {
     url: llmUrl,
     apiKey: llmApiKey,
   );
-  final agentLlmProvider =
-      provider != null ? ChatFnLlmProvider(chatFn: provider.chat) : null;
+  final agentLlmProvider = provider != null
+      ? ChatFnLlmProvider(
+          chatFn: provider.chat,
+          systemPrompt: llmSystemPrompt,
+        )
+      : null;
 
   // MCP servers are also independent of Monty.
   final mcpConfigs = _parseMcpServers(mcpServers);
@@ -441,11 +494,20 @@ Future<void> listRooms({required String serverUrl}) async {
   return (
     extensionFactory: () async {
       final hostApi = TuiHostApi(); // implements HostApi + SessionExtension
+      final timeout = Duration(seconds: executionTimeoutSeconds);
+      final limits = MontyLimits(
+        timeoutMs: executionTimeoutSeconds * 1000,
+        memoryBytes: MontyLimitsDefaults.tool.memoryBytes,
+        stackDepth: MontyLimitsDefaults.tool.stackDepth,
+      );
       final factory = createMontyScriptEnvironmentFactory(
         hostApi: hostApi,
         agentApi: agentApi,
         blackboardApi: blackboardApi,
-        limits: MontyLimitsDefaults.tool,
+        limits: limits,
+        executionTimeout: timeout,
+        agentTimeout: timeout,
+        platformFactory: () async => MontyFfi(bindings: NativeBindingsFfi()),
         llmCompleter: provider?.complete,
         llmChatCompleter: provider != null
             ? (messages, {systemPrompt, maxTokens}) => provider.chat(
@@ -460,6 +522,12 @@ Future<void> listRooms({required String serverUrl}) async {
         mcpExecutor: mcpManager?.executeTool,
         mcpToolLister: mcpManager?.listTools,
         mcpServerLister: mcpManager?.listServers,
+        streamFactories: {
+          'counter': () => Stream.fromIterable([1, 2, 3, 4, 5]),
+          'words': () =>
+              Stream.fromIterable(['hello', 'world', 'from', 'stream']),
+        },
+        prelude: prelude,
       );
       final env = await factory();
       return [
