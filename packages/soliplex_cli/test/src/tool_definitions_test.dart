@@ -12,8 +12,7 @@ class _FakeContext implements ToolExecutionContext {
   Future<AgentSession> spawnChild({
     required String roomId,
     required String prompt,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
   @override
   void emitEvent(ExecutionEvent event) => throw UnimplementedError();
   @override

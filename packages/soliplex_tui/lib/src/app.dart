@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dart_monty_ffi/dart_monty_ffi.dart';
@@ -7,13 +8,15 @@ import 'package:nocterm/nocterm.dart';
 import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart'
-    show DartHttpClient, SoliplexApi;
+    show DartHttpClient, SoliplexApi, ToolCallInfo;
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
 
 import 'package:soliplex_tui/src/components/chat_page.dart';
 import 'package:soliplex_tui/src/file_sink.dart';
+import 'package:soliplex_tui/src/host/tui_host_api.dart';
 import 'package:soliplex_tui/src/loggers.dart';
+import 'package:soliplex_tui/src/services/tui_ui_delegate.dart';
 import 'package:soliplex_tui/src/tool_definitions.dart';
 
 /// Launches the Soliplex TUI application.
@@ -54,12 +57,15 @@ Future<void> launchTui({
     final (:extensionFactory, :bindAgentApi) =
         _buildMontyWiring(montyEnabled: montyEnabled);
 
+    final uiDelegate = TuiUiDelegate();
+
     runtime = AgentRuntime(
       connection: connection,
       toolRegistryResolver: (_) async => toolRegistry,
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
       extensionFactory: extensionFactory,
+      uiDelegate: uiDelegate,
     );
 
     bindAgentApi(runtime);
@@ -68,6 +74,7 @@ Future<void> launchTui({
       SoliplexTuiApp(
         runtime: runtime,
         roomId: resolvedRoomId,
+        uiDelegate: uiDelegate,
       ),
     );
   } on Exception catch (e, s) {
@@ -101,6 +108,8 @@ Future<void> runHeadless({
   String? roomId,
   String? threadId,
   bool verbose = false,
+  bool json = false,
+  bool autoApprove = false,
   bool montyEnabled = false,
   bool noTools = false,
   Set<String>? enabledTools,
@@ -145,41 +154,31 @@ Future<void> runHeadless({
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
       extensionFactory: extensionFactory,
+      uiDelegate: autoApprove ? const AutoApproveUiDelegate() : null,
     );
 
     bindAgentApi(runtime);
 
-    for (final message in messages) {
-      if (verbose) stderr.writeln('[prompt] $message');
-
-      final session = await runtime.spawn(
+    if (json) {
+      await _runHeadlessJson(
+        runtime: runtime,
         roomId: resolvedRoomId,
-        prompt: message,
         threadId: resolvedThreadId,
+        messages: messages,
+        verbose: verbose,
       );
-
-      if (verbose) {
-        effect(() {
-          final state = session.runState.value;
-          stderr.writeln('[state] ${_describeRunState(state)}');
-        });
-      }
-
-      final result = await session.result;
-
-      switch (result) {
-        case AgentSuccess(:final output):
-          stdout.writeln(output);
-        case AgentFailure(:final error):
-          stderr.writeln('Error: $error');
-          exit(1);
-        case AgentTimedOut(:final elapsed):
-          stderr.writeln('Timed out after $elapsed');
-          exit(1);
-      }
+    } else {
+      await _runHeadlessPlain(
+        runtime: runtime,
+        roomId: resolvedRoomId,
+        threadId: resolvedThreadId,
+        messages: messages,
+        verbose: verbose,
+      );
     }
 
-    // Dispose in a guarded zone to absorb async SSE stream cleanup errors.
+    // Dispose in a guarded zone to absorb async SSE stream cleanup
+    // errors.
     await runZonedGuarded(
       () => runtime!.dispose(),
       (e, s) => Loggers.agui.debug('Ignoring dispose error', error: e),
@@ -187,7 +186,15 @@ Future<void> runHeadless({
     runtime = null;
   } on Exception catch (e, s) {
     Loggers.app.error('Headless fatal error', error: e, stackTrace: s);
-    stderr.writeln('Error: $e');
+    if (json) {
+      final errorEnvelope = {
+        'status': 'error',
+        'errors': ['$e'],
+      };
+      stdout.writeln(jsonEncode(errorEnvelope));
+    } else {
+      stderr.writeln('Error: $e');
+    }
     exit(1);
   } finally {
     await runtime?.dispose();
@@ -195,6 +202,114 @@ Future<void> runHeadless({
     await LogManager.instance.close();
     await connection.close();
   }
+}
+
+/// Plain-text headless output (original behavior).
+Future<void> _runHeadlessPlain({
+  required AgentRuntime runtime,
+  required String roomId,
+  required String threadId,
+  required List<String> messages,
+  required bool verbose,
+}) async {
+  for (final message in messages) {
+    if (verbose) stderr.writeln('[prompt] $message');
+
+    final session = await runtime.spawn(
+      roomId: roomId,
+      prompt: message,
+      threadId: threadId,
+    );
+
+    if (verbose) {
+      effect(() {
+        final state = session.runState.value;
+        stderr.writeln('[state] ${_describeRunState(state)}');
+      });
+    }
+
+    final result = await session.result;
+
+    switch (result) {
+      case AgentSuccess(:final output):
+        stdout.writeln(output);
+      case AgentFailure(:final error):
+        stderr.writeln('Error: $error');
+        exit(1);
+      case AgentTimedOut(:final elapsed):
+        stderr.writeln('Timed out after $elapsed');
+        exit(1);
+    }
+  }
+}
+
+/// JSON headless output — collects tool calls, wall time, and turns.
+Future<void> _runHeadlessJson({
+  required AgentRuntime runtime,
+  required String roomId,
+  required String threadId,
+  required List<String> messages,
+  required bool verbose,
+}) async {
+  final sw = Stopwatch()..start();
+  final seenToolIds = <String>{};
+  final allToolCalls = <Map<String, dynamic>>[];
+  final errors = <String>[];
+  var turns = 0;
+  String? agentOutput;
+
+  for (final message in messages) {
+    if (verbose) stderr.writeln('[prompt] $message');
+    turns++;
+
+    final session = await runtime.spawn(
+      roomId: roomId,
+      prompt: message,
+      threadId: threadId,
+    );
+
+    // Collect tool calls as they flow through ToolYieldingState.
+    // Deduplicate by tool call ID since effect() may re-fire.
+    final cleanup = effect(() {
+      final state = session.runState.value;
+      if (verbose) {
+        stderr.writeln('[state] ${_describeRunState(state)}');
+      }
+      if (state is ToolYieldingState) {
+        for (final tc in state.pendingToolCalls) {
+          if (seenToolIds.add(tc.id)) {
+            allToolCalls.add(_toolCallToJson(tc));
+          }
+        }
+      }
+    });
+
+    final result = await session.result;
+    cleanup();
+
+    switch (result) {
+      case AgentSuccess(:final output):
+        agentOutput = output;
+      case AgentFailure(:final error):
+        errors.add(error);
+      case AgentTimedOut(:final elapsed):
+        errors.add('Timed out after $elapsed');
+    }
+  }
+
+  sw.stop();
+
+  final envelope = <String, dynamic>{
+    'status': errors.isEmpty ? 'ok' : 'error',
+    'turns': turns,
+    'wall_time_ms': sw.elapsedMilliseconds,
+    'agent_result': agentOutput,
+    'tool_calls': allToolCalls,
+    if (errors.isNotEmpty) 'errors': errors,
+  };
+
+  stdout.writeln(jsonEncode(envelope));
+  if (errors.isNotEmpty) exit(1);
 }
 
 /// Lists available rooms from the server and prints them to [stdout].
@@ -227,12 +342,12 @@ Future<void> listRooms({
   }
 
   MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
-  final hostApi = FakeHostApi();
   final blackboardApi = DirectBlackboardApi();
   AgentApi? agentApi;
 
   return (
     extensionFactory: () async {
+      final hostApi = TuiHostApi(); // implements HostApi + SessionExtension
       final factory = createMontyScriptEnvironmentFactory(
         hostApi: hostApi,
         agentApi: agentApi,
@@ -240,7 +355,10 @@ Future<void> listRooms({
         limits: MontyLimitsDefaults.tool,
       );
       final env = await factory();
-      return [ScriptEnvironmentExtension(env)];
+      return [
+        hostApi, // onAttach gives it the AgentSession
+        ScriptEnvironmentExtension(env),
+      ];
     },
     bindAgentApi: (AgentRuntime runtime) {
       agentApi = RuntimeAgentApi(runtime: runtime);
@@ -259,6 +377,13 @@ Future<String> _resolveRoom(SoliplexApi api, String? roomId) async {
   }
   return rooms.first.id;
 }
+
+/// Serializes a [ToolCallInfo] for the JSON envelope.
+Map<String, dynamic> _toolCallToJson(ToolCallInfo tc) => {
+      'id': tc.id,
+      'name': tc.name,
+      if (tc.hasArguments) 'arguments': tc.arguments,
+    };
 
 /// Formats a [RunState] as a concise string for verbose logging.
 String _describeRunState(RunState state) {
@@ -297,11 +422,13 @@ class SoliplexTuiApp extends StatelessComponent {
   const SoliplexTuiApp({
     required this.runtime,
     required this.roomId,
+    this.uiDelegate,
     super.key,
   });
 
   final AgentRuntime runtime;
   final String roomId;
+  final TuiUiDelegate? uiDelegate;
 
   @override
   Component build(BuildContext context) {
@@ -311,6 +438,7 @@ class SoliplexTuiApp extends StatelessComponent {
       home: ChatPage(
         runtime: runtime,
         roomId: roomId,
+        uiDelegate: uiDelegate,
       ),
     );
   }
