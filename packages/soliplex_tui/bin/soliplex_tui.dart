@@ -67,6 +67,26 @@ Future<void> main(List<String> arguments) async {
       'tools',
       help: 'Comma-separated tool names to advertise (default: all).',
     )
+    ..addOption(
+      'llm-provider',
+      help: 'LLM provider: ollama, anthropic, openai (requires --monty).',
+    )
+    ..addOption(
+      'llm-model',
+      help: 'LLM model name (provider-specific default if omitted).',
+    )
+    ..addOption(
+      'llm-url',
+      help: 'LLM API base URL (provider-specific default if omitted).',
+    )
+    ..addOption(
+      'llm-api-key',
+      help: 'LLM API key (or set ANTHROPIC_API_KEY / OPENAI_API_KEY).',
+    )
+    ..addMultiOption(
+      'mcp',
+      help: 'MCP server: name=command args... (repeatable, requires --monty).',
+    )
     ..addFlag('help', abbr: 'h', negatable: false, help: 'Show usage');
 
   final ArgResults results;
@@ -103,6 +123,12 @@ Future<void> main(List<String> arguments) async {
   final toolsFilter = results.option('tools');
   final enabledTools = toolsFilter?.split(',').map((s) => s.trim()).toSet();
 
+  final llmProvider = results.option('llm-provider');
+  final llmModel = results.option('llm-model');
+  final llmUrl = results.option('llm-url');
+  final llmApiKey = results.option('llm-api-key');
+  final mcpServers = results.multiOption('mcp');
+
   final prompts = results.multiOption('prompt');
   if (prompts.isNotEmpty) {
     await runHeadless(
@@ -117,6 +143,11 @@ Future<void> main(List<String> arguments) async {
       montyEnabled: montyEnabled,
       noTools: noTools,
       enabledTools: enabledTools,
+      llmProvider: llmProvider,
+      llmModel: llmModel,
+      llmUrl: llmUrl,
+      llmApiKey: llmApiKey,
+      mcpServers: mcpServers,
     );
     return;
   }
@@ -143,6 +174,11 @@ Future<void> main(List<String> arguments) async {
       montyEnabled: montyEnabled,
       noTools: noTools,
       enabledTools: enabledTools,
+      llmProvider: llmProvider,
+      llmModel: llmModel,
+      llmUrl: llmUrl,
+      llmApiKey: llmApiKey,
+      mcpServers: mcpServers,
     );
     return;
   }
@@ -154,5 +190,10 @@ Future<void> main(List<String> arguments) async {
     montyEnabled: montyEnabled,
     noTools: noTools,
     enabledTools: enabledTools,
+    llmProvider: llmProvider,
+    llmModel: llmModel,
+    llmUrl: llmUrl,
+    llmApiKey: llmApiKey,
+    mcpServers: mcpServers,
   );
 }
