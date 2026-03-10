@@ -25,12 +25,16 @@ dependencies:
     path: ../soliplex_agent
   soliplex_client:
     path: ../soliplex_client
+  soliplex_completions:
+    path: ../soliplex_completions
   soliplex_dataframe:
     path: ../soliplex_dataframe
   soliplex_interpreter_monty:
     path: ../soliplex_interpreter_monty
   soliplex_logging:
     path: ../soliplex_logging
+  soliplex_mcp:
+    path: ../soliplex_mcp
   soliplex_scripting:
     path: ../soliplex_scripting
 

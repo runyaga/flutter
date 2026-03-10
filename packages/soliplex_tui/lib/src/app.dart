@@ -9,7 +9,9 @@ import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart'
     show DartHttpClient, SoliplexApi, ToolCallInfo;
+import 'package:soliplex_completions/soliplex_completions.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
+import 'package:soliplex_mcp/soliplex_mcp.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
 
 import 'package:soliplex_tui/src/components/chat_page.dart';
@@ -31,6 +33,11 @@ Future<void> launchTui({
   bool montyEnabled = false,
   bool noTools = false,
   Set<String>? enabledTools,
+  String? llmProvider,
+  String? llmModel,
+  String? llmUrl,
+  String? llmApiKey,
+  List<String> mcpServers = const [],
 }) async {
   final fileSink = FileSink(filePath: logFile);
   LogManager.instance
@@ -46,6 +53,7 @@ Future<void> launchTui({
   );
 
   AgentRuntime? runtime;
+  McpConnectionManager? mcpManager;
   try {
     final resolvedRoomId = await _resolveRoom(connection.api, roomId);
     Loggers.app.info('Resolved room: $resolvedRoomId');
@@ -54,8 +62,15 @@ Future<void> launchTui({
         ? const ToolRegistry()
         : buildDemoToolRegistry(enabledTools: enabledTools);
 
-    final (:extensionFactory, :bindAgentApi) =
-        _buildMontyWiring(montyEnabled: montyEnabled);
+    final wiring = _buildMontyWiring(
+      montyEnabled: montyEnabled,
+      llmProvider: llmProvider,
+      llmModel: llmModel,
+      llmUrl: llmUrl,
+      llmApiKey: llmApiKey,
+      mcpServers: mcpServers,
+    );
+    mcpManager = wiring.mcpManager;
 
     final uiDelegate = TuiUiDelegate();
 
@@ -64,11 +79,11 @@ Future<void> launchTui({
       toolRegistryResolver: (_) async => toolRegistry,
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
-      extensionFactory: extensionFactory,
+      extensionFactory: wiring.extensionFactory,
       uiDelegate: uiDelegate,
     );
 
-    bindAgentApi(runtime);
+    wiring.bindAgentApi(runtime);
 
     await runApp(
       SoliplexTuiApp(
@@ -81,6 +96,7 @@ Future<void> launchTui({
     Loggers.app.error('Fatal error', error: e, stackTrace: s);
     rethrow;
   } finally {
+    await mcpManager?.dispose();
     await runtime?.dispose();
     await LogManager.instance.flush();
     await LogManager.instance.close();
@@ -113,6 +129,11 @@ Future<void> runHeadless({
   bool montyEnabled = false,
   bool noTools = false,
   Set<String>? enabledTools,
+  String? llmProvider,
+  String? llmModel,
+  String? llmUrl,
+  String? llmApiKey,
+  List<String> mcpServers = const [],
 }) async {
   final fileSink = FileSink(filePath: logFile);
   LogManager.instance
@@ -132,6 +153,7 @@ Future<void> runHeadless({
     httpClient: DartHttpClient(),
   );
   AgentRuntime? runtime;
+  McpConnectionManager? mcpManager;
 
   try {
     final resolvedRoomId = roomId ?? (await _resolveRoom(connection.api, null));
@@ -145,19 +167,26 @@ Future<void> runHeadless({
         ? const ToolRegistry()
         : buildDemoToolRegistry(enabledTools: enabledTools);
 
-    final (:extensionFactory, :bindAgentApi) =
-        _buildMontyWiring(montyEnabled: montyEnabled);
+    final wiring = _buildMontyWiring(
+      montyEnabled: montyEnabled,
+      llmProvider: llmProvider,
+      llmModel: llmModel,
+      llmUrl: llmUrl,
+      llmApiKey: llmApiKey,
+      mcpServers: mcpServers,
+    );
+    mcpManager = wiring.mcpManager;
 
     runtime = AgentRuntime(
       connection: connection,
       toolRegistryResolver: (_) async => toolRegistry,
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
-      extensionFactory: extensionFactory,
+      extensionFactory: wiring.extensionFactory,
       uiDelegate: autoApprove ? const AutoApproveUiDelegate() : null,
     );
 
-    bindAgentApi(runtime);
+    wiring.bindAgentApi(runtime);
 
     if (json) {
       await _runHeadlessJson(
@@ -197,6 +226,7 @@ Future<void> runHeadless({
     }
     exit(1);
   } finally {
+    await mcpManager?.dispose();
     await runtime?.dispose();
     await LogManager.instance.flush();
     await LogManager.instance.close();
@@ -331,19 +361,42 @@ Future<void> listRooms({
   }
 }
 
-/// Builds Monty wiring when enabled, returning the extension factory and a
-/// callback to bind the [AgentApi] after runtime creation.
+/// Builds Monty wiring when enabled, returning the extension factory, a
+/// callback to bind the [AgentApi] after runtime creation, and an optional
+/// [McpConnectionManager] that the caller must dispose.
 ({
   SessionExtensionFactory? extensionFactory,
   void Function(AgentRuntime) bindAgentApi,
-}) _buildMontyWiring({required bool montyEnabled}) {
+  McpConnectionManager? mcpManager,
+}) _buildMontyWiring({
+  required bool montyEnabled,
+  String? llmProvider,
+  String? llmModel,
+  String? llmUrl,
+  String? llmApiKey,
+  List<String> mcpServers = const [],
+}) {
   if (!montyEnabled) {
-    return (extensionFactory: null, bindAgentApi: (_) {});
+    return (extensionFactory: null, bindAgentApi: (_) {}, mcpManager: null);
   }
 
   MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
   final blackboardApi = DirectBlackboardApi();
   AgentApi? agentApi;
+
+  // Phase 2: direct LLM completions (bypasses backend).
+  final provider = _createLlmProvider(
+    provider: llmProvider,
+    model: llmModel,
+    url: llmUrl,
+    apiKey: llmApiKey,
+  );
+
+  // Phase 2: MCP connection manager.
+  final mcpConfigs = _parseMcpServers(mcpServers);
+  final mcpManager = mcpConfigs.isNotEmpty
+      ? McpConnectionManager(serverConfigs: mcpConfigs)
+      : null;
 
   return (
     extensionFactory: () async {
@@ -353,6 +406,20 @@ Future<void> listRooms({
         agentApi: agentApi,
         blackboardApi: blackboardApi,
         limits: MontyLimitsDefaults.tool,
+        llmCompleter: provider?.complete,
+        llmChatCompleter: provider != null
+            ? (messages, {systemPrompt, maxTokens}) => provider.chat(
+                  [
+                    for (final m in messages)
+                      (role: m['role']!, content: m['content']!),
+                  ],
+                  systemPrompt: systemPrompt,
+                  maxTokens: maxTokens,
+                )
+            : null,
+        mcpExecutor: mcpManager?.executeTool,
+        mcpToolLister: mcpManager?.listTools,
+        mcpServerLister: mcpManager?.listServers,
       );
       final env = await factory();
       return [
@@ -363,7 +430,71 @@ Future<void> listRooms({
     bindAgentApi: (AgentRuntime runtime) {
       agentApi = RuntimeAgentApi(runtime: runtime);
     },
+    mcpManager: mcpManager,
   );
+}
+
+/// Creates an [LlmProvider] from CLI flags, or returns `null` if no
+/// provider was specified.
+LlmProvider? _createLlmProvider({
+  String? provider,
+  String? model,
+  String? url,
+  String? apiKey,
+}) {
+  if (provider == null) return null;
+  return switch (provider) {
+    'anthropic' => AnthropicLlmProvider(
+        apiKey: apiKey ??
+            Platform.environment['ANTHROPIC_API_KEY'] ??
+            (throw ArgumentError(
+              'Anthropic requires --llm-api-key or ANTHROPIC_API_KEY',
+            )),
+        model: model ?? 'claude-sonnet-4-20250514',
+      ),
+    'openai' => OpenAiLlmProvider(
+        apiKey: apiKey ??
+            Platform.environment['OPENAI_API_KEY'] ??
+            (throw ArgumentError(
+              'OpenAI requires --llm-api-key or OPENAI_API_KEY',
+            )),
+        model: model ?? 'gpt-4o',
+        baseUrl: url,
+      ),
+    'ollama' => OllamaLlmProvider(
+        model: model ?? 'llama3.2',
+        baseUrl: url ?? 'http://localhost:11434/api',
+      ),
+    _ => throw ArgumentError('Unknown LLM provider: $provider'),
+  };
+}
+
+/// Parses `--mcp name=command args...` specs into a config map.
+///
+/// If the value starts with `http://` or `https://`, an HTTP transport is
+/// used; otherwise it is treated as a stdio command.
+Map<String, McpServerConfig> _parseMcpServers(List<String> specs) {
+  final configs = <String, McpServerConfig>{};
+  for (final spec in specs) {
+    final eqIndex = spec.indexOf('=');
+    if (eqIndex < 1) {
+      throw FormatException(
+        'Invalid --mcp format: $spec (expected name=command args...)',
+      );
+    }
+    final name = spec.substring(0, eqIndex);
+    final rest = spec.substring(eqIndex + 1).trim();
+    if (rest.startsWith('http://') || rest.startsWith('https://')) {
+      configs[name] = McpServerConfig.http(url: rest);
+    } else {
+      final parts = rest.split(' ');
+      configs[name] = McpServerConfig.stdio(
+        command: parts.first,
+        args: parts.skip(1).toList(),
+      );
+    }
+  }
+  return configs;
 }
 
 /// Resolves the room ID — uses the provided ID or picks the first available.
