@@ -14,6 +14,65 @@ import 'package:soliplex_client/soliplex_client.dart'
 import 'package:soliplex_completions/soliplex_completions.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
+import 'package:struct_log/struct_log.dart' as stl;
+
+/// Bridges struct_log (used by LlmPlugin/BlackboardPlugin) into
+/// soliplex_logging so deep logging appears in the CLI's log output.
+class _StructLogBridgeSink implements stl.LogSink {
+  _StructLogBridgeSink(this._target);
+
+  final LogManager _target;
+
+  @override
+  void write(stl.LogRecord record) {
+    _target.emit(
+      LogRecord(
+        level: _mapLevel(record.level),
+        message: record.message,
+        timestamp: record.timestamp,
+        loggerName: 'monty.${record.loggerName}',
+        error: record.error,
+        stackTrace: record.stackTrace,
+        spanId: record.spanId,
+        traceId: record.traceId,
+        attributes: record.attributes,
+      ),
+    );
+  }
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> close() async {}
+
+  static LogLevel _mapLevel(stl.LogLevel level) => switch (level) {
+        stl.LogLevel.trace => LogLevel.trace,
+        stl.LogLevel.debug => LogLevel.debug,
+        stl.LogLevel.info => LogLevel.info,
+        stl.LogLevel.warning => LogLevel.warning,
+        stl.LogLevel.error => LogLevel.error,
+        stl.LogLevel.fatal => LogLevel.fatal,
+      };
+}
+
+/// Simple file-backed log sink (unbuffered, writes immediately).
+class FileSink implements LogSink {
+  FileSink(this._sink);
+
+  final IOSink _sink;
+
+  @override
+  void write(LogRecord record) {
+    _sink.writeln(record.toString());
+  }
+
+  @override
+  Future<void> flush() => _sink.flush();
+
+  @override
+  Future<void> close() => _sink.close();
+}
 
 Future<void> runCli(List<String> args) async {
   final parser = ArgParser()
@@ -86,6 +145,21 @@ Future<void> runCli(List<String> args) async {
     ..addOption(
       'llm-api-key',
       help: 'LLM API key (or use ANTHROPIC_API_KEY / OPENAI_API_KEY env vars).',
+    )
+    ..addOption(
+      'prelude',
+      help: 'Python file to prepend to every execute_python call '
+          '(e.g. pre-define helper functions).',
+    )
+    ..addOption(
+      'log-file',
+      help: 'Path to a log file for structured logging output.',
+    )
+    ..addOption(
+      'exec-timeout',
+      help: 'Execution timeout in seconds for each tool call '
+          '(default: 30).',
+      defaultsTo: '30',
     );
 
   final parsed = parser.parse(args);
@@ -111,7 +185,21 @@ Future<void> _runSession(ArgResults parsed) async {
   final llmSystemPrompt = parsed.option('llm-system-prompt');
   final llmUrl = parsed.option('llm-url');
   final llmApiKey = parsed.option('llm-api-key');
+  final preludePath = parsed.option('prelude');
+  final logFilePath = parsed.option('log-file');
+  final execTimeoutSecs = int.parse(parsed.option('exec-timeout') ?? '30');
   final localMode = llmProviderName != null;
+
+  // Read prelude file if specified.
+  String? preludeCode;
+  if (preludePath != null) {
+    final preludeFile = File(preludePath);
+    if (!preludeFile.existsSync()) {
+      stderr.writeln('Error: prelude file not found: $preludePath');
+      return;
+    }
+    preludeCode = preludeFile.readAsStringSync();
+  }
 
   final connection = verbose
       ? createVerboseConnection(host)
@@ -123,6 +211,20 @@ Future<void> _runSession(ArgResults parsed) async {
   final logManager = LogManager.instance
     ..minimumLevel = LogLevel.debug
     ..addSink(StdoutSink(useColors: true));
+
+  // Bridge struct_log → soliplex_logging so LlmPlugin/BlackboardPlugin
+  // deep logging appears in CLI output and log files.
+  stl.LogManager.instance
+    ..minimumLevel = stl.LogLevel.debug
+    ..addSink(_StructLogBridgeSink(logManager));
+
+  // Add file sink if --log-file specified (unbuffered).
+  IOSink? logFileIoSink;
+  if (logFilePath != null) {
+    logFileIoSink = File(logFilePath).openWrite(mode: FileMode.append);
+    logManager.addSink(FileSink(logFileIoSink));
+  }
+
   final logger = logManager.getLogger('cli');
 
   final noTools = parsed.flag('no-tools');
@@ -149,8 +251,9 @@ Future<void> _runSession(ArgResults parsed) async {
 
   // Build the LLM provider: local (ChatFnLlmProvider) or backend (AgUi).
   final AgentLlmProvider llmProvider;
+  LlmProvider? completionsProvider;
   if (localMode) {
-    final completionsProvider = _createLlmProvider(
+    completionsProvider = _createLlmProvider(
       providerName: llmProviderName,
       model: llmModel,
       baseUrl: llmUrl,
@@ -200,6 +303,23 @@ Future<void> _runSession(ArgResults parsed) async {
         httpClient: fetchClient,
         platformFactory: montyPlatformFactory,
         limits: MontyLimitsDefaults.tool,
+        prelude: preludeCode,
+        executionTimeout: Duration(seconds: execTimeoutSecs),
+        llmCompleter: completionsProvider?.complete,
+        llmChatCompleter: completionsProvider != null
+            ? (messages, {systemPrompt, maxTokens}) async {
+                final cp = completionsProvider!;
+                final mapped = [
+                  for (final m in messages)
+                    (role: m['role']!, content: m['content']!),
+                ];
+                return cp.chat(
+                  mapped,
+                  systemPrompt: systemPrompt,
+                  maxTokens: maxTokens,
+                );
+              }
+            : null,
       );
       final env = await factory();
       return [ScriptEnvironmentExtension(env)];
@@ -248,6 +368,7 @@ Future<void> _runSession(ArgResults parsed) async {
     await _runPrompts(ctx, prompts);
     await runtime.dispose();
     await connection.close();
+    if (logFileIoSink != null) await logFileIoSink.close();
     return;
   }
 
@@ -276,6 +397,7 @@ Future<void> _runSession(ArgResults parsed) async {
 
   await runtime.dispose();
   await connection.close();
+  if (logFileIoSink != null) await logFileIoSink.close();
 }
 
 /// Runs prompts sequentially in the same thread, then exits.

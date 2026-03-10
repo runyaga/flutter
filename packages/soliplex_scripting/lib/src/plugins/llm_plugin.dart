@@ -1,5 +1,6 @@
 import 'package:soliplex_agent/soliplex_agent.dart' show AgentApi;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
+import 'package:struct_log/struct_log.dart';
 
 /// Callback for single-shot LLM completions.
 typedef LlmCompleter = Future<String> Function(
@@ -40,6 +41,8 @@ class LlmPlugin extends MontyPlugin {
         _agentApi = null,
         _agentTimeout = Duration.zero,
         defaultRoom = '';
+
+  static final Logger _log = LogManager.instance.getLogger('LlmPlugin');
 
   final AgentApi? _agentApi;
   final Duration _agentTimeout;
@@ -88,19 +91,49 @@ class LlmPlugin extends MontyPlugin {
             final prompt = args['prompt']! as String;
             final systemPrompt = args['system_prompt'] as String?;
 
+            _log.info(
+              'oracle call',
+              attributes: {
+                'prompt': prompt.length > 500
+                    ? '${prompt.substring(0, 500)}...'
+                    : prompt,
+                'prompt_length': prompt.length,
+                if (systemPrompt != null) 'system_prompt': systemPrompt,
+              },
+            );
+
+            final sw = Stopwatch()..start();
+            String result;
+
             if (_completer != null) {
-              return _completer(prompt, systemPrompt: systemPrompt);
+              result = await _completer(prompt, systemPrompt: systemPrompt);
+            } else {
+              final room = args['room'] as String? ?? defaultRoom;
+              final fullPrompt = systemPrompt != null
+                  ? 'System: $systemPrompt\n\n$prompt'
+                  : prompt;
+
+              final handle = await _agentApi!
+                  .spawnAgent(room, fullPrompt)
+                  .timeout(_agentTimeout);
+              result = await _agentApi.getResult(handle).timeout(
+                    _agentTimeout,
+                  );
             }
 
-            final room = args['room'] as String? ?? defaultRoom;
-            final fullPrompt = systemPrompt != null
-                ? 'System: $systemPrompt\n\n$prompt'
-                : prompt;
+            sw.stop();
+            _log.info(
+              'oracle response',
+              attributes: {
+                'response': result.length > 500
+                    ? '${result.substring(0, 500)}...'
+                    : result,
+                'response_length': result.length,
+                'duration_ms': sw.elapsedMilliseconds,
+              },
+            );
 
-            final handle = await _agentApi!
-                .spawnAgent(room, fullPrompt)
-                .timeout(_agentTimeout);
-            return _agentApi.getResult(handle).timeout(_agentTimeout);
+            return result;
           },
         ),
         HostFunction(
