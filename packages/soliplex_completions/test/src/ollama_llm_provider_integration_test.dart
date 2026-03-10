@@ -13,12 +13,12 @@ import 'package:test/test.dart';
 ///   dart test --tags=integration --run-skipped
 ///
 /// Note: Qwen3 models use "thinking mode" by default — internal reasoning
-/// tokens count against num_predict. Use maxTokens >= 256 to leave room
+/// tokens count against num_predict. Use a high maxTokens to leave room
 /// for both thinking and the actual response.
 void main() {
   const model = 'qwen3:0.6b';
-  // High enough for thinking-mode models (thinking ~100-150 tokens).
-  const defaultMaxTokens = 256;
+  // High enough for thinking-mode models where thinking eats token budget.
+  const defaultMaxTokens = 4096;
 
   late OllamaLlmProvider provider;
 
