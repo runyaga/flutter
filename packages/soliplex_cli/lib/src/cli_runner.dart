@@ -841,7 +841,23 @@ String _short(String id) => id.length > 12 ? '${id.substring(0, 12)}...' : id;
       return (
         completionsProvider: p,
         agentProvider: StreamingLlmProvider(
-          chatFn: p.chatStream,
+          // Use chatNonStreaming for Ollama: its /v1/responses streaming
+          // omits call_id from function_call_arguments.delta/done events,
+          // causing the open_responses library to crash on null→String cast.
+          // The non-streaming path returns complete responses with all fields.
+          chatFn: ({
+            required messages,
+            tools,
+            systemPrompt,
+            maxTokens,
+            abortTrigger,
+          }) =>
+              p.chatNonStreaming(
+            messages: messages,
+            tools: tools,
+            systemPrompt: systemPrompt,
+            maxTokens: maxTokens,
+          ),
           systemPrompt: systemPrompt,
         ),
       );
