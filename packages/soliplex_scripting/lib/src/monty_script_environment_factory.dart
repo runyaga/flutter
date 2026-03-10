@@ -65,6 +65,7 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
   Duration executionTimeout = const Duration(seconds: 30),
   Duration? agentTimeout,
   Map<String, Stream<Object?> Function()>? streamFactories,
+  String? prelude,
 }) {
   return () async {
     final dfRegistry = DfRegistry();
@@ -166,6 +167,7 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
       executionTimeout: executionTimeout,
       isolatePlugin: isolatePlugin,
       hostFunctionSchemas: hostSchemas,
+      prelude: prelude,
     );
   };
 }

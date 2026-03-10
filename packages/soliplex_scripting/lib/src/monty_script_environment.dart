@@ -37,13 +37,15 @@ class MontyScriptEnvironment implements ScriptEnvironment {
     Duration executionTimeout = const Duration(seconds: 30),
     IsolatePlugin? isolatePlugin,
     List<HostFunctionSchema>? hostFunctionSchemas,
+    String? prelude,
   })  : _bridge = bridge,
         _ownedPlatform = ownedPlatform,
         _dfRegistry = dfRegistry,
         _streamRegistry = streamRegistry,
         _executionTimeout = executionTimeout,
         _isolatePlugin = isolatePlugin,
-        _hostFunctionSchemas = hostFunctionSchemas;
+        _hostFunctionSchemas = hostFunctionSchemas,
+        _prelude = prelude;
 
   final MontyBridge _bridge;
   final MontyPlatform? _ownedPlatform;
@@ -52,6 +54,7 @@ class MontyScriptEnvironment implements ScriptEnvironment {
   final Duration _executionTimeout;
   final IsolatePlugin? _isolatePlugin;
   final List<HostFunctionSchema>? _hostFunctionSchemas;
+  final String? _prelude;
   bool _disposed = false;
 
   @override
@@ -92,7 +95,8 @@ class MontyScriptEnvironment implements ScriptEnvironment {
 
   Future<String> _executePython(ToolCallInfo toolCall, _) async {
     final code = extractCode(toolCall);
-    final events = _bridge.execute(code);
+    final fullCode = _prelude != null ? '$_prelude\n$code' : code;
+    final events = _bridge.execute(fullCode);
     final result = await collectTextResult(events).timeout(_executionTimeout);
     return result.isEmpty ? '(ok)' : result;
   }

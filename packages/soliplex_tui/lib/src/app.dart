@@ -42,6 +42,7 @@ Future<void> launchTui({
   String? llmSystemPrompt,
   List<String> mcpServers = const [],
   int executionTimeoutSeconds = 30,
+  String? prelude,
 }) async {
   final fileSink = FileSink(filePath: logFile);
   LogManager.instance
@@ -81,6 +82,7 @@ Future<void> launchTui({
       llmSystemPrompt: llmSystemPrompt,
       mcpServers: mcpServers,
       executionTimeoutSeconds: executionTimeoutSeconds,
+      prelude: prelude,
     );
     mcpManager = wiring.mcpManager;
 
@@ -157,6 +159,7 @@ Future<void> runHeadless({
   String? llmSystemPrompt,
   List<String> mcpServers = const [],
   int executionTimeoutSeconds = 30,
+  String? prelude,
 }) async {
   final fileSink = FileSink(filePath: logFile);
   LogManager.instance
@@ -205,6 +208,7 @@ Future<void> runHeadless({
       llmSystemPrompt: llmSystemPrompt,
       mcpServers: mcpServers,
       executionTimeoutSeconds: executionTimeoutSeconds,
+      prelude: prelude,
     );
     mcpManager = wiring.mcpManager;
 
@@ -451,6 +455,7 @@ Future<void> listRooms({required String serverUrl}) async {
   String? llmSystemPrompt,
   List<String> mcpServers = const [],
   int executionTimeoutSeconds = 30,
+  String? prelude,
 }) {
   // Build the direct LLM provider regardless of Monty — it drives agent
   // runs whenever --llm-provider is set.
@@ -522,6 +527,7 @@ Future<void> listRooms({required String serverUrl}) async {
           'words': () =>
               Stream.fromIterable(['hello', 'world', 'from', 'stream']),
         },
+        prelude: prelude,
       );
       final env = await factory();
       return [

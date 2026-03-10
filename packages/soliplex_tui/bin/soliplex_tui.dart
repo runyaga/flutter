@@ -100,6 +100,11 @@ Future<void> main(List<String> arguments) async {
           'Increase for slow LLM backends used via llm_complete().',
       defaultsTo: '30',
     )
+    ..addOption(
+      'prelude',
+      help: 'Path to a Python file whose contents are prepended to every '
+          'execute_python call. Use to inject utility functions into scope.',
+    )
     ..addFlag('help', abbr: 'h', negatable: false, help: 'Show usage');
 
   final ArgResults results;
@@ -144,6 +149,10 @@ Future<void> main(List<String> arguments) async {
   final mcpServers = results.multiOption('mcp');
   final executionTimeout = int.parse(results.option('execution-timeout')!);
 
+  final preludePath = results.option('prelude');
+  final prelude =
+      preludePath != null ? File(preludePath).readAsStringSync() : null;
+
   final prompts = results.multiOption('prompt');
   if (prompts.isNotEmpty) {
     await runHeadless(
@@ -165,6 +174,7 @@ Future<void> main(List<String> arguments) async {
       llmSystemPrompt: llmSystemPrompt,
       mcpServers: mcpServers,
       executionTimeoutSeconds: executionTimeout,
+      prelude: prelude,
     );
     return;
   }
@@ -198,6 +208,7 @@ Future<void> main(List<String> arguments) async {
       llmSystemPrompt: llmSystemPrompt,
       mcpServers: mcpServers,
       executionTimeoutSeconds: executionTimeout,
+      prelude: prelude,
     );
     return;
   }
@@ -216,5 +227,6 @@ Future<void> main(List<String> arguments) async {
     llmSystemPrompt: llmSystemPrompt,
     mcpServers: mcpServers,
     executionTimeoutSeconds: executionTimeout,
+    prelude: prelude,
   );
 }
