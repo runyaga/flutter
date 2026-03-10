@@ -4,7 +4,9 @@ import 'package:soliplex_agent/src/runtime/agent_session.dart';
 ///
 /// Both Flutter and TUI implement this interface to control how tool
 /// execution approval is presented to the user. When no delegate is
-/// provided to `AgentRuntime`, tools are auto-approved (headless mode).
+/// provided to `AgentRuntime`, tools are **denied by default** for
+/// safety. Pass [AutoApproveUiDelegate] to opt into headless
+/// auto-approval.
 ///
 /// ```dart
 /// class MyUiDelegate implements AgentUiDelegate {
@@ -35,4 +37,22 @@ abstract interface class AgentUiDelegate {
     required Map<String, dynamic> arguments,
     required String rationale,
   });
+}
+
+/// Delegate that auto-approves all tool requests.
+///
+/// Use explicitly in headless/CI mode when you trust the prompt source.
+/// Pass to `AgentRuntime(uiDelegate: AutoApproveUiDelegate())`.
+class AutoApproveUiDelegate implements AgentUiDelegate {
+  /// Creates an auto-approve delegate.
+  const AutoApproveUiDelegate();
+
+  @override
+  Future<bool> requestToolApproval({
+    required AgentSession session,
+    required String toolName,
+    required Map<String, dynamic> arguments,
+    required String rationale,
+  }) async =>
+      true;
 }

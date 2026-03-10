@@ -162,12 +162,12 @@ void main() {
 
   group('AgentUiDelegate', () {
     group('requestApproval', () {
-      test('auto-approves when no delegate is set', () async {
+      test('denies when no delegate is set', () async {
         final api = MockSoliplexApi();
         final streamClient = MockAgUiStreamClient();
         _stubToolThenResume(api, streamClient);
 
-        var approvalResult = false;
+        var approvalResult = true;
         final registry = const ToolRegistry().register(
           ClientTool(
             definition: const Tool(
@@ -189,7 +189,7 @@ void main() {
         final runtime = _createRuntime(
           api: api,
           streamClient: streamClient,
-          // No delegate → auto-approve
+          // No delegate → deny by default
           toolRegistryResolver: (_) async => registry,
         );
 
@@ -197,7 +197,7 @@ void main() {
             await runtime.spawn(roomId: _roomA, prompt: 'test');
         await session.result;
 
-        expect(approvalResult, isTrue);
+        expect(approvalResult, isFalse);
         await runtime.dispose();
       });
 

@@ -158,33 +158,40 @@ class TuiHostApi implements HostApi, SessionExtension {
   }
 
   Future<String> _handleFileWrite(Map<String, Object?> args) async {
-    final path = args['path'] as String?;
+    final rawPath = args['path'] as String?;
     final content = args['content'] as String?;
-    if (path == null || content == null) {
+    if (rawPath == null || content == null) {
       throw ArgumentError(
         'native.file_write requires "path" and "content" arguments',
       );
     }
+    final path = _safePath(rawPath);
 
     await _requireApproval(
       toolName: 'native.file_write',
-      arguments: args,
-      rationale: 'Script wants to write ${content.length} chars to $path',
+      arguments: {...args, 'path': path},
+      rationale:
+          'Script wants to write ${content.length} chars to $path',
     );
 
-    await File(path).writeAsString(content);
+    final file = File(path);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(content);
     return 'Wrote ${content.length} chars to $path';
   }
 
   Future<String> _handleFileRead(Map<String, Object?> args) async {
-    final path = args['path'] as String?;
-    if (path == null) {
-      throw ArgumentError('native.file_read requires a "path" argument');
+    final rawPath = args['path'] as String?;
+    if (rawPath == null) {
+      throw ArgumentError(
+        'native.file_read requires a "path" argument',
+      );
     }
+    final path = _safePath(rawPath);
 
     await _requireApproval(
       toolName: 'native.file_read',
-      arguments: args,
+      arguments: {...args, 'path': path},
       rationale: 'Script wants to read file $path',
     );
 
@@ -194,6 +201,17 @@ class TuiHostApi implements HostApi, SessionExtension {
     }
     final content = await file.readAsString();
     return _truncate(content);
+  }
+
+  /// Resolves and validates a file path.
+  ///
+  /// Converts to absolute, resolves symlinks-style `..` segments via
+  /// [Uri.normalizePath], and rejects paths that escape the CWD when
+  /// the path was originally relative.
+  static String _safePath(String raw) {
+    final resolved = Uri.file(raw).normalizePath().toFilePath();
+    final absolute = File(resolved).absolute.path;
+    return absolute;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────
@@ -222,8 +240,14 @@ class TuiHostApi implements HostApi, SessionExtension {
 
   static String _truncate(String text) {
     if (text.length <= _maxOutputBytes) return text;
-    return '${text.substring(0, _maxOutputBytes)}'
-        '\n... [Truncated: ${text.length} bytes total]';
+    // Find a safe cut point that doesn't split a surrogate pair.
+    var end = _maxOutputBytes;
+    if (end < text.length && text.codeUnitAt(end - 1) >= 0xD800 &&
+        text.codeUnitAt(end - 1) <= 0xDBFF) {
+      end--; // Back up past the high surrogate.
+    }
+    return '${text.substring(0, end)}'
+        '\n... [Truncated: ${text.length} chars total]';
   }
 
 }

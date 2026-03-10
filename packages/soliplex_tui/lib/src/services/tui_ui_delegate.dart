@@ -100,7 +100,12 @@ class TuiUiDelegate implements AgentUiDelegate {
 
   /// Dispose all session signals.
   void dispose() {
+    // Reject any dispatched (signal-visible) approvals.
     for (final sig in _sessionSignals.values) {
+      final request = sig.value;
+      if (request != null && !request.completer.isCompleted) {
+        request.completer.complete(false);
+      }
       sig.dispose();
     }
     _sessionSignals.clear();
@@ -111,6 +116,7 @@ class TuiUiDelegate implements AgentUiDelegate {
       }
     }
     _queue.clear();
+    _processing = false;
   }
 }
 

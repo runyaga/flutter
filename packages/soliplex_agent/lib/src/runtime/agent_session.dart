@@ -167,7 +167,7 @@ class AgentSession implements ToolExecutionContext {
     required Map<String, dynamic> arguments,
     required String rationale,
   }) async {
-    if (_uiDelegate == null) return true;
+    if (_uiDelegate == null) return false;
     emitEvent(AwaitingApproval(
       toolCallId: toolCallId,
       toolName: toolName,

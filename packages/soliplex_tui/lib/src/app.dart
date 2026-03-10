@@ -109,6 +109,7 @@ Future<void> runHeadless({
   String? threadId,
   bool verbose = false,
   bool json = false,
+  bool autoApprove = false,
   bool montyEnabled = false,
   bool noTools = false,
   Set<String>? enabledTools,
@@ -154,6 +155,9 @@ Future<void> runHeadless({
       platform: const NativePlatformConstraints(),
       logger: Loggers.agui,
       extensionFactory: extensionFactory,
+      uiDelegate: autoApprove
+          ? const AutoApproveUiDelegate()
+          : null,
     );
 
     bindAgentApi(runtime);
