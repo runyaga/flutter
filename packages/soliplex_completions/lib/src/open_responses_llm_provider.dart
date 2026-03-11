@@ -191,14 +191,8 @@ class OpenResponsesLlmProvider implements LlmProvider {
       // Extract tool calls.
       for (final call in response.functionCalls) {
         yield LlmToolCallStart(callId: call.callId, name: call.name);
-        yield LlmToolCallArgsDelta(
-          callId: call.callId,
-          delta: call.arguments,
-        );
-        yield LlmToolCallDone(
-          callId: call.callId,
-          arguments: call.arguments,
-        );
+        yield LlmToolCallArgsDelta(callId: call.callId, delta: call.arguments);
+        yield LlmToolCallDone(callId: call.callId, arguments: call.arguments);
       }
 
       yield const LlmDone();
@@ -309,20 +303,31 @@ class OpenResponsesLlmProvider implements LlmProvider {
     return switch (event) {
       or.OutputTextDeltaEvent(:final delta) => LlmTextDelta(delta),
       or.OutputTextDoneEvent(:final text) => LlmTextDone(text),
-      or.FunctionCallArgumentsDeltaEvent(:final callId, :final delta)
-          when callId != null =>
-        LlmToolCallArgsDelta(callId: callId, delta: delta),
-      or.FunctionCallArgumentsDoneEvent(:final callId, :final arguments)
-          when callId != null =>
-        LlmToolCallDone(callId: callId, arguments: arguments),
+      or.FunctionCallArgumentsDeltaEvent(:final callId, :final delta) =>
+        LlmToolCallArgsDelta(
+          callId: callId ??
+              (throw StateError(
+                'FunctionCallArgumentsDeltaEvent missing callId',
+              )),
+          delta: delta,
+        ),
+      or.FunctionCallArgumentsDoneEvent(:final callId, :final arguments) =>
+        LlmToolCallDone(
+          callId: callId ??
+              (throw StateError(
+                'FunctionCallArgumentsDoneEvent missing callId',
+              )),
+          arguments: arguments,
+        ),
       or.OutputItemAddedEvent(:final item) => switch (item) {
           or.FunctionCallOutputItemResponse(:final callId, :final name) =>
             LlmToolCallStart(callId: callId, name: name),
           _ => null,
         },
       or.ResponseCompletedEvent() => const LlmDone(),
-      or.ResponseFailedEvent(:final response) =>
-        LlmError(response.error?.message ?? 'Response failed'),
+      or.ResponseFailedEvent(:final response) => LlmError(
+          response.error?.message ?? 'Response failed',
+        ),
       or.ErrorEvent(:final error) => LlmError(error.message),
       _ => null, // Ignore events we don't need (reasoning, refusal, etc.)
     };
