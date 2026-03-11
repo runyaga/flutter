@@ -542,6 +542,7 @@ class RunOrchestrator {
       runId: '', // Assigned by the provider during startRun.
       messages: aguiMessages,
       tools: _toolRegistry.toolDefinitions,
+      state: conversation.aguiState,
     );
   }
 
