@@ -479,4 +479,161 @@ void main() {
       );
     });
   });
+
+  group('Integration: ShellExecPlugin', () {
+    late Directory tempDir;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('shell_integration_');
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    Future<MontyScriptEnvironment> createShellEnvironment({
+      Set<String>? allowedCommands,
+    }) async {
+      final hostApi = _FakeHostApi();
+      final bridge = _ScriptableBridge();
+      final df = DfRegistry();
+      final streamRegistry = StreamRegistry();
+      final registry = PluginRegistry()
+        ..register(DfPlugin(dfRegistry: df))
+        ..register(ChartPlugin(hostApi: hostApi))
+        ..register(PlatformPlugin(hostApi: hostApi))
+        ..register(StreamPlugin(streamRegistry: streamRegistry))
+        ..register(
+          ShellExecPlugin(
+            rootPath: tempDir.path,
+            allowedCommands: allowedCommands,
+          ),
+        );
+      await registry.attachTo(bridge);
+      return MontyScriptEnvironment(
+        bridge: bridge,
+        dfRegistry: df,
+        streamRegistry: streamRegistry,
+      );
+    }
+
+    ToolCallInfo shellCall(String code) => ToolCallInfo(
+          id: 'tc-shell',
+          name: PythonExecutorTool.toolName,
+          arguments: jsonEncode({'code': code}),
+        );
+
+    test('echo command through bridge returns stdout', () async {
+      final env = await createShellEnvironment();
+
+      final result = await env.tools.first.executor(
+        shellCall('shell_run({"command": "echo", "args": ["hello world"]})'),
+        _ctx,
+      );
+      expect(result, contains('done'));
+
+      env.dispose();
+    });
+
+    test('shell_allowed returns command list through bridge', () async {
+      final env = await createShellEnvironment();
+
+      final result = await env.tools.first.executor(
+        shellCall('shell_allowed({})'),
+        _ctx,
+      );
+      expect(result, contains('done'));
+
+      env.dispose();
+    });
+
+    test('disallowed command rejected by registered handler', () async {
+      final bridge = _ScriptableBridge();
+      final registry = PluginRegistry()
+        ..register(ShellExecPlugin(rootPath: tempDir.path));
+      await registry.attachTo(bridge);
+
+      final fn = bridge.registered['shell_run']!;
+      expect(
+        () => fn.handler({'command': 'rm'}),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('cwd traversal rejected by registered handler', () async {
+      final bridge = _ScriptableBridge();
+      final registry = PluginRegistry()
+        ..register(ShellExecPlugin(rootPath: tempDir.path));
+      await registry.attachTo(bridge);
+
+      final fn = bridge.registered['shell_run']!;
+      expect(
+        () => fn.handler({
+          'command': 'echo',
+          'cwd': '../../../etc',
+        }),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('all shell functions registered on bridge schemas', () async {
+      final bridge = _ScriptableBridge();
+      final registry = PluginRegistry()
+        ..register(ShellExecPlugin(rootPath: tempDir.path));
+      await registry.attachTo(bridge);
+
+      final names = bridge.schemas.map((s) => s.name).toSet();
+      expect(names, containsAll(['shell_run', 'shell_allowed']));
+    });
+
+    test('real command execution returns structured result', () async {
+      final bridge = _ScriptableBridge();
+      final registry = PluginRegistry()
+        ..register(ShellExecPlugin(rootPath: tempDir.path));
+      await registry.attachTo(bridge);
+
+      final fn = bridge.registered['shell_run']!;
+      final result = await fn.handler({
+        'command': 'echo',
+        'args': ['integration test'],
+      });
+
+      final map = result! as Map<String, Object?>;
+      expect((map['stdout']! as String).trim(), 'integration test');
+      expect(map['stderr'], isA<String>());
+      expect(map['exit_code'], 0);
+    });
+
+    test('absolute path args rejected by registered handler', () async {
+      final bridge = _ScriptableBridge();
+      final registry = PluginRegistry()
+        ..register(ShellExecPlugin(rootPath: tempDir.path));
+      await registry.attachTo(bridge);
+
+      final fn = bridge.registered['shell_run']!;
+      expect(
+        () => fn.handler({
+          'command': 'echo',
+          'args': ['/etc/passwd'],
+        }),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('dart run blocked by registered handler', () async {
+      final bridge = _ScriptableBridge();
+      final registry = PluginRegistry()
+        ..register(ShellExecPlugin(rootPath: tempDir.path));
+      await registry.attachTo(bridge);
+
+      final fn = bridge.registered['shell_run']!;
+      expect(
+        () => fn.handler({
+          'command': 'dart',
+          'args': ['run', 'evil.dart'],
+        }),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
 }

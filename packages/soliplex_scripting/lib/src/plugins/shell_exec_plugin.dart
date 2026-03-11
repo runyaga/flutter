@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -6,15 +7,28 @@ import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 
 /// Plugin exposing sandboxed shell command execution to Monty scripts.
 ///
-/// Commands are restricted to an allowlist and working
-/// directories are resolved relative to `rootPath`. This enables agentic
-/// TDD workflows where the LLM writes code, runs `dart analyze` and
-/// `dart test`, reads errors, and iterates.
+/// Security layers:
+/// 1. **Command allowlist** — only permitted executables may run.
+/// 2. **Dart subcommand restrictions** — blocks `dart run`, `dart eval`,
+///    `dart compile` (arbitrary code execution).
+/// 3. **Argument path validation** — rejects absolute paths, `..`
+///    traversal, and absolute paths in flag values.
+/// 4. **CWD sandboxing** — working directory must resolve within
+///    `rootPath`; symlinks are resolved to prevent escape.
+/// 5. **Environment sanitization** — child processes receive only
+///    `PATH`, `HOME`, and `PUB_CACHE` (no secret leakage).
+/// 6. **Process kill on timeout** — child processes are killed (not
+///    orphaned) when the timeout expires.
+///
+/// **Custom allowlists:** If you override [defaultAllowedCommands],
+/// beware that commands like `find` (has `-exec`), `xargs`, `awk`,
+/// and `perl` can execute arbitrary subcommands. The argument
+/// validation layer does NOT prevent this.
 class ShellExecPlugin extends MontyPlugin {
   /// Creates a [ShellExecPlugin] rooted at [rootPath].
   ///
   /// Only commands in [allowedCommands] may be executed. Defaults to
-  /// the Dart toolchain and basic POSIX utilities.
+  /// `dart` and `echo` only.
   ShellExecPlugin({
     required String rootPath,
     Set<String>? allowedCommands,
@@ -22,35 +36,46 @@ class ShellExecPlugin extends MontyPlugin {
   })  : _rootPath = Directory(rootPath).resolveSymbolicLinksSync(),
         _allowedCommands = allowedCommands ?? defaultAllowedCommands;
 
-  /// Default set of allowed commands.
-  static const defaultAllowedCommands = <String>{
-    'cat',
-    'dart',
-    'diff',
-    'echo',
-    'find',
-    'grep',
-    'head',
-    'ls',
-    'pwd',
-    'tail',
-    'wc',
-    'which',
+  /// Default allowlist: only the Dart toolchain and echo.
+  ///
+  /// General-purpose commands (`cat`, `grep`, `find`, etc.) are
+  /// excluded because their arguments accept arbitrary file paths
+  /// that cannot be reliably sandboxed.
+  static const defaultAllowedCommands = <String>{'dart', 'echo'};
+
+  /// Dart subcommands that cannot execute arbitrary code.
+  static const safeDartSubcommands = <String>{
+    'analyze',
+    'fix',
+    'format',
+    'pub',
+    'test',
+  };
+
+  /// Safe `dart pub` subcommands.
+  static const safeDartPubSubcommands = <String>{
+    'deps',
+    'get',
+    'outdated',
+    'upgrade',
   };
 
   final String _rootPath;
   final Set<String> _allowedCommands;
 
   /// Maximum duration for a single command execution.
+  ///
+  /// When exceeded, the child process is killed via `Process.kill()`.
   final Duration timeout;
 
   @override
   String get namespace => 'shell';
 
   @override
-  String? get systemPromptContext => 'Execute sandboxed shell commands. '
-      'Commands must be in the allowlist. '
-      'Use run(command, args, cwd) to execute.';
+  String? get systemPromptContext =>
+      'Execute sandboxed shell commands (dart analyze, dart test, etc). '
+      'Commands restricted to allowlist; args cannot contain absolute '
+      'paths or path traversal.';
 
   @override
   String get pythonPrelude => '''
@@ -69,21 +94,109 @@ _help_list = _help_list + [["allowed_commands", "List allowed shell commands"]]'
   @override
   List<HostFunction> get functions => [_run(), _allowed()];
 
+  // ---------------------------------------------------------------------------
+  // Security: CWD resolution
+  // ---------------------------------------------------------------------------
+
   /// Resolves [cwd] within the sandbox root.
   ///
-  /// Returns the root path when [cwd] is null, empty, or `.`.
+  /// When the target exists on disk, symlinks are resolved first so a
+  /// malicious symlink inside the sandbox cannot escape the root. When
+  /// the target does not exist yet, the path is canonicalized lexically.
+  ///
   /// Throws [ArgumentError] if the resolved path escapes the root.
   String _resolveCwd(String? cwd) {
     if (cwd == null || cwd.isEmpty || cwd == '.') return _rootPath;
     final joined = p.join(_rootPath, cwd);
-    final normalized = p.canonicalize(joined);
+    final normalized =
+        FileSystemEntity.typeSync(joined) != FileSystemEntityType.notFound
+            ? Directory(joined).resolveSymbolicLinksSync()
+            : p.canonicalize(joined);
     if (!p.isWithin(_rootPath, normalized) && normalized != _rootPath) {
       throw ArgumentError('Working directory escapes sandbox root: $cwd');
     }
     return normalized;
   }
 
-  // -- shell_run -------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Security: argument validation
+  // ---------------------------------------------------------------------------
+
+  /// Validates that arguments do not contain path escapes.
+  ///
+  /// Rejects:
+  /// - Absolute paths (`/etc/passwd`)
+  /// - Path traversal (`../`, `/..`)
+  /// - Absolute paths in flag values (`--output=/tmp/foo`)
+  static void validateArgSafety(List<String> args) {
+    for (final arg in args) {
+      if (arg.startsWith('/')) {
+        throw ArgumentError(
+          'Absolute paths not allowed in arguments: $arg',
+        );
+      }
+      if (arg.contains('=/')) {
+        throw ArgumentError(
+          'Absolute paths in flag values not allowed: $arg',
+        );
+      }
+      if (arg == '..' || arg.contains('../') || arg.contains('/..')) {
+        throw ArgumentError(
+          'Path traversal not allowed in arguments: $arg',
+        );
+      }
+    }
+  }
+
+  /// Validates that a `dart` invocation uses a safe subcommand.
+  ///
+  /// Blocks `dart run`, `dart compile`, `dart create` which can
+  /// execute arbitrary code. Only [safeDartSubcommands] are allowed.
+  /// For `dart pub`, only [safeDartPubSubcommands] are allowed.
+  static void validateDartSubcommand(List<String> args) {
+    // Find the subcommand (first non-flag argument).
+    final nonFlags = args.where((a) => !a.startsWith('-')).toList();
+    if (nonFlags.isEmpty) return; // e.g., `dart --version`
+
+    final sub = nonFlags.first;
+    if (!safeDartSubcommands.contains(sub)) {
+      throw ArgumentError(
+        'dart $sub not allowed. '
+        'Allowed: ${safeDartSubcommands.join(', ')}',
+      );
+    }
+
+    if (sub == 'pub' && nonFlags.length > 1) {
+      final pubSub = nonFlags[1];
+      if (!safeDartPubSubcommands.contains(pubSub)) {
+        throw ArgumentError(
+          'dart pub $pubSub not allowed. '
+          'Allowed: ${safeDartPubSubcommands.join(', ')}',
+        );
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Security: environment sanitization
+  // ---------------------------------------------------------------------------
+
+  /// Returns a sanitized environment with only essential variables.
+  ///
+  /// Prevents leakage of API keys, session tokens, and other secrets
+  /// from the parent process's environment.
+  static Map<String, String> sanitizedEnv() {
+    final env = Platform.environment;
+    return <String, String>{
+      if (env.containsKey('PATH')) 'PATH': env['PATH']!,
+      if (env.containsKey('HOME')) 'HOME': env['HOME']!,
+      if (env.containsKey('PUB_CACHE')) 'PUB_CACHE': env['PUB_CACHE']!,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Host functions
+  // ---------------------------------------------------------------------------
 
   HostFunction _run() => HostFunction(
         schema: const HostFunctionSchema(
@@ -130,32 +243,45 @@ _help_list = _help_list + [["allowed_commands", "List allowed shell commands"]]'
             }
           }
 
+          // Security: validate arguments BEFORE execution.
+          validateArgSafety(execArgs);
+          if (command == 'dart') {
+            validateDartSubcommand(execArgs);
+          }
+
           final cwd = args['cwd'];
           final workDir = _resolveCwd(cwd is String ? cwd : null);
 
-          ProcessResult result;
+          // Use Process.start so we can kill on timeout (not orphan).
+          final process = await Process.start(
+            command,
+            execArgs,
+            workingDirectory: workDir,
+            environment: sanitizedEnv(),
+            includeParentEnvironment: false,
+          );
+
           try {
-            result = await Process.run(
-              command,
-              execArgs,
-              workingDirectory: workDir,
-            ).timeout(timeout);
+            final results = await Future.wait<Object>([
+              process.stdout.transform(utf8.decoder).join(),
+              process.stderr.transform(utf8.decoder).join(),
+              process.exitCode,
+            ]).timeout(timeout);
+
+            return <String, Object?>{
+              'stdout': results[0] as String,
+              'stderr': results[1] as String,
+              'exit_code': results[2] as int,
+            };
           } on TimeoutException {
+            process.kill();
             throw StateError(
               'Command timed out after ${timeout.inSeconds}s: '
               '$command ${execArgs.join(' ')}',
             );
           }
-
-          return <String, Object?>{
-            'stdout': result.stdout as String,
-            'stderr': result.stderr as String,
-            'exit_code': result.exitCode,
-          };
         },
       );
-
-  // -- shell_allowed ---------------------------------------------------------
 
   HostFunction _allowed() => HostFunction(
         schema: const HostFunctionSchema(
