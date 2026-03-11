@@ -31,6 +31,7 @@ class AgUiLlmProvider implements AgentLlmProvider {
       runId: runId,
       messages: input.messages,
       tools: input.tools,
+      state: input.state,
     );
     final endpoint = 'rooms/${key.roomId}/agui/${key.threadId}/$runId';
     final events = _agUiStreamClient.runAgent(

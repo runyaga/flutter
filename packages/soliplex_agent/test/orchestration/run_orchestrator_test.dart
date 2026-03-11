@@ -937,6 +937,256 @@ void main() {
     });
   });
 
+  group('AG-UI state round-trip', () {
+    test('_buildInput sends aguiState from cachedHistory to backend', () async {
+      orchestrator = RunOrchestrator(
+        llmProvider: AgUiLlmProvider(
+          api: api,
+          agUiStreamClient: agUiStreamClient,
+        ),
+        toolRegistry: const ToolRegistry(),
+        logger: logger,
+      );
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      final history = ThreadHistory(
+        messages: [
+          TextMessage.create(
+            id: 'prior-user',
+            user: ChatUser.user,
+            text: 'Search',
+          ),
+        ],
+        aguiState: const {'filter': 'docs', 'citations': <String>[]},
+      );
+
+      await orchestrator.startRun(
+        key: _key,
+        userMessage: 'More',
+        cachedHistory: history,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final captured = verify(
+        () => agUiStreamClient.runAgent(
+          any(),
+          captureAny(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).captured;
+
+      final input = captured.first as SimpleRunAgentInput;
+      final state = input.state as Map<String, dynamic>;
+      expect(state, containsPair('filter', 'docs'));
+      expect(state, containsPair('citations', <String>[]));
+    });
+
+    test('state accumulated via StateSnapshotEvent survives to resume run',
+        () async {
+      orchestrator = RunOrchestrator(
+        llmProvider: AgUiLlmProvider(
+          api: api,
+          agUiStreamClient: agUiStreamClient,
+        ),
+        toolRegistry: _registryWith(),
+        logger: logger,
+      );
+      stubCreateRun();
+      var callCount = 0;
+      when(
+        () => agUiStreamClient.runAgent(
+          any(),
+          captureAny(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).thenAnswer((_) {
+        callCount++;
+        if (callCount == 1) {
+          // First run: emit state snapshot + tool call.
+          return Stream.fromIterable([
+            const RunStartedEvent(threadId: 'thread-1', runId: _runId),
+            const StateSnapshotEvent(
+              snapshot: {'rag_context': 'doc-42', 'turn': 1},
+            ),
+            const ToolCallStartEvent(
+              toolCallId: 'tc-1',
+              toolCallName: 'weather',
+            ),
+            const ToolCallArgsEvent(
+              toolCallId: 'tc-1',
+              delta: '{"city":"NYC"}',
+            ),
+            const ToolCallEndEvent(toolCallId: 'tc-1'),
+            const RunFinishedEvent(threadId: 'thread-1', runId: _runId),
+          ]);
+        }
+        // Second run: just complete.
+        return Stream.fromIterable(_resumeTextEvents());
+      });
+
+      await orchestrator.startRun(key: _key, userMessage: 'Weather?');
+      await Future<void>.delayed(Duration.zero);
+      expect(orchestrator.currentState, isA<ToolYieldingState>());
+
+      await orchestrator.submitToolOutputs(_executedTools());
+      await Future<void>.delayed(Duration.zero);
+      expect(orchestrator.currentState, isA<CompletedState>());
+
+      // Verify the second runAgent call received the state from the snapshot.
+      final captured = verify(
+        () => agUiStreamClient.runAgent(
+          any(),
+          captureAny(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).captured;
+
+      // captured has 2 entries: first call and second call.
+      final resumeInput = captured[1] as SimpleRunAgentInput;
+      final state = resumeInput.state as Map<String, dynamic>;
+      expect(state, containsPair('rag_context', 'doc-42'));
+      expect(state, containsPair('turn', 1));
+    });
+
+    test('state modified across multiple runs via runToCompletion', () async {
+      orchestrator = RunOrchestrator(
+        llmProvider: AgUiLlmProvider(
+          api: api,
+          agUiStreamClient: agUiStreamClient,
+        ),
+        toolRegistry: _registryWith(),
+        logger: logger,
+      );
+      stubCreateRun();
+      var callCount = 0;
+      when(
+        () => agUiStreamClient.runAgent(
+          any(),
+          captureAny(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).thenAnswer((_) {
+        callCount++;
+        if (callCount == 1) {
+          // Run 1: set initial state + yield tool.
+          return Stream.fromIterable([
+            const RunStartedEvent(threadId: 'thread-1', runId: _runId),
+            const StateSnapshotEvent(
+              snapshot: {'turn': 1, 'docs': <String>[]},
+            ),
+            const ToolCallStartEvent(
+              toolCallId: 'tc-1',
+              toolCallName: 'weather',
+            ),
+            const ToolCallArgsEvent(
+              toolCallId: 'tc-1',
+              delta: '{"city":"NYC"}',
+            ),
+            const ToolCallEndEvent(toolCallId: 'tc-1'),
+            const RunFinishedEvent(threadId: 'thread-1', runId: _runId),
+          ]);
+        }
+        if (callCount == 2) {
+          // Run 2: update state via new snapshot + yield tool again.
+          return Stream.fromIterable([
+            const RunStartedEvent(threadId: 'thread-1', runId: _runId),
+            const StateSnapshotEvent(
+              snapshot: {
+                'turn': 2,
+                'docs': ['doc-a'],
+              },
+            ),
+            const ToolCallStartEvent(
+              toolCallId: 'tc-2',
+              toolCallName: 'weather',
+            ),
+            const ToolCallArgsEvent(
+              toolCallId: 'tc-2',
+              delta: '{"city":"LA"}',
+            ),
+            const ToolCallEndEvent(toolCallId: 'tc-2'),
+            const RunFinishedEvent(threadId: 'thread-1', runId: _runId),
+          ]);
+        }
+        // Run 3: complete.
+        return Stream.fromIterable(_resumeTextEvents());
+      });
+
+      final result = await orchestrator.runToCompletion(
+        key: _key,
+        userMessage: 'Weather?',
+        toolExecutor: (pending) async {
+          return pending
+              .map(
+                (tc) => tc.copyWith(
+                  status: ToolCallStatus.completed,
+                  result: 'result',
+                ),
+              )
+              .toList();
+        },
+      );
+      expect(result, isA<CompletedState>());
+
+      final captured = verify(
+        () => agUiStreamClient.runAgent(
+          any(),
+          captureAny(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).captured;
+
+      // 3 calls total.
+      expect(captured, hasLength(3));
+
+      // Run 1: initial state should be empty (no cachedHistory).
+      final input1 = captured[0] as SimpleRunAgentInput;
+      final state1 = input1.state as Map<String, dynamic>;
+      expect(state1, isEmpty);
+
+      // Run 2: state from StateSnapshotEvent in run 1.
+      final input2 = captured[1] as SimpleRunAgentInput;
+      final state2 = input2.state as Map<String, dynamic>;
+      expect(state2, containsPair('turn', 1));
+      expect(state2['docs'], isEmpty);
+
+      // Run 3: state updated by StateSnapshotEvent in run 2.
+      final input3 = captured[2] as SimpleRunAgentInput;
+      final state3 = input3.state as Map<String, dynamic>;
+      expect(state3, containsPair('turn', 2));
+      expect(state3['docs'], equals(['doc-a']));
+    });
+
+    test('empty state sent when no cachedHistory or snapshots', () async {
+      orchestrator = RunOrchestrator(
+        llmProvider: AgUiLlmProvider(
+          api: api,
+          agUiStreamClient: agUiStreamClient,
+        ),
+        toolRegistry: const ToolRegistry(),
+        logger: logger,
+      );
+      stubCreateRun();
+      stubRunAgent(stream: Stream.fromIterable(_happyPathEvents()));
+
+      await orchestrator.startRun(key: _key, userMessage: 'Hi');
+      await Future<void>.delayed(Duration.zero);
+
+      final captured = verify(
+        () => agUiStreamClient.runAgent(
+          any(),
+          captureAny(),
+          cancelToken: any(named: 'cancelToken'),
+        ),
+      ).captured;
+
+      final input = captured.first as SimpleRunAgentInput;
+      final state = input.state as Map<String, dynamic>;
+      expect(state, isEmpty);
+    });
+  });
+
   group('dispose', () {
     test('cleans up resources', () async {
       orchestrator.dispose();
