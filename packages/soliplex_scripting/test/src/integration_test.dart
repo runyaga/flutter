@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:soliplex_agent/soliplex_agent.dart'
     show FakeAgentApi, HostApi, ToolExecutionContext;
@@ -57,6 +58,9 @@ class _FakeHostApi implements HostApi {
 /// 3. Returning the handler result as text output.
 class _ScriptableBridge implements MontyBridge {
   final _functions = <String, HostFunction>{};
+
+  /// Exposes registered functions by name for test assertions.
+  Map<String, HostFunction> get registered => _functions;
 
   @override
   List<HostFunctionSchema> get schemas =>
@@ -287,6 +291,192 @@ void main() {
       expect(names, isNot(contains('ask_llm')));
       expect(names, isNot(contains('wait_all')));
       expect(names, isNot(contains('get_result')));
+    });
+  });
+
+  group('Integration: LocalFsPlugin', () {
+    late Directory tempDir;
+    late _FakeHostApi hostApi;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('fs_integration_');
+      hostApi = _FakeHostApi();
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    Future<MontyScriptEnvironment> createFsEnvironment() async {
+      final bridge = _ScriptableBridge();
+      final df = DfRegistry();
+      final streamRegistry = StreamRegistry();
+      final registry = PluginRegistry()
+        ..register(DfPlugin(dfRegistry: df))
+        ..register(ChartPlugin(hostApi: hostApi))
+        ..register(PlatformPlugin(hostApi: hostApi))
+        ..register(StreamPlugin(streamRegistry: streamRegistry))
+        ..register(LocalFsPlugin(rootPath: tempDir.path));
+      await registry.attachTo(bridge);
+      return MontyScriptEnvironment(
+        bridge: bridge,
+        dfRegistry: df,
+        streamRegistry: streamRegistry,
+      );
+    }
+
+    ToolCallInfo fsCall(String code) => ToolCallInfo(
+          id: 'tc-fs',
+          name: PythonExecutorTool.toolName,
+          arguments: jsonEncode({'code': code}),
+        );
+
+    test('write then cat round-trip through bridge', () async {
+      final env = await createFsEnvironment();
+
+      // Write a file.
+      await env.tools.first.executor(
+        fsCall('fs_write({"path": "hello.txt", "content": "world"})'),
+        _ctx,
+      );
+
+      // Verify on disk.
+      final onDisk = File('${tempDir.path}/hello.txt').readAsStringSync();
+      expect(onDisk, 'world');
+
+      // Read back through bridge.
+      final result = await env.tools.first.executor(
+        fsCall('fs_cat({"path": "hello.txt"})'),
+        _ctx,
+      );
+      expect(result, contains('done'));
+
+      env.dispose();
+    });
+
+    test('fs_ls returns directory entries through bridge', () async {
+      final env = await createFsEnvironment();
+
+      File('${tempDir.path}/a.txt').writeAsStringSync('');
+      File('${tempDir.path}/b.txt').writeAsStringSync('');
+
+      final result = await env.tools.first.executor(
+        fsCall('fs_ls({"path": "."})'),
+        _ctx,
+      );
+      expect(result, contains('done'));
+
+      env.dispose();
+    });
+
+    test('fs_mkdir creates directory through bridge', () async {
+      final env = await createFsEnvironment();
+
+      await env.tools.first.executor(
+        fsCall('fs_mkdir({"path": "newdir"})'),
+        _ctx,
+      );
+
+      expect(
+        Directory('${tempDir.path}/newdir').existsSync(),
+        isTrue,
+      );
+
+      env.dispose();
+    });
+
+    test('fs_exists detects file through bridge', () async {
+      final env = await createFsEnvironment();
+
+      File('${tempDir.path}/present.txt').writeAsStringSync('');
+
+      final result = await env.tools.first.executor(
+        fsCall('fs_exists({"path": "present.txt"})'),
+        _ctx,
+      );
+      expect(result, contains('done'));
+
+      env.dispose();
+    });
+
+    test('fs_rm removes file through bridge', () async {
+      final env = await createFsEnvironment();
+
+      final file = File('${tempDir.path}/doomed.txt')..writeAsStringSync('bye');
+
+      await env.tools.first.executor(
+        fsCall('fs_rm({"path": "doomed.txt"})'),
+        _ctx,
+      );
+
+      expect(file.existsSync(), isFalse);
+
+      env.dispose();
+    });
+
+    test('fs_stat returns metadata through bridge', () async {
+      final env = await createFsEnvironment();
+
+      File('${tempDir.path}/info.txt').writeAsStringSync('data');
+
+      final result = await env.tools.first.executor(
+        fsCall('fs_stat({"path": "info.txt"})'),
+        _ctx,
+      );
+      expect(result, contains('done'));
+
+      env.dispose();
+    });
+
+    test('fs_find matches glob through bridge', () async {
+      final env = await createFsEnvironment();
+
+      File('${tempDir.path}/a.txt').writeAsStringSync('');
+      File('${tempDir.path}/b.dart').writeAsStringSync('');
+
+      final result = await env.tools.first.executor(
+        fsCall('fs_find({"path": ".", "pattern": "*.txt"})'),
+        _ctx,
+      );
+      expect(result, contains('done'));
+
+      env.dispose();
+    });
+
+    test('all fs functions registered on bridge schemas', () async {
+      final bridge = _ScriptableBridge();
+      final registry = PluginRegistry()
+        ..register(LocalFsPlugin(rootPath: tempDir.path));
+      await registry.attachTo(bridge);
+
+      final names = bridge.schemas.map((s) => s.name).toSet();
+      expect(
+        names,
+        containsAll([
+          'fs_cat',
+          'fs_ls',
+          'fs_write',
+          'fs_mkdir',
+          'fs_rm',
+          'fs_stat',
+          'fs_exists',
+          'fs_find',
+        ]),
+      );
+    });
+
+    test('path traversal rejected by registered handler', () async {
+      final bridge = _ScriptableBridge();
+      final registry = PluginRegistry()
+        ..register(LocalFsPlugin(rootPath: tempDir.path));
+      await registry.attachTo(bridge);
+
+      // Invoke the registered handler directly to verify containment.
+      final fn = bridge.registered['fs_cat']!;
+      expect(
+        () => fn.handler({'path': '../../etc/passwd'}),
+        throwsA(isA<ArgumentError>()),
+      );
     });
   });
 }

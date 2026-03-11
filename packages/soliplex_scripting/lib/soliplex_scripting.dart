@@ -24,6 +24,7 @@ export 'src/plugins/chart_plugin.dart';
 export 'src/plugins/df_plugin.dart';
 export 'src/plugins/form_plugin.dart';
 export 'src/plugins/llm_plugin.dart';
+export 'src/plugins/local_fs_plugin.dart';
 export 'src/plugins/mcp_plugin.dart';
 export 'src/plugins/platform_plugin.dart';
 export 'src/plugins/stream_plugin.dart';

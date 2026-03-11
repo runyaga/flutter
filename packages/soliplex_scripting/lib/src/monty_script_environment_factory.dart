@@ -15,6 +15,7 @@ import 'package:soliplex_scripting/src/plugins/chart_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/df_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/form_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/llm_plugin.dart';
+import 'package:soliplex_scripting/src/plugins/local_fs_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/mcp_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/platform_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/stream_plugin.dart';
@@ -66,6 +67,7 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
   Duration? agentTimeout,
   Map<String, Stream<Object?> Function()>? streamFactories,
   String? prelude,
+  String? fsRootPath,
 }) {
   return () async {
     final dfRegistry = DfRegistry();
@@ -140,6 +142,9 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
       if (blackboardApi != null) {
         registry.register(BlackboardPlugin(blackboardApi: blackboardApi));
       }
+      if (fsRootPath != null) {
+        registry.register(LocalFsPlugin(rootPath: fsRootPath));
+      }
       if (extraPlugins != null) {
         extraPlugins.forEach(registry.register);
       }
@@ -182,7 +187,11 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
 /// Plugin preludes come first (in registration order), followed by the
 /// user-provided prelude. Returns `null` when all sources are empty.
 String? _buildCombinedPrelude(List<MontyPlugin> plugins, String? userPrelude) {
-  final buf = StringBuffer();
+  final buf = StringBuffer()
+    // Global help registry — plugins append entries keyed by function ref.
+    ..writeln('_help_docs = {}')
+    ..writeln();
+
   for (final plugin in plugins) {
     final prelude = plugin.pythonPrelude;
     if (prelude.isNotEmpty) {
@@ -192,6 +201,18 @@ String? _buildCombinedPrelude(List<MontyPlugin> plugins, String? userPrelude) {
   if (userPrelude != null && userPrelude.isNotEmpty) {
     buf.writeln(userPrelude);
   }
+
+  // Built-in help() — pass a function ref or call with no args to list all.
+  buf
+    ..writeln()
+    ..writeln('def help(obj=None):')
+    ..writeln('    if obj is None:')
+    ..writeln('        return _help_docs')
+    ..writeln('    r = _help_docs.get(obj, None)')
+    ..writeln('    if r is None:')
+    ..writeln('        return "No help available."')
+    ..writeln('    return r');
+
   final result = buf.toString().trimRight();
   return result.isEmpty ? null : result;
 }
