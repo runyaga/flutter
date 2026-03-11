@@ -188,8 +188,9 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
 /// user-provided prelude. Returns `null` when all sources are empty.
 String? _buildCombinedPrelude(List<MontyPlugin> plugins, String? userPrelude) {
   final buf = StringBuffer()
-    // Global help registry — plugins append entries keyed by function ref.
+    // Global help registries — function ref lookup + ordered display list.
     ..writeln('_help_docs = {}')
+    ..writeln('_help_list = []')
     ..writeln();
 
   for (final plugin in plugins) {
@@ -206,12 +207,18 @@ String? _buildCombinedPrelude(List<MontyPlugin> plugins, String? userPrelude) {
   buf
     ..writeln()
     ..writeln('def help(obj=None):')
-    ..writeln('    if obj is None:')
-    ..writeln('        return _help_docs')
-    ..writeln('    r = _help_docs.get(obj, None)')
-    ..writeln('    if r is None:')
-    ..writeln('        return "No help available."')
-    ..writeln('    return r');
+    ..writeln('    if obj is not None:')
+    ..writeln('        r = _help_docs.get(obj, None)')
+    ..writeln('        if r is None:')
+    ..writeln('            return "No help available."')
+    ..writeln('        return r')
+    ..writeln('    out = "Available functions:"')
+    ..writeln('    i = 0')
+    ..writeln('    while i < len(_help_list):')
+    ..writeln('        entry = _help_list[i]')
+    ..writeln(r'        out = out + "\n  " + entry[0] + " - " + entry[1]')
+    ..writeln('        i = i + 1')
+    ..writeln('    return out');
 
   final result = buf.toString().trimRight();
   return result.isEmpty ? null : result;

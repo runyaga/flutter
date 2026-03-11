@@ -33,34 +33,42 @@ class LocalFsPlugin extends MontyPlugin {
 def cat(path):
     return fs_cat(path=path)
 _help_docs[cat] = "Read a UTF-8 text file. Usage: cat(path)"
+_help_list = _help_list + [["cat", "Read a UTF-8 text file"]]
 
 def ls(path=".", recursive=False):
     return fs_ls(path=path, recursive=recursive)
 _help_docs[ls] = "List directory entries. Usage: ls(path, recursive=False)"
+_help_list = _help_list + [["ls", "List directory entries"]]
 
 def write(path, content):
     fs_write(path=path, content=content)
 _help_docs[write] = "Write text to a file. Usage: write(path, content)"
+_help_list = _help_list + [["write", "Write text to a file"]]
 
 def mkdir(path):
     fs_mkdir(path=path)
 _help_docs[mkdir] = "Create directory (recursive). Usage: mkdir(path)"
+_help_list = _help_list + [["mkdir", "Create directory (recursive)"]]
 
 def rm(path):
     fs_rm(path=path)
 _help_docs[rm] = "Delete a file or empty directory. Usage: rm(path)"
+_help_list = _help_list + [["rm", "Delete a file or empty directory"]]
 
 def stat(path):
     return fs_stat(path=path)
 _help_docs[stat] = "Get file metadata. Usage: stat(path)"
+_help_list = _help_list + [["stat", "Get file metadata"]]
 
 def exists(path):
     return fs_exists(path=path)
 _help_docs[exists] = "Check if path exists. Usage: exists(path)"
+_help_list = _help_list + [["exists", "Check if path exists"]]
 
 def find(path=".", pattern="*"):
     return fs_find(path=path, pattern=pattern)
-_help_docs[find] = "Find files by glob. Usage: find(path, pattern)"''';
+_help_docs[find] = "Find files by glob. Usage: find(path, pattern)"
+_help_list = _help_list + [["find", "Find files by glob"]]''';
 
   @override
   List<HostFunction> get functions => [
