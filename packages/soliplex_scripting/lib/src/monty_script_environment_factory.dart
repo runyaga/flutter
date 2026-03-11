@@ -18,6 +18,7 @@ import 'package:soliplex_scripting/src/plugins/llm_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/local_fs_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/mcp_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/platform_plugin.dart';
+import 'package:soliplex_scripting/src/plugins/shell_exec_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/stream_plugin.dart';
 import 'package:soliplex_scripting/src/stream_registry.dart';
 
@@ -68,6 +69,8 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
   Map<String, Stream<Object?> Function()>? streamFactories,
   String? prelude,
   String? fsRootPath,
+  String? shellRootPath,
+  Set<String>? shellAllowedCommands,
 }) {
   return () async {
     final dfRegistry = DfRegistry();
@@ -144,6 +147,14 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
       }
       if (fsRootPath != null) {
         registry.register(LocalFsPlugin(rootPath: fsRootPath));
+      }
+      if (shellRootPath != null) {
+        registry.register(
+          ShellExecPlugin(
+            rootPath: shellRootPath,
+            allowedCommands: shellAllowedCommands,
+          ),
+        );
       }
       if (extraPlugins != null) {
         extraPlugins.forEach(registry.register);

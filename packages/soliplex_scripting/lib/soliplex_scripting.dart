@@ -27,6 +27,7 @@ export 'src/plugins/llm_plugin.dart';
 export 'src/plugins/local_fs_plugin.dart';
 export 'src/plugins/mcp_plugin.dart';
 export 'src/plugins/platform_plugin.dart';
+export 'src/plugins/shell_exec_plugin.dart';
 export 'src/plugins/stream_plugin.dart';
 export 'src/python_executor_tool.dart';
 export 'src/stream_registry.dart';
