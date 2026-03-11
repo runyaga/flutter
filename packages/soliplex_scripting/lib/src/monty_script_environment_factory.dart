@@ -159,6 +159,11 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
         for (final fn in extraFunctions) fn.schema,
     ];
 
+    // Concatenate plugin preludes (in registration order) with the
+    // user-provided prelude. Plugin preludes come first so user code
+    // can reference wrapper functions defined by plugins.
+    final combinedPrelude = _buildCombinedPrelude(registry.plugins, prelude);
+
     return MontyScriptEnvironment(
       bridge: bridge,
       ownedPlatform: platform,
@@ -167,7 +172,26 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
       executionTimeout: executionTimeout,
       isolatePlugin: isolatePlugin,
       hostFunctionSchemas: hostSchemas,
-      prelude: prelude,
+      prelude: combinedPrelude,
     );
   };
+}
+
+/// Builds a combined prelude from plugin preludes and the user prelude.
+///
+/// Plugin preludes come first (in registration order), followed by the
+/// user-provided prelude. Returns `null` when all sources are empty.
+String? _buildCombinedPrelude(List<MontyPlugin> plugins, String? userPrelude) {
+  final buf = StringBuffer();
+  for (final plugin in plugins) {
+    final prelude = plugin.pythonPrelude;
+    if (prelude.isNotEmpty) {
+      buf.writeln(prelude);
+    }
+  }
+  if (userPrelude != null && userPrelude.isNotEmpty) {
+    buf.writeln(userPrelude);
+  }
+  final result = buf.toString().trimRight();
+  return result.isEmpty ? null : result;
 }

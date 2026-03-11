@@ -77,6 +77,8 @@ dependencies:
   web: ^1.1.1
 
 dependency_overrides:
+  dart_monty_bridge:
+    path: /Users/runyaga/dev/dart_monty-plugin-maker/packages/dart_monty_bridge
   dart_monty_platform_interface:
     git:
       url: https://github.com/runyaga/dart_monty.git
