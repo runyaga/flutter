@@ -9,8 +9,7 @@ void main() {
   // final bridge = DefaultMontyBridge(platform: myMontyPlatform);
 
   // 2. Optionally register host functions so Python can call Dart.
-  // final registry = HostFunctionRegistry();
-  // registry.registerOnto(bridge);
+  // bridge.register(myHostFunction);
 
   // 3. Execute Python code and listen for bridge events.
   // final events = bridge.execute('print("Hello from Monty!")');

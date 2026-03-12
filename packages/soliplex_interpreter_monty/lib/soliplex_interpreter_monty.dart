@@ -24,7 +24,6 @@ export 'package:dart_monty_bridge/dart_monty_bridge.dart'
         EventLoopBridge,
         HostFunction,
         HostFunctionHandler,
-        HostFunctionRegistry,
         HostFunctionSchema,
         HostParam,
         HostParamType,

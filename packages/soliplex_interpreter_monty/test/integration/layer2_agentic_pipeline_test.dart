@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:dart_monty/dart_monty.dart';
 import 'package:dart_monty_platform_interface/dart_monty_testing.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:test/test.dart';
@@ -15,35 +15,34 @@ void main() {
 
       setUp(() {
         mock = MockMontyPlatform();
-        bridge = DefaultMontyBridge(platform: mock, useFutures: false);
-
-        (HostFunctionRegistry()
-              ..addCategory('research', [
-                HostFunction(
-                  schema: const HostFunctionSchema(
-                    name: 'search',
-                    description: 'Search for information.',
-                    params: [
-                      HostParam(name: 'query', type: HostParamType.string),
-                    ],
-                  ),
-                  handler: (args) async =>
-                      'Quantum computing made major breakthroughs in 2026 '
-                      'with error correction achieving 99.9% fidelity.',
-                ),
-                HostFunction(
-                  schema: const HostFunctionSchema(
-                    name: 'summarize',
-                    description: 'Summarize text to max_words.',
-                    params: [
-                      HostParam(name: 'text', type: HostParamType.string),
-                      HostParam(name: 'max_words', type: HostParamType.integer),
-                    ],
-                  ),
-                  handler: (args) async => 'Quantum computing: 99.9% fidelity.',
-                ),
-              ]))
-            .registerAllOnto(bridge);
+        bridge = DefaultMontyBridge(platform: mock, useFutures: false)
+          ..register(
+            HostFunction(
+              schema: const HostFunctionSchema(
+                name: 'search',
+                description: 'Search for information.',
+                params: [
+                  HostParam(name: 'query', type: HostParamType.string),
+                ],
+              ),
+              handler: (args) async =>
+                  'Quantum computing made major breakthroughs in 2026 '
+                  'with error correction achieving 99.9% fidelity.',
+            ),
+          )
+          ..register(
+            HostFunction(
+              schema: const HostFunctionSchema(
+                name: 'summarize',
+                description: 'Summarize text to max_words.',
+                params: [
+                  HostParam(name: 'text', type: HostParamType.string),
+                  HostParam(name: 'max_words', type: HostParamType.integer),
+                ],
+              ),
+              handler: (args) async => 'Quantum computing: 99.9% fidelity.',
+            ),
+          );
       });
 
       tearDown(() => bridge.dispose());
@@ -120,41 +119,40 @@ void main() {
 
       setUp(() {
         mock = MockMontyPlatform();
-        bridge = DefaultMontyBridge(platform: mock, useFutures: false);
-
-        (HostFunctionRegistry()
-              ..addCategory('data', [
-                HostFunction(
-                  schema: const HostFunctionSchema(
-                    name: 'fetch_sales',
-                    description: 'Fetch sales data for a region.',
-                    params: [
-                      HostParam(name: 'region', type: HostParamType.string),
-                    ],
-                  ),
-                  handler: (args) async => [
-                    {'month': 'Jan', 'amount': 1200},
-                    {'month': 'Jan', 'amount': 800},
-                    {'month': 'Feb', 'amount': 1500},
-                  ],
-                ),
-                HostFunction(
-                  schema: const HostFunctionSchema(
-                    name: 'chart_bar',
-                    description: 'Render a bar chart.',
-                    params: [
-                      HostParam(name: 'title', type: HostParamType.string),
-                      HostParam(name: 'data', type: HostParamType.list),
-                    ],
-                  ),
-                  handler: (args) async => {
-                    'chart_id': 'chart_001',
-                    'type': 'bar',
-                    'title': args['title'],
-                  },
-                ),
-              ]))
-            .registerAllOnto(bridge);
+        bridge = DefaultMontyBridge(platform: mock, useFutures: false)
+          ..register(
+            HostFunction(
+              schema: const HostFunctionSchema(
+                name: 'fetch_sales',
+                description: 'Fetch sales data for a region.',
+                params: [
+                  HostParam(name: 'region', type: HostParamType.string),
+                ],
+              ),
+              handler: (args) async => [
+                {'month': 'Jan', 'amount': 1200},
+                {'month': 'Jan', 'amount': 800},
+                {'month': 'Feb', 'amount': 1500},
+              ],
+            ),
+          )
+          ..register(
+            HostFunction(
+              schema: const HostFunctionSchema(
+                name: 'chart_bar',
+                description: 'Render a bar chart.',
+                params: [
+                  HostParam(name: 'title', type: HostParamType.string),
+                  HostParam(name: 'data', type: HostParamType.list),
+                ],
+              ),
+              handler: (args) async => {
+                'chart_id': 'chart_001',
+                'type': 'bar',
+                'title': args['title'],
+              },
+            ),
+          );
       });
 
       tearDown(() => bridge.dispose());
@@ -227,33 +225,32 @@ void main() {
 
       setUp(() {
         mock = MockMontyPlatform();
-        bridge = DefaultMontyBridge(platform: mock, useFutures: false);
-
-        (HostFunctionRegistry()
-              ..addCategory('storage', [
-                HostFunction(
-                  schema: const HostFunctionSchema(
-                    name: 'get_data',
-                    description: 'Fetch data by key.',
-                    params: [
-                      HostParam(name: 'key', type: HostParamType.string),
-                    ],
-                  ),
-                  handler: (args) async => {'theme': 'dark', 'lang': 'en'},
-                ),
-                HostFunction(
-                  schema: const HostFunctionSchema(
-                    name: 'store_result',
-                    description: 'Store a key-value result.',
-                    params: [
-                      HostParam(name: 'key', type: HostParamType.string),
-                      HostParam(name: 'value', type: HostParamType.string),
-                    ],
-                  ),
-                  handler: (args) async => true,
-                ),
-              ]))
-            .registerAllOnto(bridge);
+        bridge = DefaultMontyBridge(platform: mock, useFutures: false)
+          ..register(
+            HostFunction(
+              schema: const HostFunctionSchema(
+                name: 'get_data',
+                description: 'Fetch data by key.',
+                params: [
+                  HostParam(name: 'key', type: HostParamType.string),
+                ],
+              ),
+              handler: (args) async => {'theme': 'dark', 'lang': 'en'},
+            ),
+          )
+          ..register(
+            HostFunction(
+              schema: const HostFunctionSchema(
+                name: 'store_result',
+                description: 'Store a key-value result.',
+                params: [
+                  HostParam(name: 'key', type: HostParamType.string),
+                  HostParam(name: 'value', type: HostParamType.string),
+                ],
+              ),
+              handler: (args) async => true,
+            ),
+          );
       });
 
       tearDown(() => bridge.dispose());

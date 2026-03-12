@@ -1,4 +1,4 @@
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:dart_monty/dart_monty.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:test/test.dart';
 

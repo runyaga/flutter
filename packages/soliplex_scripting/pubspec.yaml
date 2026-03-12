@@ -11,11 +11,15 @@ dependencies:
     git:
       url: https://github.com/soliplex/ag-ui.git
       path: sdks/community/dart
-  dart_monty_platform_interface:
+  dart_monty:
     git:
       url: https://github.com/runyaga/dart_monty.git
       ref: main
-      path: packages/dart_monty_platform_interface
+  dart_monty_bridge:
+    git:
+      url: https://github.com/runyaga/dart_monty.git
+      ref: main
+      path: packages/dart_monty_bridge
   meta: ^1.11.0
   soliplex_agent:
     path: ../soliplex_agent
@@ -30,11 +34,24 @@ dependencies:
       url: https://github.com/runyaga/struct_log.git
 
 dependency_overrides:
+  dart_monty_ffi:
+    git:
+      url: https://github.com/runyaga/dart_monty.git
+      ref: main
+      path: packages/dart_monty_ffi
   dart_monty_platform_interface:
     git:
       url: https://github.com/runyaga/dart_monty.git
       ref: main
       path: packages/dart_monty_platform_interface
+  dart_monty_wasm:
+    git:
+      url: https://github.com/runyaga/dart_monty.git
+      ref: main
+      path: packages/dart_monty_wasm
+  struct_log:
+    git:
+      url: https://github.com/runyaga/struct_log.git
 
 dev_dependencies:
   mocktail: ^1.0.4

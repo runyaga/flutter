@@ -1,4 +1,4 @@
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:dart_monty/dart_monty.dart';
 
 /// Converts a Dart value to a Python literal string.
 String _toPythonLiteral(Object? value) {
@@ -35,7 +35,7 @@ class SchemaExecutor {
   final MontyPlatform? _explicitPlatform;
   final Map<String, String> _schemas = {};
 
-  MontyPlatform get _platform => _explicitPlatform ?? MontyPlatform.instance;
+  MontyPlatform get _platform => _explicitPlatform ?? Monty();
 
   /// Names of all loaded schemas.
   Iterable<String> get schemaNames => _schemas.keys;

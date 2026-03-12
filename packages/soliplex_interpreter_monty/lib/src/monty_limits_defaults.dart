@@ -1,4 +1,4 @@
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:dart_monty/dart_monty.dart';
 
 /// Safe default resource limits for Monty execution contexts.
 abstract final class MontyLimitsDefaults {

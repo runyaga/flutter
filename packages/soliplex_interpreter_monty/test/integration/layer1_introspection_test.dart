@@ -1,6 +1,8 @@
 import 'dart:convert';
 
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:dart_monty/dart_monty.dart';
+import 'package:dart_monty_bridge/dart_monty_bridge.dart'
+    show buildIntrospectionFunctions;
 import 'package:dart_monty_platform_interface/dart_monty_testing.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:test/test.dart';
@@ -15,20 +17,26 @@ void main() {
       setUp(() {
         mock = MockMontyPlatform();
         bridge = DefaultMontyBridge(platform: mock, useFutures: false);
-        (HostFunctionRegistry()
-              ..addCategory('finance', [
-                HostFunction(
-                  schema: const HostFunctionSchema(
-                    name: 'get_price',
-                    description: 'Get stock price by symbol.',
-                    params: [
-                      HostParam(name: 'symbol', type: HostParamType.string),
-                    ],
-                  ),
-                  handler: (args) async => 42.5,
-                ),
-              ]))
-            .registerAllOnto(bridge);
+
+        const getPriceSchema = HostFunctionSchema(
+          name: 'get_price',
+          description: 'Get stock price by symbol.',
+          params: [
+            HostParam(name: 'symbol', type: HostParamType.string),
+          ],
+        );
+
+        bridge.register(
+          HostFunction(
+            schema: getPriceSchema,
+            handler: (args) async => 42.5,
+          ),
+        );
+
+        // Register introspection builtins (list_functions, help).
+        buildIntrospectionFunctions({
+          'finance': [getPriceSchema],
+        }).forEach(bridge.register);
       });
 
       tearDown(() => bridge.dispose());
