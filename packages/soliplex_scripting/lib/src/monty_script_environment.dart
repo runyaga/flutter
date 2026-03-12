@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:ag_ui/ag_ui.dart' show Tool;
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
-    show MontyPlatform;
+import 'package:dart_monty/dart_monty.dart' show MontyPlatform;
 import 'package:soliplex_agent/soliplex_agent.dart'
     show ClientTool, ScriptEnvironment;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;

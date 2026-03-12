@@ -1,5 +1,7 @@
 import 'dart:collection';
 
+import 'package:dart_monty_bridge/dart_monty_bridge.dart'
+    show buildIntrospectionFunctions;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 
 /// Mixin for plugins whose function names predate the `namespace_` prefix
@@ -59,14 +61,28 @@ class PluginRegistry {
     MontyBridge bridge, {
     List<HostFunction>? extraFunctions,
   }) async {
-    final hostRegistry = HostFunctionRegistry();
+    final schemasByCategory = <String, List<HostFunctionSchema>>{};
+
     for (final plugin in _plugins) {
-      hostRegistry.addCategory(plugin.namespace, plugin.functions);
+      final schemas = <HostFunctionSchema>[];
+      for (final fn in plugin.functions) {
+        bridge.register(fn);
+        schemas.add(fn.schema);
+      }
+      schemasByCategory[plugin.namespace] = schemas;
     }
     if (extraFunctions != null && extraFunctions.isNotEmpty) {
-      hostRegistry.addCategory('extra', extraFunctions);
+      final schemas = <HostFunctionSchema>[];
+      for (final fn in extraFunctions) {
+        bridge.register(fn);
+        schemas.add(fn.schema);
+      }
+      schemasByCategory['extra'] = schemas;
     }
-    hostRegistry.registerAllOnto(bridge);
+
+    // Register introspection builtins (list_functions, help).
+    buildIntrospectionFunctions(schemasByCategory).forEach(bridge.register);
+
     for (final plugin in _plugins) {
       await plugin.onRegister(bridge);
     }

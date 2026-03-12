@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dart_monty_ffi/dart_monty_ffi.dart';
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:dart_monty/dart_monty.dart';
 import 'package:meta/meta.dart';
 import 'package:nocterm/nocterm.dart';
 import 'package:signals_core/signals_core.dart';
@@ -490,7 +489,6 @@ Future<void> listRooms({required String serverUrl}) async {
     );
   }
 
-  MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
   final blackboardApi = DirectBlackboardApi();
   AgentApi? agentApi;
 
@@ -510,7 +508,7 @@ Future<void> listRooms({required String serverUrl}) async {
         limits: limits,
         executionTimeout: timeout,
         agentTimeout: timeout,
-        platformFactory: () async => MontyFfi(bindings: NativeBindingsFfi()),
+        platformFactory: () async => Monty(),
         llmCompleter: provider?.complete,
         llmChatCompleter: provider != null
             ? (messages, {systemPrompt, maxTokens}) => provider.chat(

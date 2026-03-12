@@ -2,9 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:dart_monty_ffi/dart_monty_ffi.dart';
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
-    show MontyPlatform;
+import 'package:dart_monty/dart_monty.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_cli/src/client_factory.dart';
 import 'package:soliplex_cli/src/result_printer.dart';
@@ -279,10 +277,6 @@ Future<void> _runSession(ArgResults parsed) async {
   // reference when sessions are spawned (not at construction time).
   AgentApi? agentApi;
   if (montyEnabled) {
-    if (wasmMode) {
-      // Retain global singleton for simulated WASM (single bridge).
-      MontyPlatform.instance = MontyFfi(bindings: NativeBindingsFfi());
-    }
     final hostApi = FakeHostApi(
       invokeHandler: (name, args) async {
         if (name == 'log') {
@@ -296,8 +290,10 @@ Future<void> _runSession(ArgResults parsed) async {
     );
     final blackboardApi = DirectBlackboardApi();
     final fetchClient = DartHttpClient();
-    final MontyPlatformFactory? montyPlatformFactory =
-        wasmMode ? null : () async => MontyFfi(bindings: NativeBindingsFfi());
+    // WASM mode shares a single platform (simulates single-bridge constraint).
+    final sharedPlatform = wasmMode ? Monty() : null;
+    final MontyPlatformFactory montyPlatformFactory =
+        wasmMode ? () async => sharedPlatform! : () async => Monty();
     extensionFactory = () async {
       final factory = createMontyScriptEnvironmentFactory(
         hostApi: hostApi,

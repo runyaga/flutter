@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
-    show MontyLimits, MontyPlatform;
+import 'package:dart_monty/dart_monty.dart' show MontyLimits, MontyPlatform;
 import 'package:soliplex_agent/soliplex_agent.dart'
     show AgentApi, BlackboardApi, FormApi, HostApi, ScriptEnvironmentFactory;
 import 'package:soliplex_client/soliplex_client.dart' show SoliplexHttpClient;
@@ -33,13 +32,13 @@ typedef MontyPlatformFactory = Future<MontyPlatform> Function();
 /// When [platformFactory] is provided, each session gets its own
 /// [MontyPlatform] instance, enabling concurrent Monty execution
 /// across sessions (e.g. parent + child agents). Without it, the
-/// bridge falls back to the global [MontyPlatform.instance] singleton.
+/// bridge falls back to the default `Monty()` constructor.
 ///
 /// ```dart
 /// final factory = createMontyScriptEnvironmentFactory(
 ///   hostApi: myHostApi,
 ///   agentApi: myAgentApi,
-///   platformFactory: () async => MontyFfi(bindings: NativeBindingsFfi()),
+///   platformFactory: () async => Monty(),
 /// );
 /// final runtime = AgentRuntime(
 ///   // ...

@@ -34,6 +34,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
+  anthropic_sdk_dart:
+    dependency: transitive
+    description:
+      name: anthropic_sdk_dart
+      sha256: "6b847a3f61d6ca39bb8a7479f294e5e7b3d1d216449dbaed3b10ff483b0097c3"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.3.0"
   archive:
     dependency: transitive
     description:
@@ -186,6 +194,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.8"
+  dart_monty:
+    dependency: transitive
+    description:
+      path: "."
+      ref: main
+      resolved-ref: "70f2414294f1006ccf5f02e65694bcaa5314b6fd"
+      url: "https://github.com/runyaga/dart_monty.git"
+    source: git
+    version: "0.9.0"
   dart_monty_bridge:
     dependency: transitive
     description:
@@ -204,17 +221,8 @@ packages:
       url: "https://github.com/runyaga/dart_monty.git"
     source: git
     version: "0.7.0"
-  dart_monty_native:
-    dependency: "direct main"
-    description:
-      path: "packages/dart_monty_native"
-      ref: main
-      resolved-ref: b3ac889cbcb658ab5c4f54131f3bfcc26a3324ff
-      url: "https://github.com/runyaga/dart_monty.git"
-    source: git
-    version: "0.7.0"
   dart_monty_platform_interface:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
       path: "packages/dart_monty_platform_interface"
       ref: main
@@ -223,18 +231,9 @@ packages:
     source: git
     version: "0.6.1"
   dart_monty_wasm:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
       path: "packages/dart_monty_wasm"
-      ref: main
-      resolved-ref: b3ac889cbcb658ab5c4f54131f3bfcc26a3324ff
-      url: "https://github.com/runyaga/dart_monty.git"
-    source: git
-    version: "0.6.1"
-  dart_monty_web:
-    dependency: "direct main"
-    description:
-      path: "packages/dart_monty_web"
       ref: main
       resolved-ref: b3ac889cbcb658ab5c4f54131f3bfcc26a3324ff
       url: "https://github.com/runyaga/dart_monty.git"
@@ -444,6 +443,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  freezed_annotation:
+    dependency: transitive
+    description:
+      name: freezed_annotation
+      sha256: "7294967ff0a6d98638e7acb774aac3af2550777accd8149c90af5b014e6d44d8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.0"
   frontend_server_client:
     dependency: transitive
     description:
@@ -678,6 +685,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.3.0"
+  ollama_dart:
+    dependency: transitive
+    description:
+      name: ollama_dart
+      sha256: "55a45e381f3cf24791df510e287f353e776d376f556d34ba49b09bc918eee319"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.5"
+  open_responses:
+    dependency: transitive
+    description:
+      name: open_responses
+      sha256: "36fddff2706c9eb1b1766a97c02c2fe5db2b69ad0781532ec0fccc26b0f738f2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.4"
+  openai_dart:
+    dependency: transitive
+    description:
+      name: openai_dart
+      sha256: "4731f94ea9a09cd9e92333debcfb87efda2764718e506538206df9f540e9ab60"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
   package_config:
     dependency: transitive
     description:
@@ -976,6 +1007,13 @@ packages:
       relative: true
     source: path
     version: "1.0.0-dev"
+  soliplex_completions:
+    dependency: transitive
+    description:
+      path: "packages/soliplex_completions"
+      relative: true
+    source: path
+    version: "0.1.0"
   soliplex_dataframe:
     dependency: "direct main"
     description:

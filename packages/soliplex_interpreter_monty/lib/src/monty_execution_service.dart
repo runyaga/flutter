@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:dart_monty/dart_monty.dart';
 import 'package:soliplex_interpreter_monty/src/console_event.dart';
 import 'package:soliplex_interpreter_monty/src/execution_result.dart';
 
@@ -34,7 +34,7 @@ class MontyExecutionService {
   bool _isExecuting = false;
   bool _isDisposed = false;
 
-  MontyPlatform get _platform => _explicitPlatform ?? MontyPlatform.instance;
+  MontyPlatform get _platform => _explicitPlatform ?? Monty();
 
   /// Whether an execution is currently in progress.
   bool get isExecuting => _isExecuting;
