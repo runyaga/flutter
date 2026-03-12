@@ -1,7 +1,6 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
-import 'package:soliplex_client/soliplex_client.dart'
-    show AgUiStreamClient, SoliplexApi;
+import 'package:soliplex_client/soliplex_client.dart';
 import 'package:test/test.dart';
 
 class MockSoliplexApi extends Mock implements SoliplexApi {}

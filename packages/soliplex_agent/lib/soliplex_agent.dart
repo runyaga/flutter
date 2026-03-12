@@ -5,38 +5,8 @@
 /// `soliplex_logging` — no Flutter imports allowed.
 library;
 
-// Re-export signal types for consumers.
+// Re-export signal types used in public API (sessions expose ReadonlySignal).
 export 'package:signals_core/signals_core.dart' show ReadonlySignal, Signal;
-// Re-export domain types and AG-UI events. Consumers who need HTTP plumbing
-// (SoliplexApi, AgUiStreamClient, DartHttpClient, etc.) import soliplex_client
-// directly.
-export 'package:soliplex_client/soliplex_client.dart'
-    hide
-        AuthenticatedHttpClient,
-        DartHttpClient,
-        HttpErrorEvent,
-        HttpEvent,
-        HttpObserver,
-        HttpRequestEvent,
-        HttpResponse,
-        HttpResponseEvent,
-        HttpStreamEndEvent,
-        HttpStreamStartEvent,
-        HttpTransport,
-        ObservableHttpClient,
-        OidcDiscoveryDocument,
-        RefreshingHttpClient,
-        SoliplexApi,
-        SoliplexHttpClient,
-        TokenRefreshFailure,
-        TokenRefreshResult,
-        TokenRefreshService,
-        TokenRefreshSuccess,
-        TokenRefresher,
-        UrlBuilder,
-        convertToAgui,
-        defaultHttpTimeout,
-        fetchAuthProviders;
 
 // ── Host API ──
 export 'src/host/agent_api.dart';
