@@ -1,5 +1,6 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
+import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_tui/src/tool_definitions.dart';
 import 'package:test/test.dart';
 

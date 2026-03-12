@@ -5,16 +5,7 @@ library;
 import 'dart:io';
 
 import 'package:soliplex_agent/soliplex_agent.dart';
-import 'package:soliplex_client/soliplex_client.dart'
-    show
-        DartHttpClient,
-        HttpErrorEvent,
-        HttpObserver,
-        HttpRequestEvent,
-        HttpResponseEvent,
-        HttpStreamEndEvent,
-        HttpStreamStartEvent,
-        ObservableHttpClient;
+import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:test/test.dart';
 

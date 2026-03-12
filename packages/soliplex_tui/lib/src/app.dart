@@ -7,8 +7,7 @@ import 'package:meta/meta.dart';
 import 'package:nocterm/nocterm.dart';
 import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
-import 'package:soliplex_client/soliplex_client.dart'
-    show DartHttpClient, SoliplexApi, ThreadHistory, ToolCallInfo;
+import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_completions/soliplex_completions.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:soliplex_mcp/soliplex_mcp.dart';

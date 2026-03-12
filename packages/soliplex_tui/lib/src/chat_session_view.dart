@@ -1,5 +1,6 @@
 import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
+import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_tui/src/loggers.dart';
 import 'package:soliplex_tui/src/services/tui_ui_delegate.dart';
 

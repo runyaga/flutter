@@ -3,8 +3,7 @@ import 'dart:convert';
 import 'package:mocktail/mocktail.dart';
 import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
-import 'package:soliplex_client/soliplex_client.dart'
-    show AgUiStreamClient, SoliplexApi;
+import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:soliplex_tui/src/tool_definitions.dart';
 import 'package:test/test.dart';

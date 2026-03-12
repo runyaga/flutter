@@ -1,5 +1,5 @@
 import 'package:nocterm/nocterm.dart';
-import 'package:soliplex_agent/soliplex_agent.dart' hide State;
+import 'package:soliplex_agent/soliplex_agent.dart';
 
 import 'package:soliplex_tui/src/chat_session_view.dart';
 import 'package:soliplex_tui/src/components/chat_body.dart';
