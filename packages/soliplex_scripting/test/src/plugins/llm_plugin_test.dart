@@ -29,8 +29,10 @@ void main() {
       expect(names, containsAll(['llm_complete', 'llm_chat']));
     });
 
-    test('is NOT a LegacyUnprefixedPlugin', () {
-      expect(plugin, isNot(isA<LegacyUnprefixedPlugin>()));
+    test('all functions use namespace prefix', () {
+      for (final fn in plugin.functions) {
+        expect(fn.schema.name, startsWith('llm_'));
+      }
     });
 
     test('has systemPromptContext', () {

@@ -12,47 +12,6 @@ import 'package:soliplex_client/soliplex_client.dart'
 import 'package:soliplex_completions/soliplex_completions.dart';
 import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:soliplex_scripting/soliplex_scripting.dart';
-import 'package:struct_log/struct_log.dart' as stl;
-
-/// Bridges struct_log (used by LlmPlugin/BlackboardPlugin) into
-/// soliplex_logging so deep logging appears in the CLI's log output.
-class _StructLogBridgeSink implements stl.LogSink {
-  _StructLogBridgeSink(this._target);
-
-  final LogManager _target;
-
-  @override
-  void write(stl.LogRecord record) {
-    _target.emit(
-      LogRecord(
-        level: _mapLevel(record.level),
-        message: record.message,
-        timestamp: record.timestamp,
-        loggerName: 'monty.${record.loggerName}',
-        error: record.error,
-        stackTrace: record.stackTrace,
-        spanId: record.spanId,
-        traceId: record.traceId,
-        attributes: record.attributes,
-      ),
-    );
-  }
-
-  @override
-  Future<void> flush() async {}
-
-  @override
-  Future<void> close() async {}
-
-  static LogLevel _mapLevel(stl.LogLevel level) => switch (level) {
-        stl.LogLevel.trace => LogLevel.trace,
-        stl.LogLevel.debug => LogLevel.debug,
-        stl.LogLevel.info => LogLevel.info,
-        stl.LogLevel.warning => LogLevel.warning,
-        stl.LogLevel.error => LogLevel.error,
-        stl.LogLevel.fatal => LogLevel.fatal,
-      };
-}
 
 /// Simple file-backed log sink (unbuffered, writes immediately).
 class FileSink implements LogSink {
@@ -209,12 +168,6 @@ Future<void> _runSession(ArgResults parsed) async {
   final logManager = LogManager.instance
     ..minimumLevel = LogLevel.debug
     ..addSink(StdoutSink(useColors: true));
-
-  // Bridge struct_log → soliplex_logging so LlmPlugin/BlackboardPlugin
-  // deep logging appears in CLI output and log files.
-  stl.LogManager.instance
-    ..minimumLevel = stl.LogLevel.debug
-    ..addSink(_StructLogBridgeSink(logManager));
 
   // Add file sink if --log-file specified (unbuffered).
   IOSink? logFileIoSink;

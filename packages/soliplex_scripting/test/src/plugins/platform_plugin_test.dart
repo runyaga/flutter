@@ -27,15 +27,13 @@ void main() {
       final names = plugin.functions.map((f) => f.schema.name).toSet();
       expect(
         names,
-        containsAll(['host_invoke', 'sleep', 'fetch', 'log', 'get_auth_token']),
-      );
-    });
-
-    test('is a LegacyUnprefixedPlugin', () {
-      expect(plugin, isA<LegacyUnprefixedPlugin>());
-      expect(
-        plugin.legacyNames,
-        containsAll(['host_invoke', 'sleep', 'fetch', 'log', 'get_auth_token']),
+        containsAll([
+          'platform_invoke',
+          'platform_sleep',
+          'platform_fetch',
+          'platform_log',
+          'platform_get_auth_token',
+        ]),
       );
     });
 
@@ -45,8 +43,8 @@ void main() {
       await registry.attachTo(bridge);
 
       final names = bridge.registered.map((f) => f.schema.name).toSet();
-      expect(names, contains('host_invoke'));
-      expect(names, contains('sleep'));
+      expect(names, contains('platform_invoke'));
+      expect(names, contains('platform_sleep'));
     });
 
     group('handlers', () {
@@ -56,8 +54,8 @@ void main() {
         byName = {for (final f in plugin.functions) f.schema.name: f};
       });
 
-      test('host_invoke delegates to HostApi.invoke', () async {
-        final result = await byName['host_invoke']!.handler({
+      test('platform_invoke delegates to HostApi.invoke', () async {
+        final result = await byName['platform_invoke']!.handler({
           'name': 'native.clipboard',
           'args': <String, Object?>{'action': 'read'},
         });
@@ -69,8 +67,8 @@ void main() {
         ]);
       });
 
-      test('log delegates to HostApi.invoke', () async {
-        final result = await byName['log']!.handler({
+      test('platform_log delegates to HostApi.invoke', () async {
+        final result = await byName['platform_log']!.handler({
           'message': 'hello world',
           'level': 'info',
         });
@@ -79,14 +77,15 @@ void main() {
         expect(hostApi.calls['invoke']![0], 'log');
       });
 
-      test('log schema defaults level to info', () {
-        final schema = byName['log']!.schema;
+      test('platform_log schema defaults level to info', () {
+        final schema = byName['platform_log']!.schema;
         expect(schema.params[1].defaultValue, 'info');
       });
 
-      test('fetch throws StateError when httpClient is null', () async {
+      test('platform_fetch throws StateError when httpClient is null',
+          () async {
         await expectLater(
-          byName['fetch']!.handler({
+          byName['platform_fetch']!.handler({
             'url': 'https://example.com',
             'method': 'GET',
           }),
@@ -94,25 +93,26 @@ void main() {
         );
       });
 
-      test('get_auth_token returns null when callback not set', () async {
-        final result = await byName['get_auth_token']!.handler({});
+      test('platform_get_auth_token returns null when callback not set',
+          () async {
+        final result = await byName['platform_get_auth_token']!.handler({});
         expect(result, isNull);
       });
 
-      test('get_auth_token returns token from callback', () async {
+      test('platform_get_auth_token returns token from callback', () async {
         final p = PlatformPlugin(
           hostApi: hostApi,
           getAuthToken: () => 'oidc-token',
         );
         final fn = p.functions.firstWhere(
-          (f) => f.schema.name == 'get_auth_token',
+          (f) => f.schema.name == 'platform_get_auth_token',
         );
         final result = await fn.handler({});
         expect(result, 'oidc-token');
       });
 
-      test('fetch schema has url, method, headers, body', () {
-        final schema = byName['fetch']!.schema;
+      test('platform_fetch schema has url, method, headers, body', () {
+        final schema = byName['platform_fetch']!.schema;
         expect(schema.params, hasLength(4));
         expect(schema.params[0].name, 'url');
         expect(schema.params[1].name, 'method');
@@ -132,8 +132,8 @@ void main() {
         byName = {for (final f in p.functions) f.schema.name: f};
       });
 
-      test('fetch delegates to SoliplexHttpClient.request', () async {
-        final result = await byName['fetch']!.handler({
+      test('platform_fetch delegates to SoliplexHttpClient.request', () async {
+        final result = await byName['platform_fetch']!.handler({
           'url': 'https://api.example.com/data',
           'method': 'POST',
           'headers': <String, Object?>{'X-Custom': 'yes'},
@@ -147,8 +147,8 @@ void main() {
         expect(httpClient.lastMethod, 'POST');
       });
 
-      test('fetch bare GET with no headers or body', () async {
-        final result = await byName['fetch']!.handler({
+      test('platform_fetch bare GET with no headers or body', () async {
+        final result = await byName['platform_fetch']!.handler({
           'url': 'https://public.api/data',
           'method': 'GET',
           'headers': null,

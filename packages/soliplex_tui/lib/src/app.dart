@@ -18,9 +18,7 @@ import 'package:soliplex_tui/src/file_sink.dart';
 import 'package:soliplex_tui/src/host/tui_host_api.dart';
 import 'package:soliplex_tui/src/loggers.dart';
 import 'package:soliplex_tui/src/services/tui_ui_delegate.dart';
-import 'package:soliplex_tui/src/struct_log_bridge_sink.dart';
 import 'package:soliplex_tui/src/tool_definitions.dart';
-import 'package:struct_log/struct_log.dart' as stl;
 
 /// Launches the Soliplex TUI application.
 ///
@@ -47,12 +45,6 @@ Future<void> launchTui({
   LogManager.instance
     ..minimumLevel = LogLevel.trace
     ..addSink(fileSink);
-
-  // Bridge struct_log (used by dart_monty_bridge) into soliplex_logging so
-  // Monty interpreter logs appear in the TUI log file.
-  stl.LogManager.instance
-    ..minimumLevel = stl.LogLevel.trace
-    ..addSink(StructLogBridgeSink());
 
   Loggers.app.info('Starting TUI, server=$serverUrl, logFile=$logFile');
 
@@ -119,7 +111,6 @@ Future<void> launchTui({
   } finally {
     await mcpManager?.dispose();
     await runtime?.dispose();
-    await stl.LogManager.instance.close();
     await LogManager.instance.flush();
     await LogManager.instance.close();
     await connection.close();
@@ -167,12 +158,6 @@ Future<void> runHeadless({
   if (verbose) {
     LogManager.instance.addSink(_StderrSink());
   }
-
-  // Bridge struct_log (used by dart_monty_bridge) into soliplex_logging so
-  // Monty interpreter logs appear in the TUI log file.
-  stl.LogManager.instance
-    ..minimumLevel = stl.LogLevel.trace
-    ..addSink(StructLogBridgeSink());
 
   Loggers.app.info(
     'Starting headless mode, server=$serverUrl, logFile=$logFile',
@@ -270,7 +255,6 @@ Future<void> runHeadless({
   } finally {
     await mcpManager?.dispose();
     await runtime?.dispose();
-    await stl.LogManager.instance.close();
     await LogManager.instance.flush();
     await LogManager.instance.close();
     await connection.close();

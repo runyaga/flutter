@@ -38,27 +38,13 @@ void main() {
       expect(
         names,
         containsAll([
-          'spawn_agent',
-          'wait_all',
-          'get_result',
+          'agent_spawn',
+          'agent_wait_all',
+          'agent_get_result',
           'agent_watch',
-          'cancel_agent',
+          'agent_cancel',
           'agent_status',
-          'ask_llm',
-        ]),
-      );
-    });
-
-    test('is a LegacyUnprefixedPlugin', () {
-      expect(plugin, isA<LegacyUnprefixedPlugin>());
-      expect(
-        plugin.legacyNames,
-        containsAll([
-          'spawn_agent',
-          'wait_all',
-          'get_result',
-          'cancel_agent',
-          'ask_llm',
+          'agent_ask_llm',
         ]),
       );
     });
@@ -69,7 +55,7 @@ void main() {
       await registry.attachTo(bridge);
 
       final names = bridge.registered.map((f) => f.schema.name).toSet();
-      expect(names, containsAll(['spawn_agent', 'ask_llm']));
+      expect(names, containsAll(['agent_spawn', 'agent_ask_llm']));
     });
 
     group('handler delegation', () {
@@ -79,8 +65,8 @@ void main() {
         byName = {for (final f in plugin.functions) f.schema.name: f};
       });
 
-      test('spawn_agent delegates to AgentApi.spawnAgent', () async {
-        final result = await byName['spawn_agent']!.handler({
+      test('agent_spawn delegates to AgentApi.spawnAgent', () async {
+        final result = await byName['agent_spawn']!.handler({
           'room': 'weather',
           'prompt': 'Is it raining?',
         });
@@ -90,8 +76,8 @@ void main() {
         expect(agentApi.calls['spawnAgent']![1], 'Is it raining?');
       });
 
-      test('spawn_agent passes thread_id when provided', () async {
-        await byName['spawn_agent']!.handler({
+      test('agent_spawn passes thread_id when provided', () async {
+        await byName['agent_spawn']!.handler({
           'room': 'weather',
           'prompt': 'Continue',
           'thread_id': 'tid-456',
@@ -100,22 +86,22 @@ void main() {
         expect(agentApi.calls['spawnAgent']![2], 'tid-456');
       });
 
-      test('wait_all delegates to AgentApi.waitAll', () async {
-        final result = await byName['wait_all']!.handler({
+      test('agent_wait_all delegates to AgentApi.waitAll', () async {
+        final result = await byName['agent_wait_all']!.handler({
           'handles': <Object?>[1, 2],
         });
 
         expect(result, ['r1', 'r2']);
       });
 
-      test('get_result delegates to AgentApi.getResult', () async {
-        final result = await byName['get_result']!.handler({'handle': 5});
+      test('agent_get_result delegates to AgentApi.getResult', () async {
+        final result = await byName['agent_get_result']!.handler({'handle': 5});
 
         expect(result, 'agent output');
       });
 
-      test('ask_llm spawns agent and gets result', () async {
-        final result = await byName['ask_llm']!.handler({
+      test('agent_ask_llm spawns agent and gets result', () async {
+        final result = await byName['agent_ask_llm']!.handler({
           'prompt': 'What is 2+2?',
           'room': 'math',
         });
@@ -126,8 +112,8 @@ void main() {
         expect(map['thread_id'], 'fake-thread-id');
       });
 
-      test('ask_llm uses "general" as default room', () async {
-        await byName['ask_llm']!.handler({
+      test('agent_ask_llm uses "general" as default room', () async {
+        await byName['agent_ask_llm']!.handler({
           'prompt': 'Hello',
           'room': 'general',
         });
@@ -135,8 +121,8 @@ void main() {
         expect(agentApi.calls['spawnAgent']![0], 'general');
       });
 
-      test('ask_llm passes thread_id for continuity', () async {
-        await byName['ask_llm']!.handler({
+      test('agent_ask_llm passes thread_id for continuity', () async {
+        await byName['agent_ask_llm']!.handler({
           'prompt': 'Continue',
           'room': 'math',
           'thread_id': 'tid-123',
@@ -189,8 +175,8 @@ void main() {
         expect(map['elapsed_seconds'], 15);
       });
 
-      test('cancel_agent delegates to AgentApi.cancelAgent', () async {
-        final result = await byName['cancel_agent']!.handler({'handle': 8});
+      test('agent_cancel delegates to AgentApi.cancelAgent', () async {
+        final result = await byName['agent_cancel']!.handler({'handle': 8});
 
         expect(result, isTrue);
       });
@@ -211,8 +197,8 @@ void main() {
         byName = {for (final f in plugin.functions) f.schema.name: f};
       });
 
-      test('spawn_agent has room, prompt, thread_id', () {
-        final schema = byName['spawn_agent']!.schema;
+      test('agent_spawn has room, prompt, thread_id', () {
+        final schema = byName['agent_spawn']!.schema;
         expect(schema.params, hasLength(3));
         expect(schema.params[0].name, 'room');
         expect(schema.params[1].name, 'prompt');
@@ -221,7 +207,7 @@ void main() {
       });
 
       test('ask_llm has prompt, room, thread_id', () {
-        final schema = byName['ask_llm']!.schema;
+        final schema = byName['agent_ask_llm']!.schema;
         expect(schema.params, hasLength(3));
         expect(schema.params[0].name, 'prompt');
         expect(schema.params[1].name, 'room');
@@ -237,8 +223,8 @@ void main() {
         expect(schema.params[1].isRequired, isFalse);
       });
 
-      test('cancel_agent has handle param', () {
-        final schema = byName['cancel_agent']!.schema;
+      test('agent_cancel has handle param', () {
+        final schema = byName['agent_cancel']!.schema;
         expect(schema.params, hasLength(1));
         expect(schema.params[0].name, 'handle');
       });
@@ -249,14 +235,14 @@ void main() {
         expect(schema.params[0].name, 'handle');
       });
 
-      test('wait_all has list param', () {
-        final schema = byName['wait_all']!.schema;
+      test('agent_wait_all has list param', () {
+        final schema = byName['agent_wait_all']!.schema;
         expect(schema.params, hasLength(1));
         expect(schema.params[0].type, HostParamType.list);
       });
 
-      test('get_result has integer param', () {
-        final schema = byName['get_result']!.schema;
+      test('agent_get_result has integer param', () {
+        final schema = byName['agent_get_result']!.schema;
         expect(schema.params, hasLength(1));
         expect(schema.params[0].type, HostParamType.integer);
       });
@@ -272,12 +258,13 @@ void main() {
         final byName = {for (final f in p.functions) f.schema.name: f};
 
         await expectLater(
-          byName['ask_llm']!.handler({'prompt': 'slow', 'room': 'general'}),
+          byName['agent_ask_llm']!
+              .handler({'prompt': 'slow', 'room': 'general'}),
           throwsA(isA<TimeoutException>()),
         );
       });
 
-      test('get_result times out', () async {
+      test('agent_get_result times out', () async {
         final slowApi = _NeverResolvingAgentApi();
         final p = AgentPlugin(
           agentApi: slowApi,
@@ -286,12 +273,12 @@ void main() {
         final byName = {for (final f in p.functions) f.schema.name: f};
 
         await expectLater(
-          byName['get_result']!.handler({'handle': 1}),
+          byName['agent_get_result']!.handler({'handle': 1}),
           throwsA(isA<TimeoutException>()),
         );
       });
 
-      test('wait_all times out', () async {
+      test('agent_wait_all times out', () async {
         final slowApi = _NeverResolvingAgentApi();
         final p = AgentPlugin(
           agentApi: slowApi,
@@ -300,7 +287,7 @@ void main() {
         final byName = {for (final f in p.functions) f.schema.name: f};
 
         await expectLater(
-          byName['wait_all']!.handler({
+          byName['agent_wait_all']!.handler({
             'handles': <Object?>[1, 2],
           }),
           throwsA(isA<TimeoutException>()),

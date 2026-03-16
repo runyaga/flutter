@@ -32,9 +32,6 @@ dependencies:
     path: ../soliplex_mcp
   soliplex_scripting:
     path: ../soliplex_scripting
-  struct_log:
-    git:
-      url: https://github.com/runyaga/struct_log.git
 
 dependency_overrides:
   dart_monty_ffi:

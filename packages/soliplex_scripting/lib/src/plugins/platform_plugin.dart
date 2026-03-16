@@ -1,14 +1,10 @@
 import 'package:soliplex_agent/soliplex_agent.dart' show HostApi;
 import 'package:soliplex_client/soliplex_client.dart' show SoliplexHttpClient;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
-import 'package:soliplex_scripting/src/plugin_registry.dart';
 
 /// Plugin exposing platform operations (invoke, sleep, fetch, log,
 /// get_auth_token) to Monty scripts.
-///
-/// Uses [LegacyUnprefixedPlugin] because the function names predate the
-/// `namespace_` prefix convention.
-class PlatformPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
+class PlatformPlugin extends MontyPlugin {
   PlatformPlugin({
     required HostApi hostApi,
     SoliplexHttpClient? httpClient,
@@ -25,19 +21,10 @@ class PlatformPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
   String get namespace => 'platform';
 
   @override
-  Set<String> get legacyNames => const {
-        'host_invoke',
-        'sleep',
-        'fetch',
-        'log',
-        'get_auth_token',
-      };
-
-  @override
   List<HostFunction> get functions => [
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'host_invoke',
+            name: 'platform_invoke',
             description: 'Invoke a named host operation.',
             params: [
               HostParam(
@@ -66,7 +53,7 @@ class PlatformPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
         ),
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'sleep',
+            name: 'platform_sleep',
             description: 'Pause execution for a number of milliseconds.',
             params: [
               HostParam(
@@ -84,7 +71,7 @@ class PlatformPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
         ),
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'fetch',
+            name: 'platform_fetch',
             description: 'Make an HTTP request and return the response. '
                 'Returns a dict with status, body, and headers.',
             params: [
@@ -146,7 +133,7 @@ class PlatformPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
         ),
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'log',
+            name: 'platform_log',
             description: 'Log a message at the specified level. '
                 'Visible in host debug output.',
             params: [
@@ -177,7 +164,7 @@ class PlatformPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
         ),
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'get_auth_token',
+            name: 'platform_get_auth_token',
             description: 'Get the current OIDC bearer token, '
                 'or null if not authenticated. Use this to add '
                 'Authorization headers to fetch() calls that need '

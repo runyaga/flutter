@@ -30,7 +30,6 @@ dart test --coverage
 ### Plugin System
 
 - `PluginRegistry` -- collects `MontyPlugin`s with namespace validation, function collision detection, and `attachTo(bridge)` / `disposeAll()` lifecycle
-- `LegacyUnprefixedPlugin` -- mixin for plugins whose function names predate the `namespace_` prefix convention
 
 ### Plugins (in `lib/src/plugins/`)
 
@@ -38,10 +37,10 @@ dart test --coverage
 |--------|-----------|-----------|-------|
 | `DfPlugin` | `df` | 37 DataFrame ops | Wraps `buildDfFunctions(DfRegistry)` |
 | `ChartPlugin` | `chart` | `chart_create`, `chart_update` | Delegates to `HostApi` |
-| `PlatformPlugin` | `platform` | `host_invoke`, `sleep`, `fetch`, `log`, `get_auth_token` | Legacy (unprefixed) |
+| `PlatformPlugin` | `platform` | `platform_invoke`, `platform_sleep`, `platform_fetch`, `platform_log`, `platform_get_auth_token` | |
 | `StreamPlugin` | `stream` | `stream_subscribe`, `stream_next`, `stream_close` | |
 | `FormPlugin` | `form` | `form_create`, `form_set_errors` | |
-| `AgentPlugin` | `agent` | `spawn_agent`, `wait_all`, `get_result`, `agent_watch`, `cancel_agent`, `agent_status`, `ask_llm` | Legacy (unprefixed); `ask_llm` deprecated in favor of `LlmPlugin` |
+| `AgentPlugin` | `agent` | `agent_spawn`, `agent_wait_all`, `agent_get_result`, `agent_watch`, `agent_cancel`, `agent_status`, `agent_ask_llm` | `agent_ask_llm` deprecated in favor of `LlmPlugin` |
 | `BlackboardPlugin` | `blackboard` | `blackboard_write`, `blackboard_read`, `blackboard_keys` | |
 | `LlmPlugin` | `llm` | `llm_complete`, `llm_chat` | Strict prefix; delegates to `AgentApi` |
 | `McpPlugin` | `mcp` | `mcp_call_tool`, `mcp_list_tools`, `mcp_list_servers` | Strict prefix; injected callbacks |

@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dart_monty_bridge/dart_monty_bridge.dart'
+    show BridgeMiddleware, CallRole, ToolCall;
+import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
+    show BridgeLogger, NullBridgeLogger;
 import 'package:soliplex_agent/soliplex_agent.dart' show ToolExecutionContext;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
@@ -19,6 +23,20 @@ class _FakeBridge implements MontyBridge {
   final Stream<BridgeEvent> _events;
   final registered = <HostFunction>[];
   bool disposed = false;
+
+  @override
+  BridgeLogger get logger => const NullBridgeLogger();
+
+  @override
+  void use(BridgeMiddleware middleware) {}
+
+  @override
+  Future<Object?> invokeHostFunction(
+    String name,
+    Map<String, Object?> args, {
+    CallRole role = const ToolCall(),
+  }) =>
+      throw UnimplementedError();
 
   @override
   List<HostFunctionSchema> get schemas =>
