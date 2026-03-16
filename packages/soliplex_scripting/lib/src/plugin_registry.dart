@@ -4,25 +4,12 @@ import 'package:dart_monty_bridge/dart_monty_bridge.dart'
     show buildIntrospectionFunctions;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 
-/// Mixin for plugins whose function names predate the `namespace_` prefix
-/// convention.
-///
-/// When applied, the [PluginRegistry] skips the prefix check for names listed
-/// in [legacyNames]. New functions added to the same plugin MUST still follow
-/// the `namespace_` prefix convention.
-mixin LegacyUnprefixedPlugin on MontyPlugin {
-  /// Function names that are grandfathered and do not require the namespace
-  /// prefix.
-  Set<String> get legacyNames;
-}
-
 /// Collects [MontyPlugin]s with namespace validation and function name
 /// collision detection, then wires them onto a [MontyBridge].
 ///
 /// All function names must be prefixed with the plugin's namespace followed
 /// by an underscore (e.g., namespace `sqlite` requires functions named
-/// `sqlite_query`, `sqlite_execute`, etc.) unless the plugin uses
-/// [LegacyUnprefixedPlugin].
+/// `sqlite_query`, `sqlite_execute`, etc.).
 class PluginRegistry {
   final List<MontyPlugin> _plugins = [];
   final Set<String> _namespaces = {};
@@ -121,13 +108,10 @@ class PluginRegistry {
 
   void _checkFunctionCollisions(MontyPlugin plugin) {
     final prefix = '${plugin.namespace}_';
-    final legacyNames = plugin is LegacyUnprefixedPlugin
-        ? plugin.legacyNames
-        : const <String>{};
     final seen = <String>{};
     for (final fn in plugin.functions) {
       final name = fn.schema.name;
-      if (!legacyNames.contains(name) && !name.startsWith(prefix)) {
+      if (!name.startsWith(prefix)) {
         throw ArgumentError(
           'Function "$name" in plugin "${plugin.namespace}" must be '
           'prefixed with "$prefix".',

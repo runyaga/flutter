@@ -54,6 +54,7 @@ dependency_overrides:
       url: https://github.com/runyaga/struct_log.git
 
 dev_dependencies:
+  dart_monty_platform_interface: ^0.8.0
   mocktail: ^1.0.4
   test: ^1.24.0
   very_good_analysis: ^10.0.0

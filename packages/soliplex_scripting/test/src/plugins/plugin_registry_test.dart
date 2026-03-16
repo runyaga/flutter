@@ -65,37 +65,14 @@ void main() {
     });
 
     test('register rejects duplicate function names across plugins', () {
-      registry.register(_SimplePlugin('alpha', ['alpha_fn']));
-      // Second plugin has same function name — hits prefix check first for
-      // non-legacy plugins, so use a legacy plugin to reach the collision.
+      // alpha_x_fn satisfies both alpha_ and alpha_x_ prefixes.
+      registry.register(_SimplePlugin('alpha', ['alpha_x_fn']));
       expect(
         () => registry.register(
-          _LegacyPlugin('beta', ['alpha_fn'], {'alpha_fn'}),
+          _SimplePlugin('alpha_x', ['alpha_x_fn']),
         ),
         throwsA(isA<StateError>()),
       );
-    });
-
-    group('LegacyUnprefixedPlugin', () {
-      test('allows legacy names that skip prefix', () {
-        registry.register(
-          _LegacyPlugin(
-            'platform',
-            ['host_invoke', 'sleep'],
-            {'host_invoke', 'sleep'},
-          ),
-        );
-        expect(registry.plugins, hasLength(1));
-      });
-
-      test('still enforces prefix on non-legacy names', () {
-        expect(
-          () => registry.register(
-            _LegacyPlugin('platform', ['host_invoke', 'oops'], {'host_invoke'}),
-          ),
-          throwsA(isA<ArgumentError>()),
-        );
-      });
     });
 
     group('attachTo', () {
@@ -170,28 +147,6 @@ class _SimplePlugin extends MontyPlugin {
 
   @override
   String get namespace => _namespace;
-
-  @override
-  List<HostFunction> get functions => [
-        for (final name in _names)
-          HostFunction(
-            schema: HostFunctionSchema(name: name, description: name),
-            handler: (args) async => null,
-          ),
-      ];
-}
-
-class _LegacyPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
-  _LegacyPlugin(this._namespace, this._names, this.legacyNames);
-
-  final String _namespace;
-  final List<String> _names;
-
-  @override
-  String get namespace => _namespace;
-
-  @override
-  final Set<String> legacyNames;
 
   @override
   List<HostFunction> get functions => [

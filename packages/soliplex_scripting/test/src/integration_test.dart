@@ -207,7 +207,7 @@ void main() {
         id: 'tc-agent-spawn',
         name: PythonExecutorTool.toolName,
         arguments: jsonEncode({
-          'code': 'spawn_agent({"room": "echo", "prompt": "hi"})',
+          'code': 'agent_spawn({"room": "echo", "prompt": "hi"})',
         }),
       );
 
@@ -235,7 +235,7 @@ void main() {
         id: 'tc-agent-ask',
         name: PythonExecutorTool.toolName,
         arguments: jsonEncode({
-          'code': 'ask_llm({"prompt": "what is 6*7?", "room": "math"})',
+          'code': 'agent_ask_llm({"prompt": "what is 6*7?", "room": "math"})',
         }),
       );
 
@@ -261,7 +261,7 @@ void main() {
       final toolCall = ToolCallInfo(
         id: 'tc-agent-wait',
         name: PythonExecutorTool.toolName,
-        arguments: jsonEncode({'code': 'wait_all({"handles": [1, 2]})'}),
+        arguments: jsonEncode({'code': 'agent_wait_all({"handles": [1, 2]})'}),
       );
 
       final result = await env.tools.first.executor(toolCall, _ctx);
@@ -283,10 +283,10 @@ void main() {
       await registry.attachTo(bridge);
 
       final names = bridge.schemas.map((s) => s.name).toSet();
-      expect(names, isNot(contains('spawn_agent')));
-      expect(names, isNot(contains('ask_llm')));
-      expect(names, isNot(contains('wait_all')));
-      expect(names, isNot(contains('get_result')));
+      expect(names, isNot(contains('agent_spawn')));
+      expect(names, isNot(contains('agent_ask_llm')));
+      expect(names, isNot(contains('agent_wait_all')));
+      expect(names, isNot(contains('agent_get_result')));
     });
   });
 }

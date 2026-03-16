@@ -1,14 +1,10 @@
 import 'package:soliplex_agent/soliplex_agent.dart'
     show AgentApi, AgentFailure, AgentSuccess, AgentTimedOut;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
-import 'package:soliplex_scripting/src/plugin_registry.dart';
 
 /// Plugin exposing agent orchestration (spawn, wait, cancel, ask_llm) to
 /// Monty scripts.
-///
-/// Uses [LegacyUnprefixedPlugin] because `wait_all`, `get_result`, and
-/// `ask_llm` predate the `namespace_` prefix convention.
-class AgentPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
+class AgentPlugin extends MontyPlugin {
   AgentPlugin({
     required AgentApi agentApi,
     Duration agentTimeout = const Duration(seconds: 30),
@@ -22,19 +18,10 @@ class AgentPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
   String get namespace => 'agent';
 
   @override
-  Set<String> get legacyNames => const {
-        'spawn_agent',
-        'wait_all',
-        'get_result',
-        'cancel_agent',
-        'ask_llm',
-      };
-
-  @override
   List<HostFunction> get functions => [
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'spawn_agent',
+            name: 'agent_spawn',
             description: 'Spawn an L2 sub-agent in a room.',
             params: [
               HostParam(
@@ -64,7 +51,7 @@ class AgentPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
         ),
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'wait_all',
+            name: 'agent_wait_all',
             description: 'Wait for all agents to complete.',
             params: [
               HostParam(
@@ -82,7 +69,7 @@ class AgentPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
         ),
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'get_result',
+            name: 'agent_get_result',
             description: 'Get the result of a completed agent.',
             params: [
               HostParam(
@@ -107,7 +94,7 @@ class AgentPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
               HostParam(
                 name: 'handle',
                 type: HostParamType.integer,
-                description: 'Agent handle from spawn_agent.',
+                description: 'Agent handle from agent_spawn.',
               ),
               HostParam(
                 name: 'timeout_seconds',
@@ -145,13 +132,13 @@ class AgentPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
         ),
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'cancel_agent',
+            name: 'agent_cancel',
             description: 'Cancel a spawned agent. Evicts the handle.',
             params: [
               HostParam(
                 name: 'handle',
                 type: HostParamType.integer,
-                description: 'Agent handle from spawn_agent.',
+                description: 'Agent handle from agent_spawn.',
               ),
             ],
           ),
@@ -170,7 +157,7 @@ class AgentPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
               HostParam(
                 name: 'handle',
                 type: HostParamType.integer,
-                description: 'Agent handle from spawn_agent.',
+                description: 'Agent handle from agent_spawn.',
               ),
             ],
           ),
@@ -181,7 +168,7 @@ class AgentPlugin extends MontyPlugin with LegacyUnprefixedPlugin {
         ),
         HostFunction(
           schema: const HostFunctionSchema(
-            name: 'ask_llm',
+            name: 'agent_ask_llm',
             description: 'Send a prompt to an LLM and return the response text '
                 'and thread ID. Pass thread_id to continue a conversation.',
             params: [

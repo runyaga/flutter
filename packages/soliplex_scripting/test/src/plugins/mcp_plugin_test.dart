@@ -34,8 +34,10 @@ void main() {
       );
     });
 
-    test('is NOT a LegacyUnprefixedPlugin', () {
-      expect(plugin, isNot(isA<LegacyUnprefixedPlugin>()));
+    test('all functions use namespace prefix', () {
+      for (final fn in plugin.functions) {
+        expect(fn.schema.name, startsWith('mcp_'));
+      }
     });
 
     test('has systemPromptContext', () {
