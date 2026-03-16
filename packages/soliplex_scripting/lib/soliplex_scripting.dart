@@ -28,4 +28,5 @@ export 'src/plugins/mcp_plugin.dart';
 export 'src/plugins/platform_plugin.dart';
 export 'src/plugins/stream_plugin.dart';
 export 'src/python_executor_tool.dart';
+export 'src/soliplex_bridge_logger.dart';
 export 'src/stream_registry.dart';
