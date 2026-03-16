@@ -37,7 +37,7 @@ class BackendLogSink implements LogSink {
     this.userId,
     this.memorySink,
     this.maxBreadcrumbs = 20,
-    Map<String, Object> resourceAttributes = const {},
+    Map<String, Object?> resourceAttributes = const {},
     this.maxBatchBytes = _defaultMaxBatchBytes,
     this.batchSize = 100,
     Duration flushInterval = const Duration(seconds: 30),
@@ -77,7 +77,7 @@ class BackendLogSink implements LogSink {
   final int maxBreadcrumbs;
 
   /// Resource attributes for the payload envelope.
-  final Map<String, Object> resourceAttributes;
+  final Map<String, Object?> resourceAttributes;
 
   /// Maximum batch payload size in bytes.
   final int maxBatchBytes;
@@ -388,7 +388,7 @@ class BackendLogSink implements LogSink {
   }
 
   /// Coerces non-JSON-primitive attribute values to String.
-  Map<String, Object?> _safeAttributes(Map<String, Object> attributes) {
+  Map<String, Object?> _safeAttributes(Map<String, Object?> attributes) {
     if (attributes.isEmpty) return const {};
     final result = <String, Object?>{};
     for (final entry in attributes.entries) {
