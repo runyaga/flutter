@@ -6,6 +6,7 @@ import 'package:soliplex_agent/soliplex_agent.dart'
 import 'package:soliplex_client/soliplex_client.dart' show SoliplexHttpClient;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
+import 'package:soliplex_logging/soliplex_logging.dart' as logging;
 import 'package:soliplex_scripting/src/monty_script_environment.dart';
 import 'package:soliplex_scripting/src/plugin_registry.dart';
 import 'package:soliplex_scripting/src/plugins/agent_plugin.dart';
@@ -17,6 +18,7 @@ import 'package:soliplex_scripting/src/plugins/llm_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/mcp_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/platform_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/stream_plugin.dart';
+import 'package:soliplex_scripting/src/soliplex_bridge_logger.dart';
 import 'package:soliplex_scripting/src/stream_registry.dart';
 
 /// Factory that creates a fresh [MontyPlatform] for each session.
@@ -75,18 +77,13 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
       }
     }
     final platform = platformFactory != null ? await platformFactory() : null;
+    final logger = SoliplexBridgeLogger.root(logging.LogManager.instance);
     final bridge = DefaultMontyBridge(
       platform: platform,
       useFutures: false,
       limits: limits ?? MontyLimitsDefaults.tool,
+      logger: logger,
     );
-
-    // Register IsolatePlugin if a platform factory is provided.
-    IsolatePlugin? isolatePlugin;
-    if (platformFactory != null) {
-      isolatePlugin = IsolatePlugin(platformFactory: platformFactory);
-      isolatePlugin.functions.forEach(bridge.register);
-    }
 
     final registry = PluginRegistry();
     try {
@@ -164,7 +161,6 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
       dfRegistry: dfRegistry,
       streamRegistry: streamRegistry,
       executionTimeout: executionTimeout,
-      isolatePlugin: isolatePlugin,
       hostFunctionSchemas: hostSchemas,
       prelude: prelude,
     );

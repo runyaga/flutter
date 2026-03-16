@@ -34,7 +34,6 @@ class MontyScriptEnvironment implements ScriptEnvironment {
     required StreamRegistry streamRegistry,
     MontyPlatform? ownedPlatform,
     Duration executionTimeout = const Duration(seconds: 30),
-    IsolatePlugin? isolatePlugin,
     List<HostFunctionSchema>? hostFunctionSchemas,
     String? prelude,
   })  : _bridge = bridge,
@@ -42,7 +41,6 @@ class MontyScriptEnvironment implements ScriptEnvironment {
         _dfRegistry = dfRegistry,
         _streamRegistry = streamRegistry,
         _executionTimeout = executionTimeout,
-        _isolatePlugin = isolatePlugin,
         _hostFunctionSchemas = hostFunctionSchemas,
         _prelude = prelude;
 
@@ -51,7 +49,6 @@ class MontyScriptEnvironment implements ScriptEnvironment {
   final DfRegistry _dfRegistry;
   final StreamRegistry _streamRegistry;
   final Duration _executionTimeout;
-  final IsolatePlugin? _isolatePlugin;
   final List<HostFunctionSchema>? _hostFunctionSchemas;
   final String? _prelude;
   bool _disposed = false;
@@ -104,7 +101,6 @@ class MontyScriptEnvironment implements ScriptEnvironment {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    if (_isolatePlugin != null) unawaited(_isolatePlugin.onDispose());
     _bridge.dispose();
     if (_ownedPlatform != null) unawaited(_ownedPlatform.dispose());
     _dfRegistry.disposeAll();

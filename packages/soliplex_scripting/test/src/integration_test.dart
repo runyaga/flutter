@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dart_monty_bridge/dart_monty_bridge.dart'
+    show BridgeMiddleware, CallRole, ToolCall;
+import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
+    show BridgeLogger, NullBridgeLogger;
 import 'package:soliplex_agent/soliplex_agent.dart'
     show FakeAgentApi, HostApi, ToolExecutionContext;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;
@@ -57,6 +61,20 @@ class _FakeHostApi implements HostApi {
 /// 3. Returning the handler result as text output.
 class _ScriptableBridge implements MontyBridge {
   final _functions = <String, HostFunction>{};
+
+  @override
+  BridgeLogger get logger => const NullBridgeLogger();
+
+  @override
+  void use(BridgeMiddleware middleware) {}
+
+  @override
+  Future<Object?> invokeHostFunction(
+    String name,
+    Map<String, Object?> args, {
+    CallRole role = const ToolCall(),
+  }) =>
+      throw UnimplementedError();
 
   @override
   List<HostFunctionSchema> get schemas =>

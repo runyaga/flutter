@@ -27,7 +27,6 @@ export 'package:dart_monty_bridge/dart_monty_bridge.dart'
         HostFunctionSchema,
         HostParam,
         HostParamType,
-        IsolatePlugin,
         MontyBridge,
         MontyPlugin;
 
