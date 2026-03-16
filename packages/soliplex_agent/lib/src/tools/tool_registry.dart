@@ -81,6 +81,7 @@ class ToolRegistry {
   /// Registers a [ClientTool] and returns a new registry containing it.
   ///
   /// The tool is keyed by the tool definition's name.
+  @useResult
   ToolRegistry register(ClientTool tool) {
     return ToolRegistry._({..._tools, tool.definition.name: tool}, _aliases);
   }
@@ -89,6 +90,7 @@ class ToolRegistry {
   ///
   /// The alias is only used by [lookup] / [execute] / [contains]; it does
   /// not appear in [toolDefinitions].
+  @useResult
   ToolRegistry alias(String aliasName, String canonicalName) {
     return ToolRegistry._(_tools, {..._aliases, aliasName: canonicalName});
   }
@@ -98,6 +100,7 @@ class ToolRegistry {
   /// If [name] is an alias, only the alias is removed; the canonical
   /// tool remains. If [name] is a canonical name, the tool and any
   /// aliases pointing to it are removed.
+  @useResult
   ToolRegistry unregister(String name) {
     if (_aliases.containsKey(name)) {
       return ToolRegistry._(_tools, {..._aliases}..remove(name));
