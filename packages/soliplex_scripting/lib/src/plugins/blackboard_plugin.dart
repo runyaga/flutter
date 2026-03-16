@@ -1,13 +1,10 @@
 import 'package:soliplex_agent/soliplex_agent.dart' show BlackboardApi;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
-import 'package:struct_log/struct_log.dart';
 
 /// Plugin exposing shared blackboard read/write operations to Monty scripts.
 class BlackboardPlugin extends MontyPlugin {
   BlackboardPlugin({required BlackboardApi blackboardApi})
       : _blackboardApi = blackboardApi;
-
-  static final Logger _log = LogManager.instance.getLogger('BlackboardPlugin');
 
   final BlackboardApi _blackboardApi;
 
@@ -38,7 +35,7 @@ class BlackboardPlugin extends MontyPlugin {
           handler: (args) async {
             final key = args['key']! as String;
             final value = args['value'];
-            _log.debug(
+            logger.debug(
               'write',
               attributes: {'key': key, 'value': '$value'},
             );
@@ -61,7 +58,7 @@ class BlackboardPlugin extends MontyPlugin {
           handler: (args) async {
             final key = args['key']! as String;
             final value = await _blackboardApi.read(key);
-            _log.debug(
+            logger.debug(
               'read',
               attributes: {'key': key, 'value': '$value'},
             );

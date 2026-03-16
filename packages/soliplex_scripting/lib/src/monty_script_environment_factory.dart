@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dart_monty/dart_monty.dart' show MontyLimits, MontyPlatform;
+import 'package:dart_monty_bridge/dart_monty_bridge.dart' show PluginRegistry;
 import 'package:soliplex_agent/soliplex_agent.dart'
     show AgentApi, BlackboardApi, FormApi, HostApi, ScriptEnvironmentFactory;
 import 'package:soliplex_client/soliplex_client.dart' show SoliplexHttpClient;
@@ -8,7 +9,6 @@ import 'package:soliplex_dataframe/soliplex_dataframe.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:soliplex_logging/soliplex_logging.dart' as logging;
 import 'package:soliplex_scripting/src/monty_script_environment.dart';
-import 'package:soliplex_scripting/src/plugin_registry.dart';
 import 'package:soliplex_scripting/src/plugins/agent_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/blackboard_plugin.dart';
 import 'package:soliplex_scripting/src/plugins/chart_plugin.dart';

@@ -1,6 +1,5 @@
 import 'package:soliplex_agent/soliplex_agent.dart' show AgentApi;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
-import 'package:struct_log/struct_log.dart';
 
 /// Callback for single-shot LLM completions.
 typedef LlmCompleter = Future<String> Function(
@@ -41,8 +40,6 @@ class LlmPlugin extends MontyPlugin {
         _agentApi = null,
         _agentTimeout = Duration.zero,
         defaultRoom = '';
-
-  static final Logger _log = LogManager.instance.getLogger('LlmPlugin');
 
   final AgentApi? _agentApi;
   final Duration _agentTimeout;
@@ -91,7 +88,7 @@ class LlmPlugin extends MontyPlugin {
             final prompt = args['prompt']! as String;
             final systemPrompt = args['system_prompt'] as String?;
 
-            _log.info(
+            logger.info(
               'oracle call',
               attributes: {
                 'prompt': prompt.length > 500
@@ -122,7 +119,7 @@ class LlmPlugin extends MontyPlugin {
             }
 
             sw.stop();
-            _log.info(
+            logger.info(
               'oracle response',
               attributes: {
                 'response': result.length > 500
