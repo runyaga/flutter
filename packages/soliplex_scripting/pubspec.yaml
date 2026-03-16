@@ -34,11 +34,6 @@ dependencies:
     path: ../soliplex_logging
 
 dependency_overrides:
-  dart_monty_bridge:
-    git:
-      url: https://github.com/runyaga/dart_monty.git
-      ref: feat/extra-functions
-      path: packages/dart_monty_bridge
   dart_monty_ffi:
     git:
       url: https://github.com/runyaga/dart_monty.git
