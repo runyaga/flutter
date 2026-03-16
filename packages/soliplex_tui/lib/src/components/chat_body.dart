@@ -1,5 +1,6 @@
 import 'package:nocterm/nocterm.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
+import 'package:soliplex_client/soliplex_client.dart';
 
 import 'package:soliplex_tui/src/components/message_item.dart';
 import 'package:soliplex_tui/src/signal_builder.dart';

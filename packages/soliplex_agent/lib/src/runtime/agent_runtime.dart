@@ -155,11 +155,10 @@ class AgentRuntime {
       );
     } on Object {
       parent?.removeChild(session);
-      _removeSession(session);
       if (ephemeral) {
         await _deleteThreadSafe(key);
       }
-      session.dispose();
+      session.dispose(); // onDispose callback handles _removeSession.
       rethrow;
     }
     _scheduleCompletion(session, timeout, autoDispose: autoDispose);
@@ -309,6 +308,7 @@ class AgentRuntime {
       extensions: extensions,
       uiDelegate: _uiDelegate,
       logger: _logger,
+      onDispose: _removeSession,
     );
   }
 
@@ -383,8 +383,7 @@ class AgentRuntime {
     if (session.ephemeral) {
       await _deleteThreadSafe(session.threadKey);
     }
-    session.dispose();
-    _removeSession(session);
+    session.dispose(); // onDispose callback handles _removeSession.
   }
 
   // ---------------------------------------------------------------------------

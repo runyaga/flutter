@@ -44,12 +44,14 @@ class AgentSession implements ToolExecutionContext {
     required Logger logger,
     List<SessionExtension> extensions = const [],
     AgentUiDelegate? uiDelegate,
+    void Function(AgentSession)? onDispose,
   })  : _runtime = runtime,
         _orchestrator = orchestrator,
         _toolRegistry = toolRegistry,
         _extensions = extensions,
         _uiDelegate = uiDelegate,
         _logger = logger,
+        _onDispose = onDispose,
         id = '${threadKey.threadId}-'
             '${DateTime.now().microsecondsSinceEpoch}';
 
@@ -71,6 +73,7 @@ class AgentSession implements ToolExecutionContext {
   final List<SessionExtension> _extensions;
   final AgentUiDelegate? _uiDelegate;
   final Logger _logger;
+  final void Function(AgentSession)? _onDispose;
 
   static const _toolTimeout = Duration(seconds: 60);
 
@@ -285,6 +288,7 @@ class AgentSession implements ToolExecutionContext {
     _runStateSignal.dispose();
     _sessionStateSignal.dispose();
     _executionEventSignal.dispose();
+    _onDispose?.call(this);
   }
 
   // ---------------------------------------------------------------------------
