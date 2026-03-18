@@ -20,11 +20,6 @@ export 'package:soliplex_client/soliplex_client.dart'
         OidcDiscoveryDocument,
         RefreshingHttpClient,
         SoliplexApi,
-        TokenRefreshFailure,
-        TokenRefreshResult,
-        TokenRefreshService,
-        TokenRefreshSuccess,
-        TokenRefresher,
         UrlBuilder,
         convertToAgui,
         defaultHttpTimeout,
@@ -46,6 +41,7 @@ export 'src/host/runtime_agent_api.dart';
 export 'src/host/web_platform_constraints.dart';
 // ── HTTP ──
 export 'src/http/create_agent_http_client.dart';
+export 'src/http/discover_auth_providers.dart';
 // ── Models ──
 export 'src/models/agent_result.dart';
 export 'src/models/failure_reason.dart';
