@@ -6,28 +6,20 @@
 library;
 
 // Re-export signal types for consumers.
-export 'package:signals_core/signals_core.dart' show ReadonlySignal, Signal;
-// Re-export domain types and AG-UI events. Consumers who need HTTP plumbing
-// (SoliplexApi, AgUiStreamClient, DartHttpClient, etc.) import soliplex_client
-// directly.
+export 'package:signals_core/signals_core.dart'
+    show ReadonlySignal, Signal, computed;
+// Re-export domain types, AG-UI events, and HTTP interfaces. The frontend
+// imports soliplex_agent — not soliplex_client directly. Internal plumbing
+// (DartHttpClient, ObservableHttpClient, etc.) stays hidden behind factories.
 export 'package:soliplex_client/soliplex_client.dart'
     hide
         AuthenticatedHttpClient,
         DartHttpClient,
-        HttpErrorEvent,
-        HttpEvent,
-        HttpObserver,
-        HttpRequestEvent,
-        HttpResponse,
-        HttpResponseEvent,
-        HttpStreamEndEvent,
-        HttpStreamStartEvent,
         HttpTransport,
         ObservableHttpClient,
         OidcDiscoveryDocument,
         RefreshingHttpClient,
         SoliplexApi,
-        SoliplexHttpClient,
         TokenRefreshFailure,
         TokenRefreshResult,
         TokenRefreshService,
@@ -52,6 +44,8 @@ export 'src/host/native_platform_constraints.dart';
 export 'src/host/platform_constraints.dart';
 export 'src/host/runtime_agent_api.dart';
 export 'src/host/web_platform_constraints.dart';
+// ── HTTP ──
+export 'src/http/create_agent_http_client.dart';
 // ── Models ──
 export 'src/models/agent_result.dart';
 export 'src/models/failure_reason.dart';
