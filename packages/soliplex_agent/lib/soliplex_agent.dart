@@ -6,7 +6,8 @@
 library;
 
 // Re-export signal types for consumers.
-export 'package:signals_core/signals_core.dart' show ReadonlySignal, Signal;
+export 'package:signals_core/signals_core.dart'
+    show ReadonlySignal, Signal, computed;
 // Re-export domain types, AG-UI events, and HTTP interfaces. The frontend
 // imports soliplex_agent — not soliplex_client directly. Internal plumbing
 // (DartHttpClient, ObservableHttpClient, etc.) stays hidden behind factories.
@@ -14,7 +15,6 @@ export 'package:soliplex_client/soliplex_client.dart'
     hide
         AuthenticatedHttpClient,
         DartHttpClient,
-        HttpResponse,
         HttpTransport,
         ObservableHttpClient,
         OidcDiscoveryDocument,
