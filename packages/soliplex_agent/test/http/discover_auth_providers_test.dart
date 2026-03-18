@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
-import 'package:soliplex_client/soliplex_client.dart' show HttpResponse;
 import 'package:test/test.dart';
 
 class _MockHttpClient extends Mock implements SoliplexHttpClient {}
@@ -84,6 +83,8 @@ void main() {
         () => mockClient.request(
           'GET',
           captureAny(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
           timeout: any(named: 'timeout'),
         ),
       ).captured;
