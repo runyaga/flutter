@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:ag_ui/ag_ui.dart';
 import 'package:meta/meta.dart';
 import 'package:soliplex_client/src/application/json_patch.dart';
@@ -279,6 +281,20 @@ EventProcessingResult _processTextEnd(
   String messageId,
 ) {
   if (streaming is TextStreaming && streaming.messageId == messageId) {
+    // Skip if a message with this ID already exists — idempotency guard
+    // against duplicate events (e.g. from history replay).
+    if (conversation.messages.any((m) => m.id == messageId)) {
+      developer.log(
+        'Skipped duplicate message ID: $messageId',
+        name: 'soliplex_client.event_processor',
+        level: 800,
+      );
+      return EventProcessingResult(
+        conversation: conversation,
+        streaming: const AwaitingText(),
+      );
+    }
+
     final newMessage = TextMessage.create(
       id: messageId,
       user: streaming.user,

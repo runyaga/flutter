@@ -640,7 +640,12 @@ class SoliplexApi {
     return allEvents;
   }
 
-  /// Extracts user messages from run_input and creates synthetic events.
+  /// Extracts the initiating user message from run_input and creates
+  /// synthetic events.
+  ///
+  /// Each run's `run_input.messages` contains the full conversation context,
+  /// but only the last user message initiated THIS run. Prior user messages
+  /// were already processed in earlier runs.
   List<Map<String, dynamic>> _extractUserMessageEvents(
     Map<String, dynamic> rawRun,
   ) {
@@ -648,32 +653,32 @@ class SoliplexApi {
     if (runInput == null) return [];
 
     final messages = runInput['messages'] as List<dynamic>? ?? [];
-    final syntheticEvents = <Map<String, dynamic>>[];
 
-    for (var i = 0; i < messages.length; i++) {
+    // Find the last user message — the one that initiated this run.
+    Map<String, dynamic>? lastUserMessage;
+    for (var i = messages.length - 1; i >= 0; i--) {
       final raw = messages[i];
-      if (raw is! Map<String, dynamic>) continue; // Skip malformed entries
-      final msgMap = raw;
-      final role = msgMap['role'] as String? ?? 'user';
-
-      // Only process user messages - assistant messages come from events
-      if (role != 'user') continue;
-
-      final id = msgMap['id'] as String? ?? 'user-$i';
-      final content = msgMap['content'] as String? ?? '';
-
-      // Create synthetic TEXT_MESSAGE events (START, CONTENT, END)
-      syntheticEvents
-        ..add({'type': 'TEXT_MESSAGE_START', 'messageId': id, 'role': role})
-        ..add({
-          'type': 'TEXT_MESSAGE_CONTENT',
-          'messageId': id,
-          'delta': content,
-        })
-        ..add({'type': 'TEXT_MESSAGE_END', 'messageId': id});
+      if (raw is! Map<String, dynamic>) continue;
+      if ((raw['role'] as String? ?? 'user') == 'user') {
+        lastUserMessage = raw;
+        break;
+      }
     }
+    if (lastUserMessage == null) return [];
 
-    return syntheticEvents;
+    final runId = rawRun['run_id'] as String? ?? 'unknown';
+    final id = lastUserMessage['id'] as String? ?? 'user-$runId';
+    final content = lastUserMessage['content'] as String? ?? '';
+
+    return [
+      {'type': 'TEXT_MESSAGE_START', 'messageId': id, 'role': 'user'},
+      {
+        'type': 'TEXT_MESSAGE_CONTENT',
+        'messageId': id,
+        'delta': content,
+      },
+      {'type': 'TEXT_MESSAGE_END', 'messageId': id},
+    ];
   }
 
   /// Replays events to reconstruct thread history (messages + AG-UI state).

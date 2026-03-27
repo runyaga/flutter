@@ -171,6 +171,40 @@ void main() {
         },
       );
 
+      // Regression: https://github.com/soliplex/frontend/issues/33
+      test('TextMessageEndEvent skips duplicate message ID', () {
+        // Simulate a conversation that already contains msg-1
+        final existing = TextMessage.create(
+          id: 'msg-1',
+          user: ChatUser.user,
+          text: 'original',
+        );
+        final conversationWithMsg = conversation.withAppendedMessage(existing);
+
+        // Stream a duplicate msg-1
+        const streamingState = app_streaming.TextStreaming(
+          messageId: 'msg-1',
+          user: ChatUser.user,
+          text: 'duplicate',
+        );
+        const event = TextMessageEndEvent(messageId: 'msg-1');
+
+        final result = processEvent(
+          conversationWithMsg,
+          streamingState,
+          event,
+        );
+
+        // Should skip — conversation still has exactly 1 message
+        expect(result.conversation.messages, hasLength(1));
+        expect(
+          (result.conversation.messages.first as TextMessage).text,
+          equals('original'),
+        );
+        // Streaming should still reset to AwaitingText
+        expect(result.streaming, isA<app_streaming.AwaitingText>());
+      });
+
       test('TextMessageStartEvent maps user role to ChatUser.user', () {
         const event = TextMessageStartEvent(
           messageId: 'msg-1',
