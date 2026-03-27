@@ -1588,6 +1588,177 @@ void main() {
         expect(assistantMessage.text, equals('Hello from assistant'));
       });
 
+      // Regression: https://github.com/soliplex/frontend/issues/33
+      test('does not duplicate user messages across multi-run history',
+          () async {
+        // Thread with 3 runs
+        when(
+          () => mockTransport.request<Map<String, dynamic>>(
+            'GET',
+            Uri.parse(
+              'https://api.example.com/api/v1/rooms/room-123/agui/thread-456',
+            ),
+            cancelToken: any(named: 'cancelToken'),
+            fromJson: any(named: 'fromJson'),
+            body: any(named: 'body'),
+            headers: any(named: 'headers'),
+            timeout: any(named: 'timeout'),
+          ),
+        ).thenAnswer(
+          (_) async => {
+            'room_id': 'room-123',
+            'thread_id': 'thread-456',
+            'runs': {
+              'run-1': {
+                'run_id': 'run-1',
+                'created': '2026-01-07T01:00:00.000Z',
+                'finished': '2026-01-07T01:01:00.000Z',
+              },
+              'run-2': {
+                'run_id': 'run-2',
+                'created': '2026-01-07T02:00:00.000Z',
+                'finished': '2026-01-07T02:01:00.000Z',
+              },
+              'run-3': {
+                'run_id': 'run-3',
+                'created': '2026-01-07T03:00:00.000Z',
+                'finished': '2026-01-07T03:01:00.000Z',
+              },
+            },
+          },
+        );
+
+        // Run 1: run_input has only user-msg-A
+        when(
+          () => mockTransport.request<Map<String, dynamic>>(
+            'GET',
+            Uri.parse(
+              'https://api.example.com/api/v1/rooms/room-123/agui/thread-456/run-1',
+            ),
+            cancelToken: any(named: 'cancelToken'),
+            fromJson: any(named: 'fromJson'),
+            body: any(named: 'body'),
+            headers: any(named: 'headers'),
+            timeout: any(named: 'timeout'),
+          ),
+        ).thenAnswer(
+          (_) async => {
+            'run_id': 'run-1',
+            'run_input': {
+              'messages': [
+                {'id': 'user-msg-A', 'role': 'user', 'content': 'msg A'},
+              ],
+            },
+            'events': [
+              {
+                'type': 'TEXT_MESSAGE_START',
+                'messageId': 'asst-1',
+                'role': 'assistant',
+              },
+              {
+                'type': 'TEXT_MESSAGE_CONTENT',
+                'messageId': 'asst-1',
+                'delta': 'response 1',
+              },
+              {'type': 'TEXT_MESSAGE_END', 'messageId': 'asst-1'},
+            ],
+          },
+        );
+
+        // Run 2: run_input has user-msg-A (prior) AND user-msg-B (new)
+        when(
+          () => mockTransport.request<Map<String, dynamic>>(
+            'GET',
+            Uri.parse(
+              'https://api.example.com/api/v1/rooms/room-123/agui/thread-456/run-2',
+            ),
+            cancelToken: any(named: 'cancelToken'),
+            fromJson: any(named: 'fromJson'),
+            body: any(named: 'body'),
+            headers: any(named: 'headers'),
+            timeout: any(named: 'timeout'),
+          ),
+        ).thenAnswer(
+          (_) async => {
+            'run_id': 'run-2',
+            'run_input': {
+              'messages': [
+                {'id': 'user-msg-A', 'role': 'user', 'content': 'msg A'},
+                {'id': 'user-msg-B', 'role': 'user', 'content': 'msg B'},
+              ],
+            },
+            'events': [
+              {
+                'type': 'TEXT_MESSAGE_START',
+                'messageId': 'asst-2',
+                'role': 'assistant',
+              },
+              {
+                'type': 'TEXT_MESSAGE_CONTENT',
+                'messageId': 'asst-2',
+                'delta': 'response 2',
+              },
+              {'type': 'TEXT_MESSAGE_END', 'messageId': 'asst-2'},
+            ],
+          },
+        );
+
+        // Run 3: run_input has all 3 prior user messages
+        when(
+          () => mockTransport.request<Map<String, dynamic>>(
+            'GET',
+            Uri.parse(
+              'https://api.example.com/api/v1/rooms/room-123/agui/thread-456/run-3',
+            ),
+            cancelToken: any(named: 'cancelToken'),
+            fromJson: any(named: 'fromJson'),
+            body: any(named: 'body'),
+            headers: any(named: 'headers'),
+            timeout: any(named: 'timeout'),
+          ),
+        ).thenAnswer(
+          (_) async => {
+            'run_id': 'run-3',
+            'run_input': {
+              'messages': [
+                {'id': 'user-msg-A', 'role': 'user', 'content': 'msg A'},
+                {'id': 'user-msg-B', 'role': 'user', 'content': 'msg B'},
+                {'id': 'user-msg-C', 'role': 'user', 'content': 'msg C'},
+              ],
+            },
+            'events': [
+              {
+                'type': 'TEXT_MESSAGE_START',
+                'messageId': 'asst-3',
+                'role': 'assistant',
+              },
+              {
+                'type': 'TEXT_MESSAGE_CONTENT',
+                'messageId': 'asst-3',
+                'delta': 'response 3',
+              },
+              {'type': 'TEXT_MESSAGE_END', 'messageId': 'asst-3'},
+            ],
+          },
+        );
+
+        final history = await api.getThreadHistory('room-123', 'thread-456');
+
+        // Should be exactly 6 messages: A, resp1, B, resp2, C, resp3
+        // NOT 10 (with A appearing 3 times and B appearing 2 times)
+        expect(history.messages.length, equals(6));
+
+        expect((history.messages[0] as TextMessage).id, equals('user-msg-A'));
+        expect((history.messages[0] as TextMessage).text, equals('msg A'));
+        expect((history.messages[1] as TextMessage).id, equals('asst-1'));
+        expect((history.messages[2] as TextMessage).id, equals('user-msg-B'));
+        expect((history.messages[2] as TextMessage).text, equals('msg B'));
+        expect((history.messages[3] as TextMessage).id, equals('asst-2'));
+        expect((history.messages[4] as TextMessage).id, equals('user-msg-C'));
+        expect((history.messages[4] as TextMessage).text, equals('msg C'));
+        expect((history.messages[5] as TextMessage).id, equals('asst-3'));
+      });
+
       test('skips non-user messages from run_input.messages', () async {
         // Thread endpoint
         when(
@@ -1711,14 +1882,17 @@ void main() {
             (_) async => {
               'run_id': 'run-1',
               'run_input': {
-                // Message without id or role - should use fallbacks
+                // Only the last user message is extracted.
+                // The first is a prior user message (would be from an
+                // earlier run), the assistant is skipped, and the last
+                // user message has no id — should use run-based fallback.
                 'messages': [
-                  {'content': 'Message without id or role'},
-                  {'id': 'has-id', 'content': 'Message with id, no role'},
+                  {'id': 'has-id', 'content': 'Prior user message'},
                   {
                     'role': 'assistant',
                     'content': 'Assistant message (should be skipped)',
                   },
+                  {'content': 'Message without id or role'},
                 ],
               },
               'events': [
@@ -1739,16 +1913,15 @@ void main() {
 
           final messages = await api.getThreadHistory('room-123', 'thread-456');
 
-          // Two user messages (with fallback ids) + one assistant from events
-          expect(messages.messages.length, equals(3));
-          // First message uses index-based fallback id
-          expect(messages.messages[0].id, equals('user-0'));
+          // Only the last user message is extracted (the one that initiated
+          // this run). The assistant message is skipped, so the last user
+          // message is the one without id/role. Plus one assistant from events.
+          expect(messages.messages.length, equals(2));
+          // Last user message uses run-based fallback id, fallback role
+          expect(messages.messages[0].id, equals('user-run-1'));
           expect(messages.messages[0].user, equals(ChatUser.user));
-          // Second message uses provided id, fallback role
-          expect(messages.messages[1].id, equals('has-id'));
-          expect(messages.messages[1].user, equals(ChatUser.user));
-          // Third is from events
-          expect(messages.messages[2].id, equals('m1'));
+          // Assistant from events
+          expect(messages.messages[1].id, equals('m1'));
         },
       );
 
