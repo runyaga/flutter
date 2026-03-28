@@ -145,6 +145,7 @@ class AgentPlugin extends MontyPlugin {
           handler: (args) async {
             final handle = (args['handle']! as num).toInt();
             await _agentApi.cancelAgent(handle);
+            return null;
           },
         ),
         HostFunction(
