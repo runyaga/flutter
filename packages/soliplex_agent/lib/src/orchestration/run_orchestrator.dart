@@ -13,7 +13,8 @@ import 'package:soliplex_logging/soliplex_logging.dart';
 ///
 /// Returns executed tools with status and result populated.
 typedef ToolExecutorCallback = Future<List<ToolCallInfo>> Function(
-    List<ToolCallInfo> pendingToolCalls);
+  List<ToolCallInfo> pendingToolCalls,
+);
 
 /// Orchestrates a single AG-UI run lifecycle.
 ///

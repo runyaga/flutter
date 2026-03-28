@@ -18,7 +18,8 @@ import 'package:soliplex_logging/soliplex_logging.dart';
 /// Defaults to [AgUiLlmProvider] when not specified in
 /// [MultiServerRuntime].
 typedef LlmProviderFactory = AgentLlmProvider Function(
-    ServerConnection connection);
+  ServerConnection connection,
+);
 
 /// Coordinator wrapping per-server [AgentRuntime] instances.
 ///

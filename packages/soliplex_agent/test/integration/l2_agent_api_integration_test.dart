@@ -85,11 +85,14 @@ void main() {
       final h3 = await agentApi.spawnAgent('echo', 'Say exactly: GAMMA');
       print('Handles: $h1, $h2, $h3');
 
-      final results = await agentApi.waitAll([
-        h1,
-        h2,
-        h3,
-      ], timeout: const Duration(seconds: 90));
+      final results = await agentApi.waitAll(
+        [
+          h1,
+          h2,
+          h3,
+        ],
+        timeout: const Duration(seconds: 90),
+      );
       print('Results: $results');
 
       expect(results, hasLength(3));

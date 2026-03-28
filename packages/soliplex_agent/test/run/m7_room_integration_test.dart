@@ -617,11 +617,14 @@ void main() {
         prompt: 'Say exactly: GAMMA=300',
       );
 
-      final results = await runtime.waitAll([
-        s1,
-        s2,
-        s3,
-      ], timeout: const Duration(seconds: 90));
+      final results = await runtime.waitAll(
+        [
+          s1,
+          s2,
+          s3,
+        ],
+        timeout: const Duration(seconds: 90),
+      );
       expect(results, hasLength(3));
       expect(results.every((r) => r is AgentSuccess), isTrue);
 
@@ -672,11 +675,14 @@ void main() {
         prompt: 'Write a detailed 3 paragraph essay about quantum computing.',
       );
 
-      final winner = await runtime.waitAny([
-        fast,
-        medium,
-        slow,
-      ], timeout: const Duration(seconds: 60));
+      final winner = await runtime.waitAny(
+        [
+          fast,
+          medium,
+          slow,
+        ],
+        timeout: const Duration(seconds: 60),
+      );
       print('Winner type: ${winner.runtimeType}');
       expect(winner, isA<AgentSuccess>());
 
@@ -1024,11 +1030,10 @@ void main() {
         prompt: 'Is Pluto a planet? Answer YES or NO with one sentence.',
       );
 
-      final results = await runtime.waitAll([
-        s1,
-        s2,
-        s3,
-      ], timeout: const Duration(seconds: 90));
+      final results = await runtime.waitAll(
+        [s1, s2, s3],
+        timeout: const Duration(seconds: 90),
+      );
       expect(results.every((r) => r is AgentSuccess), isTrue);
 
       final opinions = results.map((r) => (r as AgentSuccess).output).toList();
