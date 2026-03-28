@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:soliplex_agent/soliplex_agent.dart';
-import 'package:soliplex_completions/soliplex_completions.dart';
 import 'package:test/test.dart';
 
 void main() {

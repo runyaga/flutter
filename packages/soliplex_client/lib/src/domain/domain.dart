@@ -8,6 +8,8 @@ export 'chunk_visualization.dart';
 export 'citation_formatting.dart';
 export 'conversation.dart';
 export 'feedback_type.dart';
+export 'llm_event.dart';
+export 'llm_tool.dart';
 export 'mcp_client_toolset.dart';
 export 'message_state.dart';
 export 'quiz.dart';

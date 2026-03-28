@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:soliplex_agent/src/models/thread_key.dart';
 import 'package:soliplex_agent/src/orchestration/agent_llm_provider.dart';
 import 'package:soliplex_client/soliplex_client.dart';
-import 'package:soliplex_completions/soliplex_completions.dart';
 
 /// Callback type for streaming LLM chat with tool support.
 ///

@@ -21,7 +21,8 @@ class SoliplexBridgeLogger implements BridgeLogger {
   factory SoliplexBridgeLogger.root(
     logging.LogManager logManager, [
     String name = 'monty',
-  ]) => SoliplexBridgeLogger(logManager.getLogger(name), logManager);
+  ]) =>
+      SoliplexBridgeLogger(logManager.getLogger(name), logManager);
 
   final logging.Logger _logger;
   final logging.LogManager _logManager;

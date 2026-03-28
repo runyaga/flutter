@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:http/http.dart' as http;
 import 'package:open_responses/open_responses.dart' as or;
-import 'package:soliplex_completions/src/llm_event.dart';
+import 'package:soliplex_client/soliplex_client.dart';
 import 'package:soliplex_completions/src/llm_provider.dart';
-import 'package:soliplex_completions/src/llm_tool.dart';
 
 /// LLM provider backed by open_responses.
 ///

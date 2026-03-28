@@ -17,8 +17,7 @@ void main() {
     });
 
     test('root factory creates logger with given name', () {
-      SoliplexBridgeLogger.root(LogManager.instance, 'bridge')
-          .info('hello');
+      SoliplexBridgeLogger.root(LogManager.instance, 'bridge').info('hello');
 
       expect(sink.records, hasLength(1));
       expect(sink.records.first.loggerName, 'bridge');
@@ -108,8 +107,7 @@ void main() {
     });
 
     test('child after close returns NullBridgeLogger', () {
-      final root = SoliplexBridgeLogger.root(LogManager.instance)
-        ..close();
+      final root = SoliplexBridgeLogger.root(LogManager.instance)..close();
       root.child('late').info('noop');
 
       expect(sink.records, isEmpty);
