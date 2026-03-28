@@ -37,9 +37,7 @@ abstract interface class AgentApi {
   Future<AgentResult> watchAgent(int handle, {Duration? timeout});
 
   /// Cancels the agent identified by [handle].
-  ///
-  /// Returns `true` if the agent was successfully cancelled.
-  Future<bool> cancelAgent(int handle);
+  Future<void> cancelAgent(int handle);
 
   /// Returns the current lifecycle status of the agent as a string.
   ///

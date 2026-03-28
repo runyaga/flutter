@@ -85,14 +85,11 @@ void main() {
       final h3 = await agentApi.spawnAgent('echo', 'Say exactly: GAMMA');
       print('Handles: $h1, $h2, $h3');
 
-      final results = await agentApi.waitAll(
-        [
-          h1,
-          h2,
-          h3,
-        ],
-        timeout: const Duration(seconds: 90),
-      );
+      final results = await agentApi.waitAll([
+        h1,
+        h2,
+        h3,
+      ], timeout: const Duration(seconds: 90));
       print('Results: $results');
 
       expect(results, hasLength(3));
@@ -120,14 +117,23 @@ void main() {
 
     test('cancels a running agent', () async {
       final handle = await agentApi.spawnAgent(
-        'echo',
-        'Write a very long essay about the history of computing.',
+        'plain',
+        'List every prime number between 1 and 100000. For each prime, '
+            'show a proof that it is not divisible by any smaller prime. '
+            'Format each entry on its own line.',
       );
       print('Spawned handle: $handle');
 
-      final cancelled = await agentApi.cancelAgent(handle);
-      expect(cancelled, isTrue);
-      print('Cancelled: $cancelled');
+      // Wait until the agent is running so the SSE stream has started.
+      var status = agentApi.agentStatus(handle);
+      while (status == 'spawning') {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        status = agentApi.agentStatus(handle);
+      }
+      print('Status before cancel: $status');
+
+      await agentApi.cancelAgent(handle);
+      print('Cancelled');
 
       // getResult should throw because the agent was cancelled.
       expect(

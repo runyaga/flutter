@@ -131,23 +131,19 @@ class ChatFnLlmProvider implements AgentLlmProvider {
           final toolCalls = m.toolCalls;
           if (toolCalls != null && toolCalls.isNotEmpty) {
             final tc = toolCalls.first;
-            result.add(
-              (
-                role: 'assistant',
-                content: "[Called tool '${tc.function.name}' with arguments: "
-                    '${tc.function.arguments}]',
-              ),
-            );
+            result.add((
+              role: 'assistant',
+              content: "[Called tool '${tc.function.name}' with arguments: "
+                  '${tc.function.arguments}]',
+            ));
           } else {
             result.add((role: 'assistant', content: m.content ?? ''));
           }
         case final ToolMessage m:
-          result.add(
-            (
-              role: 'user',
-              content: "[Tool result for '${m.toolCallId}']: ${m.content}",
-            ),
-          );
+          result.add((
+            role: 'user',
+            content: "[Tool result for '${m.toolCallId}']: ${m.content}",
+          ));
         case final SystemMessage m:
           result.add((role: 'system', content: m.content));
         default:

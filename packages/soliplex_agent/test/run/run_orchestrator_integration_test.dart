@@ -376,13 +376,10 @@ void main() {
       final s1 = await runtime.spawn(roomId: roomId, prompt: 'Say "alpha".');
       final s2 = await runtime.spawn(roomId: roomId, prompt: 'Say "beta".');
 
-      final results = await runtime.waitAll(
-        [
-          s1,
-          s2,
-        ],
-        timeout: const Duration(seconds: 60),
-      );
+      final results = await runtime.waitAll([
+        s1,
+        s2,
+      ], timeout: const Duration(seconds: 60));
 
       print('M6 waitAll: ${results.map((r) => r.runtimeType).toList()}');
       expect(results, hasLength(2));

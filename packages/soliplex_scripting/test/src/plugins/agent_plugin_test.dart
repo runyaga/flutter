@@ -337,7 +337,7 @@ class _NeverResolvingAgentApi implements AgentApi {
       Completer<AgentResult>().future;
 
   @override
-  Future<bool> cancelAgent(int handle) => Completer<bool>().future;
+  Future<void> cancelAgent(int handle) => Completer<void>().future;
 
   @override
   String agentStatus(int handle) => 'running';

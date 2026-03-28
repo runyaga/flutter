@@ -4,7 +4,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart'
     show AgUiStreamClient, SoliplexApi;
-import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
@@ -149,8 +148,7 @@ void main() {
       controller.add(const RunStartedEvent(threadId: _threadId, runId: _runId));
       await Future<void>.delayed(Duration.zero);
 
-      final cancelled = await agentApi.cancelAgent(handle);
-      expect(cancelled, isTrue);
+      await agentApi.cancelAgent(handle);
 
       await controller.close();
     });
@@ -177,7 +175,7 @@ void main() {
       expect(() => agentApi.getResult(h2), throwsA(isA<ArgumentError>()));
     });
 
-    test('cancelAgent evicts handle', () async {
+    test('cancelAgent keeps handle for getResult', () async {
       final controller = StreamController<BaseEvent>.broadcast();
       when(
         () => api.createThread(any()),
@@ -201,8 +199,9 @@ void main() {
 
       await agentApi.cancelAgent(handle);
 
-      // Handle is evicted.
-      expect(() => agentApi.getResult(handle), throwsA(isA<ArgumentError>()));
+      // Handle survives cancel — getResult throws StateError for the
+      // cancelled session, then evicts the handle.
+      expect(() => agentApi.getResult(handle), throwsA(isA<StateError>()));
 
       await controller.close();
     });

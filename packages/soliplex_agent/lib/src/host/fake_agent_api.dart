@@ -11,7 +11,6 @@ class FakeAgentApi implements AgentApi {
     this.spawnResult = 1,
     this.waitAllResult = const [],
     this.getResultResult = '',
-    this.cancelResult = true,
     AgentResult? watchResult,
   }) : watchResult = watchResult ??
             const AgentSuccess(
@@ -28,9 +27,6 @@ class FakeAgentApi implements AgentApi {
 
   /// Value returned by [getResult].
   String getResultResult;
-
-  /// Value returned by [cancelAgent].
-  bool cancelResult;
 
   /// Value returned by [watchAgent]. Defaults to a success result.
   AgentResult watchResult;
@@ -74,9 +70,8 @@ class FakeAgentApi implements AgentApi {
   }
 
   @override
-  Future<bool> cancelAgent(int handle) async {
+  Future<void> cancelAgent(int handle) async {
     calls['cancelAgent'] = [handle];
-    return cancelResult;
   }
 
   /// Value returned by [agentStatus].

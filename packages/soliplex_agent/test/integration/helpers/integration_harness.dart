@@ -92,10 +92,6 @@ class IntegrationHarness {
     );
     return AgentRuntime(
       connection: connection,
-      llmProvider: AgUiLlmProvider(
-        api: api,
-        agUiStreamClient: agUiStreamClient,
-      ),
       toolRegistryResolver:
           toolRegistryResolver ?? (_) async => const ToolRegistry(),
       platform: platform,
