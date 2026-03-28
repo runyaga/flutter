@@ -4,6 +4,7 @@ import 'package:signals_core/signals_core.dart';
 import 'package:soliplex_agent/src/host/platform_constraints.dart';
 import 'package:soliplex_agent/src/models/agent_result.dart';
 import 'package:soliplex_agent/src/models/thread_key.dart';
+import 'package:soliplex_agent/src/orchestration/ag_ui_llm_provider.dart';
 import 'package:soliplex_agent/src/orchestration/agent_llm_provider.dart';
 import 'package:soliplex_agent/src/orchestration/run_orchestrator.dart';
 import 'package:soliplex_agent/src/runtime/agent_session.dart';
@@ -46,17 +47,21 @@ class AgentRuntime {
   /// all its children are cancelled.
   AgentRuntime({
     required ServerConnection connection,
-    required AgentLlmProvider llmProvider,
     required ToolRegistryResolver toolRegistryResolver,
     required PlatformConstraints platform,
     required Logger logger,
+    AgentLlmProvider? llmProvider,
     SessionExtensionFactory? extensionFactory,
     AgentUiDelegate? uiDelegate,
     this.maxSpawnDepth = 10,
     this.rootTimeout,
   })  : serverId = connection.serverId,
         _connection = connection,
-        _llmProvider = llmProvider,
+        _llmProvider = llmProvider ??
+            AgUiLlmProvider(
+              api: connection.api,
+              agUiStreamClient: connection.agUiStreamClient,
+            ),
         _toolRegistryResolver = toolRegistryResolver,
         _extensionFactory = extensionFactory,
         _uiDelegate = uiDelegate,

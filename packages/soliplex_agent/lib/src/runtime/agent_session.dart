@@ -77,6 +77,7 @@ class AgentSession implements ToolExecutionContext {
   final List<AgentSession> _children = [];
   final Completer<AgentResult> _resultCompleter = Completer<AgentResult>();
   StreamSubscription<RunState>? _subscription;
+  StreamSubscription<BaseEvent>? _baseEventSubscription;
   AgentSessionState _state = AgentSessionState.spawning;
   bool _disposed = false;
   final Signal<RunState> _runStateSignal = signal(const IdleState());
@@ -255,6 +256,7 @@ class AgentSession implements ToolExecutionContext {
   }) async {
     await _attachExtensions();
     _subscription = _orchestrator.stateChanges.listen(_onStateChange);
+    _baseEventSubscription = _orchestrator.baseEvents.listen(_bridgeBaseEvent);
     unawaited(
       _orchestrator.runToCompletion(
         key: threadKey,
@@ -280,6 +282,8 @@ class AgentSession implements ToolExecutionContext {
     _disposeExtensions();
     unawaited(_subscription?.cancel());
     _subscription = null;
+    unawaited(_baseEventSubscription?.cancel());
+    _baseEventSubscription = null;
     _orchestrator.dispose();
     _completeIfPending();
     _runStateSignal.dispose();
@@ -323,6 +327,34 @@ class AgentSession implements ToolExecutionContext {
       case CancelledState():
         _completeWith(_mapCancelled(runState));
       case IdleState():
+        break;
+    }
+  }
+
+  /// Maps raw AG-UI [BaseEvent]s to [ExecutionEvent] emissions so that
+  /// consumers observing [lastExecutionEvent] see streaming text, thinking,
+  /// server tool calls, and terminal events without polling [runState].
+  void _bridgeBaseEvent(BaseEvent event) {
+    switch (event) {
+      case TextMessageContentEvent(:final delta):
+        emitEvent(TextDelta(delta: delta));
+      case ThinkingTextMessageStartEvent():
+        emitEvent(const ThinkingStarted());
+      case ThinkingTextMessageContentEvent(:final delta):
+        emitEvent(ThinkingContent(delta: delta));
+      case ToolCallStartEvent(:final toolCallId, :final toolCallName):
+        emitEvent(
+          ServerToolCallStarted(toolCallId: toolCallId, toolName: toolCallName),
+        );
+      case ToolCallResultEvent(:final toolCallId, :final content):
+        emitEvent(
+          ServerToolCallCompleted(toolCallId: toolCallId, result: content),
+        );
+      case RunFinishedEvent():
+        emitEvent(const RunCompleted());
+      case RunErrorEvent(:final message):
+        emitEvent(RunFailed(error: message));
+      default:
         break;
     }
   }

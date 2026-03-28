@@ -249,8 +249,7 @@ void main() {
       expect(status, 'poll_timeout');
 
       // Supervisor cancels the stuck worker.
-      final cancelled = await agent.cancelAgent(h);
-      expect(cancelled, isTrue);
+      await agent.cancelAgent(h);
     });
 
     test('cancels one stuck worker while collecting another', () async {

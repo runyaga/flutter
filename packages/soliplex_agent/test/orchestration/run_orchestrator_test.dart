@@ -4,7 +4,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart'
     show AgUiStreamClient, SoliplexApi;
-import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
@@ -982,72 +981,74 @@ void main() {
       expect(state, containsPair('citations', <String>[]));
     });
 
-    test('state accumulated via StateSnapshotEvent survives to resume run',
-        () async {
-      orchestrator = RunOrchestrator(
-        llmProvider: AgUiLlmProvider(
-          api: api,
-          agUiStreamClient: agUiStreamClient,
-        ),
-        toolRegistry: _registryWith(),
-        logger: logger,
-      );
-      stubCreateRun();
-      var callCount = 0;
-      when(
-        () => agUiStreamClient.runAgent(
-          any(),
-          captureAny(),
-          cancelToken: any(named: 'cancelToken'),
-        ),
-      ).thenAnswer((_) {
-        callCount++;
-        if (callCount == 1) {
-          // First run: emit state snapshot + tool call.
-          return Stream.fromIterable([
-            const RunStartedEvent(threadId: 'thread-1', runId: _runId),
-            const StateSnapshotEvent(
-              snapshot: {'rag_context': 'doc-42', 'turn': 1},
-            ),
-            const ToolCallStartEvent(
-              toolCallId: 'tc-1',
-              toolCallName: 'weather',
-            ),
-            const ToolCallArgsEvent(
-              toolCallId: 'tc-1',
-              delta: '{"city":"NYC"}',
-            ),
-            const ToolCallEndEvent(toolCallId: 'tc-1'),
-            const RunFinishedEvent(threadId: 'thread-1', runId: _runId),
-          ]);
-        }
-        // Second run: just complete.
-        return Stream.fromIterable(_resumeTextEvents());
-      });
+    test(
+      'state accumulated via StateSnapshotEvent survives to resume run',
+      () async {
+        orchestrator = RunOrchestrator(
+          llmProvider: AgUiLlmProvider(
+            api: api,
+            agUiStreamClient: agUiStreamClient,
+          ),
+          toolRegistry: _registryWith(),
+          logger: logger,
+        );
+        stubCreateRun();
+        var callCount = 0;
+        when(
+          () => agUiStreamClient.runAgent(
+            any(),
+            captureAny(),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).thenAnswer((_) {
+          callCount++;
+          if (callCount == 1) {
+            // First run: emit state snapshot + tool call.
+            return Stream.fromIterable([
+              const RunStartedEvent(threadId: 'thread-1', runId: _runId),
+              const StateSnapshotEvent(
+                snapshot: {'rag_context': 'doc-42', 'turn': 1},
+              ),
+              const ToolCallStartEvent(
+                toolCallId: 'tc-1',
+                toolCallName: 'weather',
+              ),
+              const ToolCallArgsEvent(
+                toolCallId: 'tc-1',
+                delta: '{"city":"NYC"}',
+              ),
+              const ToolCallEndEvent(toolCallId: 'tc-1'),
+              const RunFinishedEvent(threadId: 'thread-1', runId: _runId),
+            ]);
+          }
+          // Second run: just complete.
+          return Stream.fromIterable(_resumeTextEvents());
+        });
 
-      await orchestrator.startRun(key: _key, userMessage: 'Weather?');
-      await Future<void>.delayed(Duration.zero);
-      expect(orchestrator.currentState, isA<ToolYieldingState>());
+        await orchestrator.startRun(key: _key, userMessage: 'Weather?');
+        await Future<void>.delayed(Duration.zero);
+        expect(orchestrator.currentState, isA<ToolYieldingState>());
 
-      await orchestrator.submitToolOutputs(_executedTools());
-      await Future<void>.delayed(Duration.zero);
-      expect(orchestrator.currentState, isA<CompletedState>());
+        await orchestrator.submitToolOutputs(_executedTools());
+        await Future<void>.delayed(Duration.zero);
+        expect(orchestrator.currentState, isA<CompletedState>());
 
-      // Verify the second runAgent call received the state from the snapshot.
-      final captured = verify(
-        () => agUiStreamClient.runAgent(
-          any(),
-          captureAny(),
-          cancelToken: any(named: 'cancelToken'),
-        ),
-      ).captured;
+        // Verify the second runAgent call received the state from the snapshot.
+        final captured = verify(
+          () => agUiStreamClient.runAgent(
+            any(),
+            captureAny(),
+            cancelToken: any(named: 'cancelToken'),
+          ),
+        ).captured;
 
-      // captured has 2 entries: first call and second call.
-      final resumeInput = captured[1] as SimpleRunAgentInput;
-      final state = resumeInput.state as Map<String, dynamic>;
-      expect(state, containsPair('rag_context', 'doc-42'));
-      expect(state, containsPair('turn', 1));
-    });
+        // captured has 2 entries: first call and second call.
+        final resumeInput = captured[1] as SimpleRunAgentInput;
+        final state = resumeInput.state as Map<String, dynamic>;
+        expect(state, containsPair('rag_context', 'doc-42'));
+        expect(state, containsPair('turn', 1));
+      },
+    );
 
     test('state modified across multiple runs via runToCompletion', () async {
       orchestrator = RunOrchestrator(
@@ -1072,9 +1073,7 @@ void main() {
           // Run 1: set initial state + yield tool.
           return Stream.fromIterable([
             const RunStartedEvent(threadId: 'thread-1', runId: _runId),
-            const StateSnapshotEvent(
-              snapshot: {'turn': 1, 'docs': <String>[]},
-            ),
+            const StateSnapshotEvent(snapshot: {'turn': 1, 'docs': <String>[]}),
             const ToolCallStartEvent(
               toolCallId: 'tc-1',
               toolCallName: 'weather',
@@ -1101,10 +1100,7 @@ void main() {
               toolCallId: 'tc-2',
               toolCallName: 'weather',
             ),
-            const ToolCallArgsEvent(
-              toolCallId: 'tc-2',
-              delta: '{"city":"LA"}',
-            ),
+            const ToolCallArgsEvent(toolCallId: 'tc-2', delta: '{"city":"LA"}'),
             const ToolCallEndEvent(toolCallId: 'tc-2'),
             const RunFinishedEvent(threadId: 'thread-1', runId: _runId),
           ]);

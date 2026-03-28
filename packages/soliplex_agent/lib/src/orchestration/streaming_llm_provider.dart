@@ -25,10 +25,8 @@ typedef StreamingChatFn = Stream<LlmEvent> Function({
 /// and native tool calling (via open_responses).
 class StreamingLlmProvider implements AgentLlmProvider {
   /// Creates a [StreamingLlmProvider].
-  StreamingLlmProvider({
-    required StreamingChatFn chatFn,
-    this.systemPrompt,
-  }) : _chatFn = chatFn;
+  StreamingLlmProvider({required StreamingChatFn chatFn, this.systemPrompt})
+      : _chatFn = chatFn;
 
   final StreamingChatFn _chatFn;
 
@@ -88,10 +86,7 @@ class StreamingLlmProvider implements AgentLlmProvider {
               currentMsgId = msgId;
               yield TextMessageStartEvent(messageId: msgId);
             }
-            yield TextMessageContentEvent(
-              messageId: currentMsgId,
-              delta: text,
-            );
+            yield TextMessageContentEvent(messageId: currentMsgId, delta: text);
 
           case LlmTextDone():
             if (currentMsgId case final msgId?) {
@@ -105,10 +100,7 @@ class StreamingLlmProvider implements AgentLlmProvider {
               yield TextMessageEndEvent(messageId: msgId);
               currentMsgId = null;
             }
-            yield ToolCallStartEvent(
-              toolCallId: callId,
-              toolCallName: name,
-            );
+            yield ToolCallStartEvent(toolCallId: callId, toolCallName: name);
 
           case LlmToolCallArgsDelta(:final callId, :final delta):
             yield ToolCallArgsEvent(toolCallId: callId, delta: delta);

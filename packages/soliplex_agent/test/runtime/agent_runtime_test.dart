@@ -4,7 +4,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:soliplex_agent/soliplex_agent.dart';
 import 'package:soliplex_client/soliplex_client.dart'
     show AgUiStreamClient, SoliplexApi;
-import 'package:soliplex_logging/soliplex_logging.dart';
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
@@ -278,11 +277,7 @@ void main() {
       final emissions = <List<AgentSession>>[];
       runtime.sessionChanges.listen(emissions.add);
 
-      await runtime.spawn(
-        roomId: _roomId,
-        prompt: 'Hello',
-        autoDispose: true,
-      );
+      await runtime.spawn(roomId: _roomId, prompt: 'Hello', autoDispose: true);
 
       // Wait for session to complete and be cleaned up
       await Future<void>.delayed(const Duration(milliseconds: 50));

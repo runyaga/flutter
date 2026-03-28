@@ -62,10 +62,8 @@ class RuntimeAgentApi implements AgentApi {
   }
 
   @override
-  Future<bool> cancelAgent(int handle) async {
+  Future<void> cancelAgent(int handle) async {
     _lookupSession(handle).cancel();
-    _handles.remove(handle);
-    return true;
   }
 
   @override

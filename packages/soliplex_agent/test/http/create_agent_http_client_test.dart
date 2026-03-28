@@ -100,9 +100,7 @@ void main() {
 
       test('tokenRefresher without getToken throws assertion', () {
         expect(
-          () => createAgentHttpClient(
-            tokenRefresher: _MockTokenRefresher(),
-          ),
+          () => createAgentHttpClient(tokenRefresher: _MockTokenRefresher()),
           throwsA(isA<AssertionError>()),
         );
       });

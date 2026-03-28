@@ -5,48 +5,46 @@ import 'package:soliplex_completions/soliplex_completions.dart';
 import 'package:test/test.dart';
 
 void main() {
-  const key = (
-    serverId: 'server',
-    roomId: 'room',
-    threadId: 'thread',
-  );
+  const key = (serverId: 'server', roomId: 'room', threadId: 'thread');
 
   group('StreamingLlmProvider', () {
-    test('emits RunStarted, text events, RunFinished for text stream',
-        () async {
-      final provider = StreamingLlmProvider(
-        chatFn: ({
-          required messages,
-          tools,
-          systemPrompt,
-          maxTokens,
-          abortTrigger,
-        }) async* {
-          yield const LlmTextDelta('Hello');
-          yield const LlmTextDelta(' world');
-          yield const LlmTextDone('Hello world');
-          yield const LlmDone();
-        },
-      );
+    test(
+      'emits RunStarted, text events, RunFinished for text stream',
+      () async {
+        final provider = StreamingLlmProvider(
+          chatFn: ({
+            required messages,
+            tools,
+            systemPrompt,
+            maxTokens,
+            abortTrigger,
+          }) async* {
+            yield const LlmTextDelta('Hello');
+            yield const LlmTextDelta(' world');
+            yield const LlmTextDone('Hello world');
+            yield const LlmDone();
+          },
+        );
 
-      final handle = await provider.startRun(
-        key: key,
-        input: const SimpleRunAgentInput(
-          messages: [UserMessage(id: 'u1', content: 'Hi')],
-        ),
-      );
+        final handle = await provider.startRun(
+          key: key,
+          input: const SimpleRunAgentInput(
+            messages: [UserMessage(id: 'u1', content: 'Hi')],
+          ),
+        );
 
-      final events = await handle.events.toList();
+        final events = await handle.events.toList();
 
-      expect(events[0], isA<RunStartedEvent>());
-      expect(events[1], isA<TextMessageStartEvent>());
-      expect(events[2], isA<TextMessageContentEvent>());
-      expect((events[2] as TextMessageContentEvent).delta, 'Hello');
-      expect(events[3], isA<TextMessageContentEvent>());
-      expect((events[3] as TextMessageContentEvent).delta, ' world');
-      expect(events[4], isA<TextMessageEndEvent>());
-      expect(events[5], isA<RunFinishedEvent>());
-    });
+        expect(events[0], isA<RunStartedEvent>());
+        expect(events[1], isA<TextMessageStartEvent>());
+        expect(events[2], isA<TextMessageContentEvent>());
+        expect((events[2] as TextMessageContentEvent).delta, 'Hello');
+        expect(events[3], isA<TextMessageContentEvent>());
+        expect((events[3] as TextMessageContentEvent).delta, ' world');
+        expect(events[4], isA<TextMessageEndEvent>());
+        expect(events[5], isA<RunFinishedEvent>());
+      },
+    );
 
     test('emits tool call events', () async {
       final provider = StreamingLlmProvider(
@@ -78,10 +76,7 @@ void main() {
         input: const SimpleRunAgentInput(
           messages: [UserMessage(id: 'u1', content: 'Run code')],
           tools: [
-            Tool(
-              name: 'execute_python',
-              description: 'Execute Python code',
-            ),
+            Tool(name: 'execute_python', description: 'Execute Python code'),
           ],
         ),
       );
@@ -182,10 +177,7 @@ void main() {
 
       expect(events[0], isA<RunStartedEvent>());
       expect(events[1], isA<RunErrorEvent>());
-      expect(
-        (events[1] as RunErrorEvent).message,
-        contains('network error'),
-      );
+      expect((events[1] as RunErrorEvent).message, contains('network error'));
     });
 
     test('synthesizes RunFinished when stream ends without LlmDone', () async {

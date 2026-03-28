@@ -84,6 +84,8 @@ class RunOrchestrator {
 
   final StreamController<RunState> _controller =
       StreamController<RunState>.broadcast();
+  final StreamController<BaseEvent> _baseEventController =
+      StreamController<BaseEvent>.broadcast();
 
   RunState _currentState = const IdleState();
   bool _disposed = false;
@@ -103,6 +105,12 @@ class RunOrchestrator {
 
   /// Broadcast stream of state transitions.
   Stream<RunState> get stateChanges => _controller.stream;
+
+  /// Broadcast stream of raw AG-UI events received from the SSE connection.
+  ///
+  /// Used by `AgentSession` to bridge server-side events into the
+  /// `ExecutionEvent` signal without duplicating event processing logic.
+  Stream<BaseEvent> get baseEvents => _baseEventController.stream;
 
   /// The current cancellation token for the active run.
   ///
@@ -281,6 +289,9 @@ class RunOrchestrator {
     _subscription = null;
     if (!_controller.isClosed) {
       unawaited(_controller.close());
+    }
+    if (!_baseEventController.isClosed) {
+      unawaited(_baseEventController.close());
     }
     _disposing = false;
   }
@@ -567,6 +578,9 @@ class RunOrchestrator {
   }
 
   void _onEvent(BaseEvent event) {
+    if (!_baseEventController.isClosed) {
+      _baseEventController.add(event);
+    }
     final running = _currentState;
     if (running is! RunningState) return;
     final result = processEvent(running.conversation, running.streaming, event);
