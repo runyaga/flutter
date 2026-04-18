@@ -178,8 +178,8 @@ void main() {
 
       await service.execute('x = 1').toList();
 
-      expect(mock.lastStartCode, contains('__console_write__'));
-      expect(mock.lastStartCode, contains('x = 1'));
+      expect(mock.history.lastStartCode, contains('__console_write__'));
+      expect(mock.history.lastStartCode, contains('x = 1'));
     });
 
     test('passes __console_write__ as external function', () async {
@@ -191,7 +191,10 @@ void main() {
 
       await service.execute('pass').toList();
 
-      expect(mock.lastStartExternalFunctions, contains('__console_write__'));
+      expect(
+        mock.history.lastStartExternalFunctions,
+        contains('__console_write__'),
+      );
     });
 
     test('ignores pending calls for unknown functions', () async {

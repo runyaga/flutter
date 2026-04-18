@@ -91,7 +91,7 @@ class MontyExecutionService {
         switch (progress) {
           case MontyPending(:final functionName, :final arguments):
             if (functionName == _consoleWriteFn && arguments.isNotEmpty) {
-              final text = arguments.first.toString();
+              final text = arguments.first.dartValue?.toString() ?? '';
               output.write(text);
               controller.add(ConsoleOutput(text));
             }

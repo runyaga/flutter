@@ -86,8 +86,8 @@ void main() {
 
         final names = bridge.registered.map((f) => f.schema.name).toSet();
         expect(names, containsAll(['alpha_one', 'alpha_two', 'beta_x']));
-        // Plus 2 introspection builtins (list_functions, help).
-        expect(bridge.registered, hasLength(5));
+        // Plus 1 introspection builtin (help).
+        expect(bridge.registered, hasLength(4));
       });
 
       test('includes extra functions in registration', () async {

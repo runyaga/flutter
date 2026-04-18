@@ -81,6 +81,6 @@ class SchemaExecutor {
       throw result.error!;
     }
 
-    return result.value as Map<String, Object?>;
+    return result.value.dartValue! as Map<String, Object?>;
   }
 }
