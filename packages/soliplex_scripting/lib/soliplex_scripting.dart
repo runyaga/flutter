@@ -14,6 +14,9 @@ export 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart'
         MontyPlugin;
 
 export 'src/ag_ui_bridge_adapter.dart';
+export 'src/agui/agui_http_observer.dart';
+export 'src/agui/agui_session_adapter.dart';
+export 'src/agui/state_signal_tracker.dart';
 export 'src/df_functions.dart';
 export 'src/host_schema_ag_ui.dart';
 export 'src/monty_script_environment.dart';

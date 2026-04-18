@@ -30,6 +30,7 @@ dependencies:
     path: ../soliplex_dataframe
   soliplex_interpreter_monty:
     path: ../soliplex_interpreter_monty
+  signals_core: ^6.2.0
   soliplex_logging:
     path: ../soliplex_logging
 
