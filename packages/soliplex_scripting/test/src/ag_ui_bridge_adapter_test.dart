@@ -88,29 +88,6 @@ void main() {
       expect(event.content, 'hello');
     });
 
-    test('maps BridgeTextStart → TextMessageStartEvent', () {
-      final result = adapter.mapEvent(
-        const BridgeTextStart(messageId: 'msg-1'),
-      );
-      expect(result, isA<TextMessageStartEvent>());
-      expect((result as TextMessageStartEvent).messageId, 'msg-1');
-    });
-
-    test('maps BridgeTextContent → TextMessageContentEvent', () {
-      final result = adapter.mapEvent(
-        const BridgeTextContent(messageId: 'msg-1', delta: 'hello world'),
-      );
-      expect(result, isA<TextMessageContentEvent>());
-      final event = result as TextMessageContentEvent;
-      expect(event.messageId, 'msg-1');
-      expect(event.delta, 'hello world');
-    });
-
-    test('maps BridgeTextEnd → TextMessageEndEvent', () {
-      final result = adapter.mapEvent(const BridgeTextEnd(messageId: 'msg-1'));
-      expect(result, isA<TextMessageEndEvent>());
-      expect((result as TextMessageEndEvent).messageId, 'msg-1');
-    });
   });
 
   group('AgUiBridgeAdapter.adapt', () {

@@ -34,7 +34,7 @@ class MontyExecutionService {
   bool _isExecuting = false;
   bool _isDisposed = false;
 
-  MontyPlatform get _platform => _explicitPlatform ?? Monty();
+  MontyPlatform get _platform => _explicitPlatform ?? createPlatformMonty();
 
   /// Whether an execution is currently in progress.
   bool get isExecuting => _isExecuting;
@@ -91,14 +91,20 @@ class MontyExecutionService {
         switch (progress) {
           case MontyPending(:final functionName, :final arguments):
             if (functionName == _consoleWriteFn && arguments.isNotEmpty) {
-              final text = arguments.first.toString();
+              final text = arguments.first.dartValue?.toString() ?? '';
               output.write(text);
               controller.add(ConsoleOutput(text));
             }
             progress = await _platform.resume(null);
 
+          case MontyOsCall():
+            progress = await _platform.resume(null);
+
           case MontyResolveFutures():
             progress = await _platform.resume(null);
+
+          case MontyNameLookup(:final variableName):
+            progress = await _platform.resumeNameLookupUndefined(variableName);
 
           case MontyComplete(:final result):
             final error = result.error;
@@ -109,7 +115,7 @@ class MontyExecutionService {
               controller.add(
                 ConsoleComplete(
                   ExecutionResult(
-                    value: value?.toString(),
+                    value: value.dartValue?.toString(),
                     usage: result.usage,
                     output: output.toString(),
                   ),
@@ -120,11 +126,6 @@ class MontyExecutionService {
             return;
         }
       }
-    } on MontyCancelledError {
-      // Supervisor-initiated cancel — not a script error.
-      return;
-    } on MontyError catch (e) {
-      controller.addError(e);
     } on MontyException catch (e) {
       controller.add(ConsoleError(e));
     } on Exception catch (e) {

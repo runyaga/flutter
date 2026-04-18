@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dart_monty_bridge/dart_monty_bridge.dart'
-    show BridgeMiddleware, CallRole, ToolCall;
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
+import 'package:dart_monty/dart_monty.dart' show OsCallHandler;
+import 'package:dart_monty/dart_monty_bridge.dart'
     show BridgeLogger, NullBridgeLogger;
+import 'package:dart_monty/dart_monty_bridge.dart'
+    show BridgeMiddleware, CallRole, ToolCall;
 import 'package:soliplex_agent/soliplex_agent.dart' show ToolExecutionContext;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;
 import 'package:soliplex_dataframe/soliplex_dataframe.dart';
@@ -43,12 +44,19 @@ class _FakeBridge implements MontyBridge {
       registered.map((f) => f.schema).toList();
 
   @override
-  void register(HostFunction function) => registered.add(function);
+  Map<String, List<HostFunctionSchema>> get schemasByCategory => {};
+
+  @override
+  void register(HostFunction function, {String? category}) =>
+      registered.add(function);
 
   @override
   void unregister(String name) {
     registered.removeWhere((f) => f.schema.name == name);
   }
+
+  @override
+  void registerOs(OsCallHandler handler) {}
 
   @override
   Stream<BridgeEvent> execute(String code) => _events;
@@ -95,9 +103,11 @@ void main() {
       test('collects text content deltas', () async {
         final events = Stream.fromIterable([
           const BridgeRunStarted(threadId: 't', runId: 'r'),
-          const BridgeTextContent(messageId: 'm', delta: 'Hello'),
-          const BridgeTextContent(messageId: 'm', delta: ' World'),
-          const BridgeRunFinished(threadId: 't', runId: 'r'),
+          const BridgeRunFinished(
+            threadId: 't',
+            runId: 'r',
+            printOutput: 'Hello World',
+          ),
         ]);
         final env = MontyScriptEnvironment(
           bridge: _FakeBridge(events: events),

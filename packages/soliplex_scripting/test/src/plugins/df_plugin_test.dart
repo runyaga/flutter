@@ -35,8 +35,8 @@ void main() {
       expect(names, contains('df_create'));
       expect(names, contains('df_head'));
       expect(names, contains('df_filter'));
-      // 37 df + 2 introspection
-      expect(bridge.registered, hasLength(39));
+      // 37 df + 1 introspection (help)
+      expect(bridge.registered, hasLength(38));
     });
 
     test('df_create creates via DfRegistry', () async {

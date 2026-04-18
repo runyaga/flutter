@@ -1,4 +1,4 @@
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart';
+import 'package:dart_monty/dart_monty_bridge.dart' show BridgeLogger, NullBridgeLogger;
 import 'package:soliplex_logging/soliplex_logging.dart' as logging;
 
 /// [BridgeLogger] backed by soliplex_logging.

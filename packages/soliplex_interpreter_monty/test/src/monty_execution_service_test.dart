@@ -1,5 +1,5 @@
 import 'package:dart_monty/dart_monty.dart';
-import 'package:dart_monty_platform_interface/dart_monty_testing.dart';
+import 'package:dart_monty/dart_monty_testing.dart';
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 import 'package:test/test.dart';
 
@@ -30,11 +30,13 @@ void main() {
           ..enqueueProgress(
             const MontyPending(
               functionName: '__console_write__',
-              arguments: ['hello\n'],
+              arguments: [MontyString('hello\n')],
             ),
           )
           ..enqueueProgress(
-            const MontyComplete(result: MontyResult(value: 42, usage: _usage)),
+            const MontyComplete(
+              result: MontyResult(value: MontyInt(42), usage: _usage),
+            ),
           );
 
         final events = await service.execute(r'print("hello")\n42').toList();
@@ -59,6 +61,7 @@ void main() {
       mock.enqueueProgress(
         const MontyComplete(
           result: MontyResult(
+            value: MontyNone(),
             error: MontyException(
               message: 'NameError: x is not defined',
               lineNumber: 1,
@@ -82,7 +85,9 @@ void main() {
 
     test('emits ConsoleComplete with null value for None return', () async {
       mock.enqueueProgress(
-        const MontyComplete(result: MontyResult(usage: _usage)),
+        const MontyComplete(
+          result: MontyResult(value: MontyNone(), usage: _usage),
+        ),
       );
 
       final events = await service.execute('pass').toList();
@@ -99,17 +104,19 @@ void main() {
         ..enqueueProgress(
           const MontyPending(
             functionName: '__console_write__',
-            arguments: ['line 1\n'],
+            arguments: [MontyString('line 1\n')],
           ),
         )
         ..enqueueProgress(
           const MontyPending(
             functionName: '__console_write__',
-            arguments: ['line 2\n'],
+            arguments: [MontyString('line 2\n')],
           ),
         )
         ..enqueueProgress(
-          const MontyComplete(result: MontyResult(usage: _usage)),
+          const MontyComplete(
+            result: MontyResult(value: MontyNone(), usage: _usage),
+          ),
         );
 
       final events = await service.execute('code').toList();
@@ -125,7 +132,9 @@ void main() {
 
     test('throws StateError if already executing', () async {
       mock.enqueueProgress(
-        const MontyComplete(result: MontyResult(usage: _usage)),
+        const MontyComplete(
+          result: MontyResult(value: MontyNone(), usage: _usage),
+        ),
       );
 
       // Start first execution but don't await
@@ -146,7 +155,9 @@ void main() {
 
     test('sets isExecuting during execution', () async {
       mock.enqueueProgress(
-        const MontyComplete(result: MontyResult(usage: _usage)),
+        const MontyComplete(
+          result: MontyResult(value: MontyNone(), usage: _usage),
+        ),
       );
 
       expect(service.isExecuting, isFalse);
@@ -160,23 +171,30 @@ void main() {
 
     test('wraps code with print preamble', () async {
       mock.enqueueProgress(
-        const MontyComplete(result: MontyResult(usage: _usage)),
+        const MontyComplete(
+          result: MontyResult(value: MontyNone(), usage: _usage),
+        ),
       );
 
       await service.execute('x = 1').toList();
 
-      expect(mock.lastStartCode, contains('__console_write__'));
-      expect(mock.lastStartCode, contains('x = 1'));
+      expect(mock.history.lastStartCode, contains('__console_write__'));
+      expect(mock.history.lastStartCode, contains('x = 1'));
     });
 
     test('passes __console_write__ as external function', () async {
       mock.enqueueProgress(
-        const MontyComplete(result: MontyResult(usage: _usage)),
+        const MontyComplete(
+          result: MontyResult(value: MontyNone(), usage: _usage),
+        ),
       );
 
       await service.execute('pass').toList();
 
-      expect(mock.lastStartExternalFunctions, contains('__console_write__'));
+      expect(
+        mock.history.lastStartExternalFunctions,
+        contains('__console_write__'),
+      );
     });
 
     test('ignores pending calls for unknown functions', () async {
@@ -184,11 +202,13 @@ void main() {
         ..enqueueProgress(
           const MontyPending(
             functionName: 'unknown_fn',
-            arguments: ['ignored'],
+            arguments: [MontyString('ignored')],
           ),
         )
         ..enqueueProgress(
-          const MontyComplete(result: MontyResult(usage: _usage)),
+          const MontyComplete(
+            result: MontyResult(value: MontyNone(), usage: _usage),
+          ),
         );
 
       final events = await service.execute('code').toList();
@@ -199,13 +219,15 @@ void main() {
 
     test('can execute again after previous completes', () async {
       mock.enqueueProgress(
-        const MontyComplete(result: MontyResult(usage: _usage)),
+        const MontyComplete(
+          result: MontyResult(value: MontyNone(), usage: _usage),
+        ),
       );
       await service.execute('first').toList();
 
       mock.enqueueProgress(
         const MontyComplete(
-          result: MontyResult(value: 'second', usage: _usage),
+          result: MontyResult(value: MontyString('second'), usage: _usage),
         ),
       );
       final events = await service.execute('second').toList();

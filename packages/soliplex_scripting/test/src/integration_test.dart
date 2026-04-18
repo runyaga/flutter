@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dart_monty_bridge/dart_monty_bridge.dart'
-    show BridgeMiddleware, CallRole, ToolCall;
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
+import 'package:dart_monty/dart_monty.dart' show OsCallHandler;
+import 'package:dart_monty/dart_monty_bridge.dart'
     show BridgeLogger, NullBridgeLogger;
+import 'package:dart_monty/dart_monty_bridge.dart'
+    show BridgeMiddleware, CallRole, ToolCall;
 import 'package:soliplex_agent/soliplex_agent.dart'
     show FakeAgentApi, HostApi, ToolExecutionContext;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;
@@ -81,7 +82,10 @@ class _ScriptableBridge implements MontyBridge {
       _functions.values.map((f) => f.schema).toList();
 
   @override
-  void register(HostFunction function) {
+  Map<String, List<HostFunctionSchema>> get schemasByCategory => {};
+
+  @override
+  void register(HostFunction function, {String? category}) {
     _functions[function.schema.name] = function;
   }
 
@@ -89,6 +93,9 @@ class _ScriptableBridge implements MontyBridge {
   void unregister(String name) {
     _functions.remove(name);
   }
+
+  @override
+  void registerOs(OsCallHandler handler) {}
 
   @override
   Stream<BridgeEvent> execute(String code) {
@@ -129,10 +136,13 @@ class _ScriptableBridge implements MontyBridge {
 
     controller
       ..add(const BridgeStepFinished(stepId: 'step-1'))
-      ..add(const BridgeTextStart(messageId: 'msg-1'))
-      ..add(const BridgeTextContent(messageId: 'msg-1', delta: 'done'))
-      ..add(const BridgeTextEnd(messageId: 'msg-1'))
-      ..add(const BridgeRunFinished(threadId: 't', runId: 'r'));
+      ..add(
+        const BridgeRunFinished(
+          threadId: 't',
+          runId: 'r',
+          printOutput: 'done',
+        ),
+      );
     await controller.close();
   }
 
