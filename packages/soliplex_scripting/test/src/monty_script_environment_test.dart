@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dart_monty_bridge/dart_monty_bridge.dart'
+import 'package:dart_monty/dart_monty_bridge.dart'
     show BridgeMiddleware, CallRole, ToolCall;
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
+import 'package:dart_monty/dart_monty_bridge.dart'
     show BridgeLogger, NullBridgeLogger;
 import 'package:soliplex_agent/soliplex_agent.dart' show ToolExecutionContext;
 import 'package:soliplex_client/soliplex_client.dart' show ToolCallInfo;

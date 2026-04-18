@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'package:dart_monty/dart_monty.dart' show MontyLimits, MontyPlatform;
-import 'package:dart_monty_bridge/dart_monty_bridge.dart' show PluginRegistry;
+import 'package:dart_monty/dart_monty.dart'
+    show MontyLimits, MontyPlatform, createPlatformMonty;
+import 'package:dart_monty/dart_monty_bridge.dart' show PluginRegistry;
 import 'package:soliplex_agent/soliplex_agent.dart'
     show AgentApi, BlackboardApi, FormApi, HostApi, ScriptEnvironmentFactory;
 import 'package:soliplex_client/soliplex_client.dart' show SoliplexHttpClient;
@@ -76,7 +77,9 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
         streamRegistry.registerFactory(entry.key, entry.value);
       }
     }
-    final platform = platformFactory != null ? await platformFactory() : null;
+    final platform = platformFactory != null
+        ? await platformFactory()
+        : createPlatformMonty();
     final logger = SoliplexBridgeLogger.root(logging.LogManager.instance);
     final bridge = DefaultMontyBridge(
       platform: platform,
@@ -142,7 +145,7 @@ ScriptEnvironmentFactory createMontyScriptEnvironmentFactory({
       await registry.attachTo(bridge, extraFunctions: extraFunctions);
     } on Object {
       bridge.dispose();
-      if (platform != null) unawaited(platform.dispose());
+      unawaited(platform.dispose());
       rethrow;
     }
 

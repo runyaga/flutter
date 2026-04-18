@@ -35,7 +35,7 @@ class SchemaExecutor {
   final MontyPlatform? _explicitPlatform;
   final Map<String, String> _schemas = {};
 
-  MontyPlatform get _platform => _explicitPlatform ?? Monty();
+  MontyPlatform get _platform => _explicitPlatform ?? createPlatformMonty();
 
   /// Names of all loaded schemas.
   Iterable<String> get schemaNames => _schemas.keys;
@@ -77,10 +77,10 @@ class SchemaExecutor {
 
     final result = await _platform.run(code);
 
-    if (result.isError) {
+    if (result.error != null) {
       throw result.error!;
     }
 
-    return result.value! as Map<String, Object?>;
+    return result.value as Map<String, Object?>;
   }
 }

@@ -144,8 +144,8 @@ class MontyScriptEnvironment implements ScriptEnvironment {
     final buffer = StringBuffer();
     await for (final event in events) {
       switch (event) {
-        case BridgeTextContent(:final delta):
-          buffer.write(delta);
+        case BridgeRunFinished(:final printOutput) when printOutput != null:
+          buffer.write(printOutput);
         case BridgeToolCallResult(:final result) when result.isNotEmpty:
           if (buffer.isNotEmpty) buffer.write('\n');
           buffer.writeln(result);

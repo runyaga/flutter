@@ -45,13 +45,13 @@ class AgUiBridgeAdapter {
             toolCallId: callId,
             content: result,
           ),
-        BridgeTextStart(:final messageId) => TextMessageStartEvent(
-            messageId: messageId,
+        BridgeOsCallStart(:final callId, :final operationName) => CustomEvent(
+            name: 'os_call.start',
+            value: {'callId': callId, 'operationName': operationName},
           ),
-        BridgeTextContent(:final messageId, :final delta) =>
-          TextMessageContentEvent(messageId: messageId, delta: delta),
-        BridgeTextEnd(:final messageId) => TextMessageEndEvent(
-            messageId: messageId,
+        BridgeOsCallResult(:final callId, :final result) => CustomEvent(
+            name: 'os_call.result',
+            value: {'callId': callId, 'result': result},
           ),
         BridgeEventLoopWaiting() => const CustomEvent(
             name: 'event_loop.waiting',

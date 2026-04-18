@@ -1,6 +1,6 @@
-import 'package:dart_monty_bridge/dart_monty_bridge.dart'
+import 'package:dart_monty/dart_monty_bridge.dart'
     show BridgeMiddleware, CallRole, ToolCall;
-import 'package:dart_monty_platform_interface/dart_monty_platform_interface.dart'
+import 'package:dart_monty/dart_monty_bridge.dart'
     show BridgeLogger, NullBridgeLogger;
 import 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart';
 

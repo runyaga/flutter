@@ -2,19 +2,18 @@
 library;
 
 // Re-export bridge infrastructure from dart_monty_bridge.
-export 'package:dart_monty_bridge/dart_monty_bridge.dart'
+export 'package:dart_monty/dart_monty_bridge.dart'
     show
         BridgeEvent,
         BridgeEventLoopResumed,
         BridgeEventLoopWaiting,
+        BridgeOsCallResult,
+        BridgeOsCallStart,
         BridgeRunError,
         BridgeRunFinished,
         BridgeRunStarted,
         BridgeStepFinished,
         BridgeStepStarted,
-        BridgeTextContent,
-        BridgeTextEnd,
-        BridgeTextStart,
         BridgeToolCallArgs,
         BridgeToolCallEnd,
         BridgeToolCallResult,

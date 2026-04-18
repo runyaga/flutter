@@ -1,7 +1,7 @@
 /// Wiring package bridging Monty interpreter events to ag-ui protocol.
 library;
 
-export 'package:dart_monty_bridge/dart_monty_bridge.dart' show PluginRegistry;
+export 'package:dart_monty/dart_monty_bridge.dart' show PluginRegistry;
 export 'package:soliplex_agent/soliplex_agent.dart' show ThreadKey;
 
 export 'package:soliplex_interpreter_monty/soliplex_interpreter_monty.dart'

@@ -1,6 +1,6 @@
 import 'dart:developer' as developer;
 
-import 'package:dart_monty_bridge/dart_monty_bridge.dart'
+import 'package:dart_monty/dart_monty_bridge.dart'
     show HostFunctionSchema, HostParam, HostParamType;
 import 'package:meta/meta.dart';
 
